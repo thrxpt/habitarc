@@ -157,3 +157,17 @@ Oxlint + Oxfmt will catch most mechanical issues automatically. Focus your atten
 ---
 
 Most formatting and common issues are automatically fixed by Oxlint + Oxfmt. Run `bunx ultracite fix` before committing to ensure compliance.
+
+## Agent skills
+
+### Issue tracker
+
+Track issues and specs in GitHub Issues for `thrxpt/habitarc`. Read `docs/agents/issue-tracker.md` when working with tickets.
+
+### Triage labels
+
+Use the five default triage labels. Read `docs/agents/triage-labels.md` before applying triage labels.
+
+### Domain docs
+
+Use a single-context layout: root `GLOSSARY.md` and `docs/adr/`. Read `docs/agents/domain.md` before exploring the codebase.
