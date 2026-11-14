@@ -43,11 +43,11 @@ const Home = () => {
 
   const activeExtra = extraState?.forPage === templatePage ? extraState : null;
   const templates =
-    activeExtra !== null
-      ? [...templatePage.items, ...activeExtra.items]
-      : templatePage.items;
+    activeExtra === null
+      ? templatePage.items
+      : [...templatePage.items, ...activeExtra.items];
   const nextCursor =
-    activeExtra !== null ? activeExtra.nextCursor : templatePage.nextCursor;
+    activeExtra === null ? templatePage.nextCursor : activeExtra.nextCursor;
   const loadMoreError =
     loadMoreErrorState?.forPage === templatePage
       ? loadMoreErrorState.message
