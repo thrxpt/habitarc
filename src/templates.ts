@@ -31,8 +31,7 @@ export interface ActivityTemplateDraft {
   entryMaximum: number;
 }
 
-export type TemplateField =
-  "name" | "description" | "unit" | "entryMinimum" | "entryMaximum";
+export type TemplateField = keyof ActivityTemplateDraft;
 
 export type TemplateFieldErrors = Partial<Record<TemplateField, string>>;
 
@@ -45,8 +44,23 @@ export const isMeasurementUnit = (value: unknown): value is MeasurementUnit =>
 
 export const formatTemplateRange = (
   template: Pick<ActivityTemplate, "entryMinimum" | "entryMaximum" | "unit">
-): string =>
-  `${template.entryMinimum.toLocaleString("en-US")}–${template.entryMaximum.toLocaleString("en-US")} ${template.unit}`;
+): string => {
+  const min = template.entryMinimum.toLocaleString("en-US");
+  const max = template.entryMaximum.toLocaleString("en-US");
+  return `${min}–${max} ${template.unit}`;
+};
+
+const tooLongMessage = (label: string, max: number) =>
+  `${label} must be ${max} characters or fewer.`;
+
+const ceilingExceededMessage = (
+  bound: "Minimum" | "Maximum",
+  ceiling: number,
+  unit: MeasurementUnit
+) => {
+  const limit = ceiling.toLocaleString("en-US");
+  return `${bound} cannot exceed ${limit} ${unit}.`;
+};
 
 const WHOLE_NUMBER_PATTERN = /^\d+$/u;
 
@@ -75,7 +89,10 @@ const validateTemplateName = (
     return undefined;
   }
   if (trimmed.length > TEMPLATE_NAME_MAX_LENGTH) {
-    fieldErrors.name = `Template name must be ${TEMPLATE_NAME_MAX_LENGTH} characters or fewer.`;
+    fieldErrors.name = tooLongMessage(
+      "Template name",
+      TEMPLATE_NAME_MAX_LENGTH
+    );
     return undefined;
   }
   return trimmed;
@@ -91,7 +108,10 @@ const validateTemplateDescription = (
   }
   const trimmed = typeof raw === "string" ? raw.trim() : "";
   if (trimmed.length > TEMPLATE_DESCRIPTION_MAX_LENGTH) {
-    fieldErrors.description = `Description must be ${TEMPLATE_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
+    fieldErrors.description = tooLongMessage(
+      "Description",
+      TEMPLATE_DESCRIPTION_MAX_LENGTH
+    );
   }
   return trimmed;
 };
@@ -115,10 +135,18 @@ const validateTemplateBounds = (
   if (unit) {
     const ceiling = MEASUREMENT_CEILINGS[unit];
     if (entryMinimum !== undefined && entryMinimum > ceiling) {
-      fieldErrors.entryMinimum = `Minimum cannot exceed ${ceiling.toLocaleString("en-US")} ${unit}.`;
+      fieldErrors.entryMinimum = ceilingExceededMessage(
+        "Minimum",
+        ceiling,
+        unit
+      );
     }
     if (entryMaximum !== undefined && entryMaximum > ceiling) {
-      fieldErrors.entryMaximum = `Maximum cannot exceed ${ceiling.toLocaleString("en-US")} ${unit}.`;
+      fieldErrors.entryMaximum = ceilingExceededMessage(
+        "Maximum",
+        ceiling,
+        unit
+      );
     }
   }
 
