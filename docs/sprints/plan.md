@@ -8,11 +8,13 @@ This is a course-complete two-role product: define a template, establish a perso
 
 - [Published product specification: GitHub issue #3](https://github.com/thrxpt/habitarc/issues/3), labeled `ready-for-agent`, contains the self-contained accepted scope, user stories, implementation decisions, and planned verification.
 - The 19 approved implementation tickets are published as native sub-issues of [specification #3](https://github.com/thrxpt/habitarc/issues/3), with `ready-for-agent` labels and 27 native blocking relationships. Use those issues for the current execution frontier.
-- [SRS](srs.md): product scope, FR/BR/NFR IDs, and accepted measurable quality targets.
-- [System design](system-design.md): architecture, data model, security, UI/application contracts, concurrency, and deployment/recovery.
-- [Feature contracts and STS](feature-contracts.md): F01–F12, acceptance criteria, dependencies, test inputs/expected outcomes, and definition of done.
-- [Glossary](../GLOSSARY.md): canonical domain vocabulary.
-- [ADR 0001](adr/0001-preserve-used-template-measurement-rules.md), [ADR 0002](adr/0002-cloud-run-and-cloud-sql.md), and [ADR 0003](adr/0003-effective-dated-habit-goals.md): stable template rules, trial-budget deployment, and historical goal revisions.
+- [SRS](../srs.md): product scope, FR/BR/NFR IDs, and accepted measurable quality targets.
+- [Feature inventory](../features.md): complete feature scope, requirement links, dependencies, sprint allocation, and implementation tickets.
+- [Traceability matrix](../traceability.md): every FR/BR/NFR mapped to responsibilities, sprints, and planned AC/STS.
+- [System design](../system-sds.md): architecture, data model, security, UI/application contracts, concurrency, and deployment/recovery.
+- [Sprint feature contracts and STS](README.md): F01–F12 grouped under sprint-1/, sprint-2/, and sprint-3/, with acceptance criteria, test inputs/expected outcomes, and shared Definition of Done.
+- [Glossary](../../GLOSSARY.md): canonical domain vocabulary.
+- [ADR 0001](../adr/0001-preserve-used-template-measurement-rules.md), [ADR 0002](../adr/0002-cloud-run-and-cloud-sql.md), and [ADR 0003](../adr/0003-effective-dated-habit-goals.md): stable template rules, trial-budget deployment, and historical goal revisions.
 
 All implementation and verification statuses are PLANNED. Documentation checks are not evidence that the product works.
 
@@ -22,9 +24,9 @@ Habitarc helps students build consistent study and movement routines, such as fo
 
 The three-sprint release will be a polished, course-complete application with Participant and Program Manager roles, private tracking, reliable history, useful summaries, accessible responsive screens, and reproducible deployment. Public onboarding, wearable integrations, social features, and external notifications are outside this release.
 
-Program Managers maintain activity templates. Their role does not grant access to participants' private tracking histories. Domain vocabulary lives in [GLOSSARY.md](../GLOSSARY.md).
+Program Managers maintain activity templates. Their role does not grant access to participants' private tracking histories. Domain vocabulary lives in [GLOSSARY.md](../../GLOSSARY.md).
 
-Keep the existing TanStack Start, React, TypeScript, and Tailwind foundation. Use one application packaged with Docker on Cloud Run and an ordinary single-zone Cloud SQL PostgreSQL instance. The deployment decision is recorded in [ADR 0002](adr/0002-cloud-run-and-cloud-sql.md). Better Auth with database-backed sessions is the accepted design, subject to the documented compatibility spike; concrete cloud resources remain provisioning prerequisites.
+Keep the existing TanStack Start, React, TypeScript, and Tailwind foundation. Use one application packaged with Docker on Cloud Run and an ordinary single-zone Cloud SQL PostgreSQL instance. The deployment decision is recorded in [ADR 0002](../adr/0002-cloud-run-and-cloud-sql.md). Better Auth with database-backed sessions is the accepted design, subject to the documented compatibility spike; concrete cloud resources remain provisioning prerequisites.
 
 ## Confirmed product model
 
@@ -40,7 +42,7 @@ Each Habit may have one optional local Reminder time. While the app is open, sho
 
 Templates use one fixed Measurement Unit: minutes or counts. Activity Entry amounts are positive whole numbers within the template's per-entry bounds. Daily Targets must meet the template minimum but may exceed its per-entry maximum. Daily Targets and Daily Totals are capped at 1,440 minutes or 1,000,000 counts per Habit/date; reject writes exceeding those ceilings. A count target of one can represent a simple completion Habit. Unit conversion and fractional measurements are outside this release.
 
-Target and Schedule changes take effect tomorrow through Goal Revisions; repeated edits today replace the pending revision. Past dates retain their applicable targets/weekdays, so lowering a target cannot turn yesterday's insufficient activity into a Completed Day. Valid entry corrections can change historical results. See [ADR 0003](adr/0003-effective-dated-habit-goals.md).
+Target and Schedule changes take effect tomorrow through Goal Revisions; repeated edits today replace the pending revision. Past dates retain their applicable targets/weekdays, so lowering a target cannot turn yesterday's insufficient activity into a Completed Day. Valid entry corrections can change historical results. See [ADR 0003](../adr/0003-effective-dated-habit-goals.md).
 
 Each participant may have at most one active Habit per template. A Habit starts on its creation date. Participant archiving takes effect tomorrow and preserves today's obligation and all history. Eligible earlier entries remain correctable. No pause or reactivation is included; restarting later creates a new Habit after the previous one ends, with fresh history and Streaks.
 
@@ -48,7 +50,7 @@ Streaks count consecutive completed scheduled dates. Unscheduled dates neither e
 
 Reports cover each Habit's last seven or thirty completed calendar dates, with today separate. Show recorded amounts, completed versus scheduled dates, Completion Rate, and Streaks. Exclude unscheduled/outside-tracking-period dates from completion denominators while including eligible off-schedule activity in amounts. Keep activity totals per Habit; never combine unrelated measurements.
 
-Participants choose exclusively from the Program Manager's template library. Participants cannot create their own templates; there is no template-approval workflow. Managers create and maintain shared templates. Once a template has been used, its Measurement Unit and validation bounds are immutable; its name and description remain editable. A new template is required for different measurement rules. Archiving a template prevents new Habits from selecting it, while existing Habits continue working. See [ADR 0001](adr/0001-preserve-used-template-measurement-rules.md).
+Participants choose exclusively from the Program Manager's template library. Participants cannot create their own templates; there is no template-approval workflow. Managers create and maintain shared templates. Once a template has been used, its Measurement Unit and validation bounds are immutable; its name and description remain editable. A new template is required for different measurement rules. Archiving a template prevents new Habits from selecting it, while existing Habits continue working. See [ADR 0001](../adr/0001-preserve-used-template-measurement-rules.md).
 
 The complete course release uses pre-provisioned accounts, login/logout, and documented secure account setup. Provide at least two Participant accounts and one Program Manager account so cross-participant and role restrictions can be demonstrated. Account-management screens, registration, invitations, and password-recovery flows are outside this release. Pre-provisioning does not remove password hashing, session lifecycle, or backend permission requirements.
 
@@ -179,14 +181,14 @@ These are implementation readiness dependencies, not facts the plan can invent:
 
 No hidden product behavior is deferred to an unspecified future sprint. Actual team names, cloud IDs, issue numbers, test counts, and approvals belong in implementation evidence when known.
 
-The user confirmed shared understanding in Q25, completing the interview required by the invoked [grilling skill](../.agents/skills/grilling/SKILL.md). This baseline is accepted for planning; the operational prerequisites above remain unresolved until verified. Implementation, resource provisioning, publication, and submission are separate work.
+The user confirmed shared understanding in Q25, completing the interview required by the invoked [grilling skill](../../.agents/skills/grilling/SKILL.md). This baseline is accepted for planning; the operational prerequisites above remain unresolved until verified. Implementation, resource provisioning, publication, and submission are separate work.
 
 ## Sources
 
-- [Group work specifications](reference/group_work_specs_v1.md): theme 8, roles, technical requirements, calendar, workflow, and labs.
-- [Deliverable 1](reference/project_deliverable_1_v1.md): full-product baseline and Sprint 1 submission.
-- [Deliverable 2](reference/project_deliverable_2_v1.md): completed Sprint 2, Sprint 3 progress, and integrated candidate.
-- [Final delivery](reference/project_final_delivery_v1.md): final product, verification, evidence, PDF, and video.
+- [Group work specifications](../reference/group_work_specs_v1.md): theme 8, roles, technical requirements, calendar, workflow, and labs.
+- [Deliverable 1](../reference/project_deliverable_1_v1.md): full-product baseline and Sprint 1 submission.
+- [Deliverable 2](../reference/project_deliverable_2_v1.md): completed Sprint 2, Sprint 3 progress, and integrated candidate.
+- [Final delivery](../reference/project_final_delivery_v1.md): final product, verification, evidence, PDF, and video.
 - Repository inspection on November 14: one starter route; no domain features, authentication, database, tests, CI, or deployment configuration; no existing GitHub product issues.
 - User confirmation in the planning interview: product direction, architecture direction, shared team responsibilities, submission policy, and revised November 15 Sprint 1 deadline.
 - User confirmation in the second interview round: Habit/Activity Entry model, minutes/counts with positive whole-number entries, manager-owned template library, pre-provisioned accounts, full-time availability for both students, and use of the GCP $300 free trial credit.

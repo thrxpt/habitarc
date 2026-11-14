@@ -1,6 +1,8 @@
-# Habitarc system design
+# Habitarc System-Level SDS
 
 Status: accepted implementation design following user confirmation of Q25. This document does not claim these components exist or that the integration spike has passed. The inspected repository contains only the TanStack Start starter.
+
+Read the [SRS](srs.md), [feature inventory](features.md), [traceability matrix](traceability.md), and [sprint contracts](sprints/README.md) alongside this system-level design.
 
 ## Architecture and ownership
 

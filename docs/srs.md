@@ -1,6 +1,6 @@
 # Habitarc software requirements
 
-Status: accepted requirements baseline following user confirmation of Q25. All requirements below are planned, not implemented or verified. Course sources and deadline corrections are recorded in [the product plan](product-plan.md).
+Status: accepted requirements baseline following user confirmation of Q25. All requirements below are planned, not implemented or verified. Course sources and deadline corrections are recorded in [the product plan](sprints/plan.md).
 
 ## Problem, actors, and scope
 
@@ -12,44 +12,44 @@ Students need a quick way to record study and movement, compare activity with re
 
 The course release uses synthetic data and pre-provisioned accounts. Exclude public onboarding, registration/recovery/invitations, participant-created templates, consent sharing, social features, medical advice, wearables, standalone journaling, unit conversion, fractional entries, weekly quotas, timezone editing, pause/reactivation, and external/background notifications. Reports are in-app; file export is not part of the baseline.
 
-## Functional requirements and allocation
+## Functional requirements
 
-| ID | Required observable behavior | Feature | Sprint |
-| --- | --- | --- | --- |
-| FR-01 | Login, logout, and show current identity using real pre-provisioned Participant/Program Manager accounts | F01 | 1 |
-| FR-02 | Enforce role and ownership permissions on every backend read and write | F01; every protected feature | 1–3 |
-| FR-03 | Managers create templates with name, description, unit, and per-entry bounds; participants browse selectable templates | F02 | 1 |
-| FR-04 | Participants create a Habit with a Daily Target and selected weekdays, subject to one active Habit per template | F03 | 1 |
-| FR-05 | Participants record activity for eligible dates, safely retry saves, and see persisted Daily Totals and progress | F04 | 1 |
-| FR-06 | Participants inspect dated entry history and edit/delete eligible entries with recalculated results | F06 | 2 |
-| FR-07 | Participants revise future targets/schedules while earlier dates retain their applicable rules | F07 | 2 |
-| FR-08 | Managers maintain/archive templates; participants archive Habits without deleting history | F08 | 2 |
-| FR-09 | Participants see current/longest Streaks with scheduled-date and correction semantics | F09 | 2 |
-| FR-10 | Participants configure an optional local Reminder time and see its due indicator in-app | F10 | 2 |
-| FR-11 | Participants see seven-/thirty-completed-date reports for each Habit, with today separate | F11 | 3 |
-| FR-12 | Reproduce, verify, deploy, restore, and hand off the assessed release with durable data and traceable evidence | F05, F12 | 1, 3 |
+| ID | Required observable behavior |
+| --- | --- |
+| FR-01 | Login, logout, and show current identity using real pre-provisioned Participant/Program Manager accounts |
+| FR-02 | Enforce role and ownership permissions on every backend read and write |
+| FR-03 | Managers create templates with name, description, unit, and per-entry bounds; participants browse selectable templates |
+| FR-04 | Participants create a Habit with a Daily Target and selected weekdays, subject to one active Habit per template |
+| FR-05 | Participants record activity for eligible dates, safely retry saves, and see persisted Daily Totals and progress |
+| FR-06 | Participants inspect dated entry history and edit/delete eligible entries with recalculated results |
+| FR-07 | Participants revise future targets/schedules while earlier dates retain their applicable rules |
+| FR-08 | Managers maintain/archive templates; participants archive Habits without deleting history |
+| FR-09 | Participants see current/longest Streaks with scheduled-date and correction semantics |
+| FR-10 | Participants configure an optional local Reminder time and see its due indicator in-app |
+| FR-11 | Participants see seven-/thirty-completed-date reports for each Habit, with today separate |
+| FR-12 | Reproduce, verify, deploy, restore, and hand off the assessed release with durable data and traceable evidence |
 
 ## Confirmed business rules
 
-| ID | Rule | Feature responsibility |
-| --- | --- | --- |
-| BR-01 | Participant records are private; Program Manager permissions cover templates only. Each Activity Entry belongs to exactly one owned Habit | F01, F03–F11 |
-| BR-02 | Each template uses minutes or counts. Bounds are whole numbers with 1 ≤ minimum ≤ maximum ≤ the unit's daily ceiling | F02, F08 |
-| BR-03 | Entry amounts are whole numbers within template bounds. Daily Targets are whole numbers at least the template minimum and at most the unit ceiling; targets may exceed the per-entry maximum | F03, F04, F06, F07 |
-| BR-04 | Unit ceilings are 1,440 minutes or 1,000,000 counts per Habit/date, applying to Daily Targets and accumulated Daily Totals. Reject writes that would exceed a ceiling, including concurrent writes | F03, F04, F06, F07 |
-| BR-05 | A Schedule selects at least one weekday; selecting all seven means every day. One target applies separately to each scheduled date; no weekly pooling | F03, F07, F09–F11 |
-| BR-06 | Multiple deliberate entries accumulate. Retrying the same save counts once; identical values from separate deliberate submissions are distinct activity | F04, F06 |
-| BR-07 | Calendar dates follow the fixed Account Timezone, default Asia/Bangkok. Device timezone changes cannot move entries or redefine today | F01, F03–F11 |
-| BR-08 | A Habit starts on its creation date. Entry writes are permitted only for today or the preceding six account-calendar dates and within the Habit's tracking period. Future, pre-start, and older dates are rejected | F03, F04, F06, F08 |
-| BR-09 | Off-schedule activity is permitted within the tracking period and correction window. It contributes to totals/history but not obligations, completion credit, or Streaks | F04, F06, F09, F11 |
-| BR-10 | Target/schedule changes start tomorrow. Repeated edits today replace the pending revision. Historical dates use their original applicable revision; entry corrections may recalculate results | F07, F09, F11 |
-| BR-11 | At most one active Habit per participant/template. Archiving takes effect tomorrow, retains today's obligation/history, and permits eligible corrections to earlier dates. No pause/reactivation; a later Habit starts fresh | F03, F08, F09–F11 |
-| BR-12 | Once a template has been used, its unit/bounds cannot change. Descriptive text can change. Archived templates cannot supply new Habits; existing Habits continue working | F02, F03, F08 |
-| BR-13 | A scheduled date is complete when total ≥ applicable target. Display actual amount/percentage above target; cap visual progress bars at 100%. Unscheduled dates have no completion percentage | F04, F06, F09, F11 |
-| BR-14 | A Streak counts consecutive completed scheduled dates. Unscheduled dates neither extend nor break it. An unfinished scheduled today breaks it only after the date ends. Eligible corrections recalculate current/longest Streaks | F09 |
-| BR-15 | A Reminder has one optional local time. Its in-app due indicator requires a scheduled current date, reminder time passed, and unmet Daily Target. No background delivery or snooze | F10 |
-| BR-16 | Reports cover the last seven or thirty completed calendar dates, ending yesterday; today is separate. Count only dates within the Habit's tracking period. Completion Rate = completed scheduled dates / scheduled dates; off-schedule amounts remain in totals | F11 |
-| BR-17 | Report activity totals per Habit, never combine unrelated activities. Apply the revision effective on each date. A zero scheduled-date denominator displays “Not scheduled”, not 0% | F11 |
+| ID | Rule |
+| --- | --- |
+| BR-01 | Participant records are private; Program Manager permissions cover templates only. Each Activity Entry belongs to exactly one owned Habit |
+| BR-02 | Each template uses minutes or counts. Bounds are whole numbers with 1 ≤ minimum ≤ maximum ≤ the unit's daily ceiling |
+| BR-03 | Entry amounts are whole numbers within template bounds. Daily Targets are whole numbers at least the template minimum and at most the unit ceiling; targets may exceed the per-entry maximum |
+| BR-04 | Unit ceilings are 1,440 minutes or 1,000,000 counts per Habit/date, applying to Daily Targets and accumulated Daily Totals. Reject writes that would exceed a ceiling, including concurrent writes |
+| BR-05 | A Schedule selects at least one weekday; selecting all seven means every day. One target applies separately to each scheduled date; no weekly pooling |
+| BR-06 | Multiple deliberate entries accumulate. Retrying the same save counts once; identical values from separate deliberate submissions are distinct activity |
+| BR-07 | Calendar dates follow the fixed Account Timezone, default Asia/Bangkok. Device timezone changes cannot move entries or redefine today |
+| BR-08 | A Habit starts on its creation date. Entry writes are permitted only for today or the preceding six account-calendar dates and within the Habit's tracking period. Future, pre-start, and older dates are rejected |
+| BR-09 | Off-schedule activity is permitted within the tracking period and correction window. It contributes to totals/history but not obligations, completion credit, or Streaks |
+| BR-10 | Target/schedule changes start tomorrow. Repeated edits today replace the pending revision. Historical dates use their original applicable revision; entry corrections may recalculate results |
+| BR-11 | At most one active Habit per participant/template. Archiving takes effect tomorrow, retains today's obligation/history, and permits eligible corrections to earlier dates. No pause/reactivation; a later Habit starts fresh |
+| BR-12 | Once a template has been used, its unit/bounds cannot change. Descriptive text can change. Archived templates cannot supply new Habits; existing Habits continue working |
+| BR-13 | A scheduled date is complete when total ≥ applicable target. Display actual amount/percentage above target; cap visual progress bars at 100%. Unscheduled dates have no completion percentage |
+| BR-14 | A Streak counts consecutive completed scheduled dates. Unscheduled dates neither extend nor break it. An unfinished scheduled today breaks it only after the date ends. Eligible corrections recalculate current/longest Streaks |
+| BR-15 | A Reminder has one optional local time. Its in-app due indicator requires a scheduled current date, reminder time passed, and unmet Daily Target. No background delivery or snooze |
+| BR-16 | Reports cover the last seven or thirty completed calendar dates, ending yesterday; today is separate. Count only dates within the Habit's tracking period. Completion Rate = completed scheduled dates / scheduled dates; off-schedule amounts remain in totals |
+| BR-17 | Report activity totals per Habit, never combine unrelated activities. Apply the revision effective on each date. A zero scheduled-date denominator displays “Not scheduled”, not 0% |
 
 BR-02's ceiling validation and BR-17's empty-denominator presentation make the confirmed bounds/reporting rules executable; these contract details were accepted in Q25.
 
@@ -74,4 +74,4 @@ No high-availability SLA is promised for the single-zone course deployment. Cred
 
 Requirements have stable IDs. Proposed removals, changed rules, or sprint moves must identify affected features, acceptance criteria, tests, documents, and course approvals. Preserve original contracts and actual chronology. An incomplete requirement remains incomplete until verified; it cannot be renamed as technical debt to claim completion.
 
-Implementation and execution evidence are intentionally absent from this planning baseline. [Feature contracts](feature-contracts.md) map these requirements to observable acceptance criteria and planned verification; [system design](system-design.md) defines their accepted implementation boundaries.
+Implementation and execution evidence are intentionally absent from this planning baseline. The [feature inventory](features.md) lists the complete feature scope and dependencies; the [traceability matrix](traceability.md) maps every requirement to features, sprints, and planned AC/STS. [Sprint contracts](sprints/README.md) define observable acceptance criteria and planned verification, while the [System-Level SDS](system-sds.md) defines their accepted implementation boundaries.
