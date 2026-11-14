@@ -262,3 +262,67 @@ test("switching Measurement Unit clears stale bound errors and keyboard navigati
     entryMaximum: 1500,
   });
 });
+
+test("Participant can load additional template pages while preserving selection and error feedback", async () => {
+  const secondTemplate: ActivityTemplate = {
+    ...focusedStudy,
+    id: "template-2",
+    name: "Zebra Sprint",
+    description: "Later page template",
+  };
+  const onLoadMoreTemplates = vi.fn<() => Promise<void>>().mockResolvedValue();
+
+  const { rerender } = render(
+    <AccountScreen
+      identity={participant}
+      templates={[focusedStudy]}
+      hasMoreTemplates
+      onSessionChanged={noSessionChange}
+      onLoadMoreTemplates={onLoadMoreTemplates}
+    />
+  );
+
+  const user = userEvent.setup();
+  const firstOption = screen.getByRole("button", { name: /Focused Study/iu });
+  await user.click(firstOption);
+  expect(firstOption).toHaveAttribute("aria-pressed", "true");
+
+  const loadMoreButton = screen.getByRole("button", {
+    name: "Load more Activity Templates",
+  });
+  await user.click(loadMoreButton);
+  expect(onLoadMoreTemplates).toHaveBeenCalledTimes(1);
+
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[focusedStudy, secondTemplate]}
+      hasMoreTemplates={false}
+      onSessionChanged={noSessionChange}
+      onLoadMoreTemplates={onLoadMoreTemplates}
+    />
+  );
+
+  expect(firstOption).toHaveAttribute("aria-pressed", "true");
+  expect(
+    screen.getByRole("button", { name: /Zebra Sprint/iu })
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Load more Activity Templates" })
+  ).not.toBeInTheDocument();
+
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[focusedStudy, secondTemplate]}
+      hasMoreTemplates
+      loadMoreTemplatesError="We couldn’t load more Activity Templates. Please try again."
+      onSessionChanged={noSessionChange}
+      onLoadMoreTemplates={onLoadMoreTemplates}
+    />
+  );
+
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "We couldn’t load more Activity Templates. Please try again."
+  );
+});

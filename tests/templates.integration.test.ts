@@ -15,6 +15,7 @@ import { createDatabase } from "../src/server/database";
 import { migrate } from "../src/server/migrate";
 import { provisionAccounts } from "../src/server/provision";
 import { createTemplateService } from "../src/server/templates";
+import type { ActivityTemplate, TemplateCursor } from "../src/templates";
 
 const databaseURL = process.env.TEST_DATABASE_URL;
 if (databaseURL === undefined || databaseURL.length === 0) {
@@ -144,7 +145,7 @@ test("Program Manager creates an Activity Template and Participant sees persiste
   expect(created.id.length).toBeGreaterThan(0);
 
   const library = await secondTemplates.listTemplates(participantA);
-  expect(library).toEqual([created]);
+  expect(library).toEqual({ items: [created], nextCursor: null });
 });
 
 test("invalid template definitions are rejected without partial writes and database constraints enforce bounds", async () => {
@@ -201,7 +202,10 @@ test("invalid template definitions are rejected without partial writes and datab
     })
   );
 
-  expect(await secondTemplates.listTemplates(participantA)).toEqual([]);
+  expect(await secondTemplates.listTemplates(participantA)).toEqual({
+    items: [],
+    nextCursor: null,
+  });
 
   await expect(
     pool.query(
@@ -217,7 +221,10 @@ test("invalid template definitions are rejected without partial writes and datab
     )
   ).rejects.toThrow();
 
-  expect(await secondTemplates.listTemplates(participantA)).toEqual([]);
+  expect(await secondTemplates.listTemplates(participantA)).toEqual({
+    items: [],
+    nextCursor: null,
+  });
 });
 
 test("Participants cannot create templates directly through the template service", async () => {
@@ -231,8 +238,102 @@ test("Participants cannot create templates directly through the template service
     })
   ).rejects.toMatchObject({ status: 403 });
 
-  expect(await secondTemplates.listTemplates(participantA)).toEqual([]);
+  expect(await secondTemplates.listTemplates(participantA)).toEqual({
+    items: [],
+    nextCursor: null,
+  });
 });
+
+test("bounded keyset pagination returns every created template beyond 200 without skips or duplicates", async () => {
+  const totalTemplates = 205;
+  const valuesSql = Array.from({ length: totalTemplates }, (_, index) => {
+    const id = `seed-${String(index + 1).padStart(4, "0")}`;
+    const name =
+      index < 5
+        ? "Duplicate Name"
+        : `Template ${String(index + 1).padStart(3, "0")}`;
+    const micro = String(index % 10).padStart(6, "0");
+    return `('${id}', '${name}', 'Description ${index + 1}', 'minutes', 5, 45, '2026-11-15T00:00:00.${micro}Z')`;
+  }).join(", ");
+
+  await pool.query(
+    `INSERT INTO "activity_template" ("id", "name", "description", "unit", "entry_minimum", "entry_maximum", "created_at") VALUES ${valuesSql}`
+  );
+
+  const firstPage = await secondTemplates.listTemplates(participantA, {
+    limit: 200,
+  });
+  expect(firstPage.items).toHaveLength(200);
+  expect(firstPage.nextCursor).not.toBeNull();
+
+  // Inserting a template earlier in alphabetical order mid-pagination must not shift or duplicate later pages.
+  const frontCreated = await firstTemplates.createTemplate(managerM, {
+    name: "000 Concurrent Front Insert",
+    description: "Created after page 1",
+    unit: "counts",
+    entryMinimum: 1,
+    entryMaximum: 10,
+  });
+
+  const collectRemaining = async (
+    cursor: TemplateCursor | null,
+    accumulated: ActivityTemplate[]
+  ): Promise<ActivityTemplate[]> => {
+    if (cursor === null) {
+      return accumulated;
+    }
+    const page = await secondTemplates.listTemplates(participantA, {
+      cursor,
+      limit: 50,
+    });
+    const next = [...accumulated, ...page.items];
+    return await collectRemaining(page.nextCursor, next);
+  };
+
+  const remaining = await collectRemaining(firstPage.nextCursor, []);
+  const combined = [...firstPage.items, ...remaining];
+
+  expect(combined).toHaveLength(totalTemplates);
+  expect(new Set(combined.map((item) => item.id)).size).toBe(totalTemplates);
+  expect(combined.some((item) => item.id === frontCreated.id)).toBe(false);
+
+  const refreshedFirstPage = await secondTemplates.listTemplates(participantA, {
+    limit: 200,
+  });
+  expect(refreshedFirstPage.items[0]?.id).toBe(frontCreated.id);
+});
+
+const extractNextCursor = (body: unknown): TemplateCursor | null => {
+  if (typeof body !== "object" || body === null || !("result" in body)) {
+    return null;
+  }
+  const { result } = body;
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("nextCursor" in result)
+  ) {
+    return null;
+  }
+  const { nextCursor } = result;
+  if (
+    typeof nextCursor !== "object" ||
+    nextCursor === null ||
+    !("name" in nextCursor) ||
+    !("createdAt" in nextCursor) ||
+    !("id" in nextCursor) ||
+    typeof nextCursor.name !== "string" ||
+    typeof nextCursor.createdAt !== "string" ||
+    typeof nextCursor.id !== "string"
+  ) {
+    return null;
+  }
+  return {
+    name: nextCursor.name,
+    createdAt: nextCursor.createdAt,
+    id: nextCursor.id,
+  };
+};
 
 const serverFunctionPatterns = {
   listTemplates: /\blistTemplates\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
@@ -484,17 +585,71 @@ test(
       expect(library).toMatchObject({
         status: 200,
         body: {
-          result: [
-            {
-              name: "Focused Study",
-              description: "Quiet reading and problem sets",
-              unit: "minutes",
-              entryMinimum: 5,
-              entryMaximum: 45,
-            },
-          ],
+          result: {
+            items: [
+              {
+                name: "Focused Study",
+                description: "Quiet reading and problem sets",
+                unit: "minutes",
+                entryMinimum: 5,
+                entryMaximum: 45,
+              },
+            ],
+            nextCursor: null,
+          },
         },
       });
+
+      await callServerFn("createTemplate", {
+        method: "POST",
+        cookie: managerCookie,
+        data: {
+          name: "Zebra Counting",
+          description: "Second page entry",
+          unit: "counts",
+          entryMinimum: 1,
+          entryMaximum: 20,
+        },
+      });
+
+      const firstHttpPage = await callServerFn("listTemplates", {
+        method: "GET",
+        cookie: participantCookie,
+        data: { limit: 1 },
+      });
+      expect(firstHttpPage).toMatchObject({
+        status: 200,
+        body: {
+          result: {
+            items: [{ name: "Focused Study" }],
+          },
+        },
+      });
+      const httpCursor = extractNextCursor(firstHttpPage.body);
+      expect(httpCursor).not.toBeNull();
+
+      const secondHttpPage = await callServerFn("listTemplates", {
+        method: "GET",
+        cookie: participantCookie,
+        data: { cursor: httpCursor, limit: 1 },
+      });
+      expect(secondHttpPage).toMatchObject({
+        status: 200,
+        body: {
+          result: {
+            items: [{ name: "Zebra Counting" }],
+            nextCursor: null,
+          },
+        },
+      });
+
+      expect(
+        await callServerFn("listTemplates", {
+          method: "GET",
+          cookie: participantCookie,
+          data: { limit: 0 },
+        })
+      ).toMatchObject({ status: 400 });
 
       const managerPage = await fetch(origin, {
         headers: { cookie: managerCookie },

@@ -13,10 +13,14 @@ import { WorkspacePanel } from "./workspace-panel";
 interface AccountScreenProps {
   identity: Identity | null;
   templates?: ActivityTemplate[];
+  hasMoreTemplates?: boolean;
+  loadingMoreTemplates?: boolean;
+  loadMoreTemplatesError?: string;
   onSessionChanged: () => Promise<void>;
   onCreateTemplate?: (
     draft: ActivityTemplateDraft
   ) => Promise<ActivityTemplate>;
+  onLoadMoreTemplates?: () => Promise<void> | void;
 }
 
 const EMPTY_TEMPLATES: ActivityTemplate[] = [];
@@ -24,8 +28,12 @@ const EMPTY_TEMPLATES: ActivityTemplate[] = [];
 export const AccountScreen = ({
   identity,
   templates = EMPTY_TEMPLATES,
+  hasMoreTemplates = false,
+  loadingMoreTemplates = false,
+  loadMoreTemplatesError = "",
   onSessionChanged,
   onCreateTemplate,
+  onLoadMoreTemplates,
 }: AccountScreenProps) => {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -88,8 +96,12 @@ export const AccountScreen = ({
           <WorkspacePanel
             identity={identity}
             templates={templates}
+            hasMoreTemplates={hasMoreTemplates}
+            loadingMoreTemplates={loadingMoreTemplates}
+            loadMoreTemplatesError={loadMoreTemplatesError}
             error={error}
             onCreateTemplate={onCreateTemplate}
+            onLoadMoreTemplates={onLoadMoreTemplates}
           />
         ) : (
           <>

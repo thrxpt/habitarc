@@ -1,11 +1,20 @@
 import { randomUUID } from "node:crypto";
 
-import { asc, isNull } from "drizzle-orm";
+import { and, asc, isNull, sql } from "drizzle-orm";
 
 import type { Identity } from "../identity";
 import { isRole } from "../identity";
-import { isMeasurementUnit, validateActivityTemplateInput } from "../templates";
-import type { ActivityTemplate, TemplateFieldErrors } from "../templates";
+import {
+  isMeasurementUnit,
+  validateActivityTemplateInput,
+  validateTemplateListQuery,
+} from "../templates";
+import type {
+  ActivityTemplate,
+  ActivityTemplatePage,
+  TemplateFieldErrors,
+  TemplateListQuery,
+} from "../templates";
 import { AuthError } from "./auth-error";
 import type { Database } from "./database";
 import { activityTemplate } from "./schema";
@@ -46,31 +55,53 @@ const toActivityTemplate = (
   };
 };
 
-const MAX_LIST_TEMPLATES_LIMIT = 200;
-
 export const createTemplateService = (database: Database) => {
   const listTemplates = async (
     actor: Identity,
-    limit = MAX_LIST_TEMPLATES_LIMIT
-  ): Promise<ActivityTemplate[]> => {
+    query: TemplateListQuery = {}
+  ): Promise<ActivityTemplatePage> => {
     if (!isRole(actor.role)) {
       throw new AuthError(403, "Forbidden");
     }
-    const boundedLimit = Math.min(
-      Math.max(1, Math.trunc(limit)),
-      MAX_LIST_TEMPLATES_LIMIT
-    );
+    const validation = validateTemplateListQuery(query);
+    if (!validation.ok) {
+      throw new TemplateError(400, validation.message);
+    }
+    const { cursor, limit } = validation.value;
+    const whereClause = cursor
+      ? and(
+          isNull(activityTemplate.archivedAt),
+          sql`(${activityTemplate.name}, ${activityTemplate.createdAt}, ${activityTemplate.id}) > (${cursor.name}, ${cursor.createdAt}::timestamptz, ${cursor.id})`
+        )
+      : isNull(activityTemplate.archivedAt);
     const rows = await database
-      .select()
+      .select({
+        template: activityTemplate,
+        cursorCreatedAt: sql<string>`to_char(${activityTemplate.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+      })
       .from(activityTemplate)
-      .where(isNull(activityTemplate.archivedAt))
+      .where(whereClause)
       .orderBy(
         asc(activityTemplate.name),
         asc(activityTemplate.createdAt),
         asc(activityTemplate.id)
       )
-      .limit(boundedLimit);
-    return rows.map(toActivityTemplate);
+      .limit(limit + 1);
+
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const lastRow = pageRows.at(-1);
+    return {
+      items: pageRows.map((row) => toActivityTemplate(row.template)),
+      nextCursor:
+        hasMore && lastRow !== undefined
+          ? {
+              name: lastRow.template.name,
+              createdAt: lastRow.cursorCreatedAt,
+              id: lastRow.template.id,
+            }
+          : null,
+    };
   };
 
   const createTemplate = async (

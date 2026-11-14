@@ -9,6 +9,24 @@ export const MEASUREMENT_CEILINGS: Record<MeasurementUnit, number> = {
 
 export const TEMPLATE_NAME_MAX_LENGTH = 120;
 export const TEMPLATE_DESCRIPTION_MAX_LENGTH = 500;
+export const DEFAULT_TEMPLATE_PAGE_SIZE = 50;
+export const MAX_TEMPLATE_PAGE_SIZE = 200;
+
+export interface TemplateCursor {
+  name: string;
+  createdAt: string;
+  id: string;
+}
+
+export interface TemplateListQuery {
+  cursor?: TemplateCursor | null;
+  limit?: number;
+}
+
+export interface ActivityTemplatePage {
+  items: ActivityTemplate[];
+  nextCursor: TemplateCursor | null;
+}
 
 export interface ActivityTemplate {
   id: string;
@@ -221,4 +239,69 @@ export const validateActivityTemplateInput = (
       entryMaximum: bounds.entryMaximum,
     },
   };
+};
+
+const UTC_ISO_TIMESTAMP_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/u;
+
+const parseTemplateCursor = (raw: unknown): TemplateCursor | undefined => {
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+  const { name, createdAt, id } = raw;
+  if (
+    typeof name !== "string" ||
+    name.trim().length === 0 ||
+    name.length > TEMPLATE_NAME_MAX_LENGTH
+  ) {
+    return undefined;
+  }
+  if (typeof id !== "string" || id.length === 0 || id.length > 128) {
+    return undefined;
+  }
+  if (
+    typeof createdAt !== "string" ||
+    !UTC_ISO_TIMESTAMP_PATTERN.test(createdAt) ||
+    Number.isNaN(Date.parse(createdAt))
+  ) {
+    return undefined;
+  }
+  return { name, createdAt, id };
+};
+
+export type TemplateListQueryResult =
+  | { ok: true; value: { cursor?: TemplateCursor; limit: number } }
+  | { ok: false; message: string };
+
+export const validateTemplateListQuery = (
+  input: unknown
+): TemplateListQueryResult => {
+  if (input === undefined || input === null) {
+    return { ok: true, value: { limit: DEFAULT_TEMPLATE_PAGE_SIZE } };
+  }
+  if (!isRecord(input)) {
+    return { ok: false, message: "Invalid template list request." };
+  }
+
+  let limit = DEFAULT_TEMPLATE_PAGE_SIZE;
+  if (input.limit !== undefined) {
+    if (!isWholePositiveNumber(input.limit)) {
+      return {
+        ok: false,
+        message: "Template page size must be a whole number of at least 1.",
+      };
+    }
+    limit = Math.min(input.limit, MAX_TEMPLATE_PAGE_SIZE);
+  }
+
+  if (input.cursor === undefined || input.cursor === null) {
+    return { ok: true, value: { limit } };
+  }
+
+  const cursor = parseTemplateCursor(input.cursor);
+  if (!cursor) {
+    return { ok: false, message: "Invalid template pagination cursor." };
+  }
+
+  return { ok: true, value: { cursor, limit } };
 };

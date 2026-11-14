@@ -11,15 +11,23 @@ const EMPTY_TEMPLATES: ActivityTemplate[] = [];
 export const WorkspacePanel = ({
   identity,
   templates = EMPTY_TEMPLATES,
+  hasMoreTemplates = false,
+  loadingMoreTemplates = false,
+  loadMoreTemplatesError = "",
   error,
   onCreateTemplate,
+  onLoadMoreTemplates,
 }: {
   identity: Identity;
   templates?: ActivityTemplate[];
+  hasMoreTemplates?: boolean;
+  loadingMoreTemplates?: boolean;
+  loadMoreTemplatesError?: string;
   error: string;
   onCreateTemplate?: (
     draft: ActivityTemplateDraft
   ) => Promise<ActivityTemplate>;
+  onLoadMoreTemplates?: () => Promise<void> | void;
 }) => (
   <>
     <PageHeading>
@@ -71,7 +79,14 @@ export const WorkspacePanel = ({
     {identity.role === "program-manager" && (
       <TemplateCreateForm onCreateTemplate={onCreateTemplate} />
     )}
-    <TemplateLibrary role={identity.role} templates={templates} />
+    <TemplateLibrary
+      role={identity.role}
+      templates={templates}
+      hasMore={hasMoreTemplates}
+      loadingMore={loadingMoreTemplates}
+      loadMoreError={loadMoreTemplatesError}
+      onLoadMore={onLoadMoreTemplates}
+    />
     {error && (
       <Alert variant="destructive" className="mt-4">
         <AlertDescription>{error}</AlertDescription>

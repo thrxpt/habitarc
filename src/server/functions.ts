@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-start/server";
 
 import { isRole } from "../identity";
+import { validateTemplateListQuery } from "../templates";
 import { AuthError, authenticationError } from "./auth-error";
 import { getAuthentication, getTemplateService } from "./runtime";
 import { TemplateError } from "./templates";
@@ -48,12 +49,19 @@ export const getWorkspace = createServerFn({ method: "GET" })
 
 export const listTemplates = createServerFn({ method: "GET" })
   .middleware([templateErrors])
-  .handler(async () => {
+  .validator((input: unknown) => {
+    const validation = validateTemplateListQuery(input);
+    if (!validation.ok) {
+      throw new TemplateError(400, validation.message);
+    }
+    return validation.value;
+  })
+  .handler(async ({ data }) => {
     const actor = await getAuthentication().identity(getRequestHeaders());
     if (!actor) {
       throw new AuthError(401, "Sign in required");
     }
-    return await getTemplateService().listTemplates(actor);
+    return await getTemplateService().listTemplates(actor, data);
   });
 
 export const createTemplate = createServerFn({ method: "POST" })

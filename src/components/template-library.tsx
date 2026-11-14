@@ -1,6 +1,9 @@
 import { cn } from "cn";
 import { useState } from "react";
 
+import { Alert, AlertDescription } from "#components/ui/alert.tsx";
+import { Button } from "#components/ui/button.tsx";
+
 import type { Role } from "../identity";
 import { formatTemplateRange } from "../templates";
 import type { ActivityTemplate } from "../templates";
@@ -8,6 +11,10 @@ import type { ActivityTemplate } from "../templates";
 interface TemplateLibraryProps {
   role: Role;
   templates: ActivityTemplate[];
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  loadMoreError?: string;
+  onLoadMore?: () => Promise<void> | void;
 }
 
 const TemplateSummary = ({
@@ -36,7 +43,14 @@ const TemplateSummary = ({
   </>
 );
 
-export const TemplateLibrary = ({ role, templates }: TemplateLibraryProps) => {
+export const TemplateLibrary = ({
+  role,
+  templates,
+  hasMore = false,
+  loadingMore = false,
+  loadMoreError = "",
+  onLoadMore,
+}: TemplateLibraryProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedTemplate = templates.find(
     (template) => template.id === selectedId
@@ -108,6 +122,28 @@ export const TemplateLibrary = ({ role, templates }: TemplateLibraryProps) => {
             );
           })}
         </ul>
+      )}
+      {loadMoreError.length > 0 && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>{loadMoreError}</AlertDescription>
+        </Alert>
+      )}
+      {hasMore && onLoadMore !== undefined && (
+        <div className="mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            disabled={loadingMore}
+            onClick={() => {
+              void onLoadMore();
+            }}
+          >
+            {loadingMore
+              ? "Loading more Activity Templates…"
+              : "Load more Activity Templates"}
+          </Button>
+        </div>
       )}
       {role === "participant" && selectedTemplate && (
         <p className="text-muted-foreground mt-4 text-sm leading-[1.6]">
