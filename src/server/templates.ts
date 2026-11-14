@@ -35,7 +35,7 @@ export class TemplateError extends Error {
   }
 }
 
-const toActivityTemplate = (
+export const toActivityTemplate = (
   row: typeof activityTemplate.$inferSelect
 ): ActivityTemplate => {
   if (!isMeasurementUnit(row.unit)) {

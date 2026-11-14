@@ -339,6 +339,8 @@ const serverFunctionPatterns = {
   listTemplates: /\blistTemplates\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createTemplate:
     /\bcreateTemplate\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  listHabits: /\blistHabits\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  createHabit: /\bcreateHabit\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
 };
 
 const templateServerClient = async (origin: string) => {
@@ -668,6 +670,135 @@ test(
       expect(participantHtml).toContain("Focused Study");
       expect(participantHtml).toContain("Quiet reading and problem sets");
       expect(participantHtml).toContain("5–45 minutes");
+
+      // Exercise Habit server functions with real sessions, including forged owner data.
+      const storedTemplates = await firstTemplates.listTemplates(participantA);
+      const template = storedTemplates.items.find(
+        (item) => item.name === "Focused Study"
+      );
+      if (!template) {
+        throw new Error("Expected the persisted Focused Study template.");
+      }
+      const habitDraft = {
+        templateId: template.id,
+        dailyTarget: 60,
+        weekdays: [1, 2, 3, 4, 5],
+      };
+      await Promise.all(
+        (["listHabits", "createHabit"] as const).map(async (name) => {
+          const method = name === "listHabits" ? "GET" : "POST";
+          expect(
+            await callServerFn(name, { method, data: habitDraft })
+          ).toMatchObject({ status: 401 });
+          expect(
+            await callServerFn(name, {
+              method,
+              data: habitDraft,
+              cookie: managerCookie,
+            })
+          ).toMatchObject({ status: 403 });
+        })
+      );
+      expect(
+        await callServerFn("createHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: habitDraft,
+          headers: { origin: "https://evil.example" },
+        })
+      ).toMatchObject({ status: 403 });
+      expect(
+        await callServerFn("createHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: { ...habitDraft, weekdays: [] },
+        })
+      ).toMatchObject({
+        status: 400,
+        body: {
+          result: {
+            kind: "invalid",
+            fieldErrors: {
+              weekdays: "Choose at least one weekday, with no duplicates.",
+            },
+          },
+        },
+      });
+      const otherCookie = await signIn("b@example.test");
+      const otherIdentity = await auth.identity(
+        new Headers({ cookie: otherCookie })
+      );
+      expect(
+        await callServerFn("createHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: {
+            ...habitDraft,
+            participantId: otherIdentity?.id,
+            startDate: "2000-01-01",
+            timezone: "UTC",
+          },
+        })
+      ).toMatchObject({
+        status: 200,
+        body: {
+          result: {
+            kind: "created",
+            habit: {
+              template: { id: template.id },
+              goal: { dailyTarget: 60, weekdays: [1, 2, 3, 4, 5] },
+            },
+          },
+        },
+      });
+      expect(
+        await callServerFn("createHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: habitDraft,
+        })
+      ).toMatchObject({ status: 200, body: { result: { kind: "existing" } } });
+      expect(
+        await callServerFn("listHabits", {
+          method: "GET",
+          cookie: participantCookie,
+        })
+      ).toMatchObject({
+        status: 200,
+        body: {
+          result: {
+            timezone: "Asia/Bangkok",
+            items: [{ goal: { dailyTarget: 60 } }],
+          },
+        },
+      });
+      expect(
+        await callServerFn("listHabits", {
+          method: "GET",
+          cookie: otherCookie,
+          data: { participantId: participantA.id },
+        })
+      ).toMatchObject({ status: 200, body: { result: { items: [] } } });
+      const habitReload = await fetch(origin, {
+        headers: { cookie: participantCookie },
+      });
+      const habitHtml = await habitReload.text();
+      expect(habitReload.status).toBe(200);
+      expect(habitHtml).toContain("Your Habits");
+      expect(habitHtml).toContain(
+        "Monday, Tuesday, Wednesday, Thursday, Friday"
+      );
+      expect(habitHtml).toContain("Account date:");
+      const otherReload = await fetch(origin, {
+        headers: { cookie: otherCookie },
+      });
+      expect(await otherReload.text()).not.toContain(
+        "Monday, Tuesday, Wednesday, Thursday, Friday"
+      );
+      const managerReload = await fetch(origin, {
+        headers: { cookie: managerCookie },
+      });
+      expect(await managerReload.text()).not.toContain("Your Habits");
     } finally {
       if (child.pid !== undefined) {
         if (process.platform === "win32") {

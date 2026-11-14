@@ -25,6 +25,12 @@ vp run dev
 
 For a different private file location, run `vp run accounts:local /absolute/private/accounts.json`. Local generation requires development mode, loopback PostgreSQL, and a file outside the repository. Custom provisioning remains available through `vp run accounts:provision < /private/path/synthetic-accounts.json`. See [authentication and operator instructions](docs/auth.md) for the input format, migrations, production policy, and security boundaries.
 
+## Habit setup
+
+Program Managers publish Activity Templates. Participants select a template, choose a whole-number Daily Target and at least one weekday, then start a private Habit. Reloading retrieves the saved Habit and initial Goal Revision. Targets may exceed the maximum for one entry; a 5–45 minute template accepts target 60. The fixed Account Timezone determines the start date.
+
+Run `vp run db:migrate` before using Habit setup on an existing database. The migration installs PostgreSQL’s standard `btree_gist` extension to enforce non-overlapping tracking periods; the migration role needs permission to install it. See [Habit persistence and verification](docs/habits.md) for locking rules and test coverage.
+
 ## UI components
 
 shadcn/ui uses the Nova style with Base UI primitives. `components.json` configures the CLI, shared components live in `src/components/ui`, and semantic theme tokens in `src/styles.css` retain Habitarc’s palette and fonts. The account screen uses Button, Input, Field, and Alert components.

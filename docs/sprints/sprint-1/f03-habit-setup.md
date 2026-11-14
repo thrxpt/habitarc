@@ -1,6 +1,6 @@
 # F03 — Habit setup
 
-Status: accepted contract baseline following Q25. Implementation and all verification are PLANNED.
+Status: accepted contract baseline following Q25. Local implementation and automated coverage are documented in [Habit setup](../../habits.md). Browser E2E, human teammate review, deployment, and independent acceptance remain open.
 
 Sprint 1. FR-04, BR-01–05/07–08/11–12. Depends on F01/F02. Owner A; B reviews.
 

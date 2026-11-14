@@ -4,10 +4,16 @@ import {
   setResponseStatus,
 } from "@tanstack/react-start/server";
 
+import type { HabitCreationResponse } from "../habits";
 import { isRole } from "../identity";
 import { validateTemplateListQuery } from "../templates";
 import { AuthError, authenticationError } from "./auth-error";
-import { getAuthentication, getTemplateService } from "./runtime";
+import { HabitError } from "./habits";
+import {
+  getAuthentication,
+  getHabitService,
+  getTemplateService,
+} from "./runtime";
 import { TemplateError } from "./templates";
 
 const serverErrors = (mapUnexpected: (error: unknown) => AuthError) =>
@@ -15,7 +21,11 @@ const serverErrors = (mapUnexpected: (error: unknown) => AuthError) =>
     try {
       return await next();
     } catch (error) {
-      if (error instanceof AuthError || error instanceof TemplateError) {
+      if (
+        error instanceof AuthError ||
+        error instanceof TemplateError ||
+        error instanceof HabitError
+      ) {
         setResponseStatus(error.status);
         throw error;
       }
@@ -26,7 +36,7 @@ const serverErrors = (mapUnexpected: (error: unknown) => AuthError) =>
   });
 
 const authenticationErrors = serverErrors(authenticationError);
-const templateErrors = serverErrors(
+const applicationErrors = serverErrors(
   () => new AuthError(503, "Service temporarily unavailable")
 );
 
@@ -48,7 +58,7 @@ export const getWorkspace = createServerFn({ method: "GET" })
   );
 
 export const listTemplates = createServerFn({ method: "GET" })
-  .middleware([templateErrors])
+  .middleware([applicationErrors])
   .validator((input: unknown) => {
     const validation = validateTemplateListQuery(input);
     if (!validation.ok) {
@@ -65,7 +75,7 @@ export const listTemplates = createServerFn({ method: "GET" })
   });
 
 export const createTemplate = createServerFn({ method: "POST" })
-  .middleware([templateErrors])
+  .middleware([applicationErrors])
   .validator((input: unknown) => input)
   .handler(async ({ data }) => {
     const actor = await getAuthentication().authorizeWorkspace(
@@ -73,4 +83,38 @@ export const createTemplate = createServerFn({ method: "POST" })
       "program-manager"
     );
     return await getTemplateService().createTemplate(actor, data);
+  });
+
+export const listHabits = createServerFn({ method: "GET" })
+  .middleware([applicationErrors])
+  .handler(async () => {
+    const actor = await getAuthentication().authorizeWorkspace(
+      getRequestHeaders(),
+      "participant"
+    );
+    return await getHabitService().listHabits(actor);
+  });
+
+export const createHabit = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(async ({ data }): Promise<HabitCreationResponse> => {
+    const actor = await getAuthentication().authorizeWorkspace(
+      getRequestHeaders(),
+      "participant"
+    );
+    try {
+      return await getHabitService().createHabit(actor, data);
+    } catch (error) {
+      if (error instanceof HabitError && error.status === 400) {
+        // Expected validation data must survive TanStack's Error serialization.
+        setResponseStatus(error.status);
+        return {
+          kind: "invalid",
+          message: error.message,
+          fieldErrors: error.fieldErrors,
+        };
+      }
+      throw error;
+    }
   });
