@@ -1,0 +1,3 @@
+# Preserve measurement rules once an activity template is used
+
+Once an Activity Template has been used, freeze its Measurement Unit and validation bounds rather than applying manager edits to existing Habits and Activity Entries; changing those rules requires a new template. Managers may edit descriptive text or archive a template, which blocks new Habits but preserves existing ones, so template maintenance cannot invalidate private history or silently reinterpret recorded amounts. This trades some library-management flexibility for stable historical meaning without introducing template-version migrations.
