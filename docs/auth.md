@@ -61,13 +61,13 @@ Local mode ignores all caller-supplied address headers and uses one loopback rat
 
 Run the commands in the root README with real PostgreSQL. Integration tests exercise private provisioning and safe repeat runs; invalid credentials; server-owned identity; role denial; disabled endpoints; production cookie attributes; seven-day rolling expiry/daily renewal; logout across independent pools; exact-origin write protection; spoofed/malformed forwarding headers; and sequential/concurrent shared throttling. A running TanStack Start smoke test verifies actual mounted endpoints, rendered identities/workspaces, logout, signup denial, and global cross-origin write rejection. Component tests exercise the rendered login, error/rate-limit feedback, role workspaces, and logout.
 
-Local verification on 2026-11-14: `vp check` passed formatting, lint, and type checks; `vp run typecheck` passed; `vp test` passed **21 tests in 2 files** against PostgreSQL 17; `vp run build` passed client and server production builds; `vp exec drizzle-kit check` passed migration-journal validation. The [F01 verification ledger](#f01-verification-ledger) maps requirements and AC/STS IDs to executed tests and records the tested revision and open acceptance gates. Live Cloud Run behavior remains outside this evidence.
+Local verification on 2026-11-14: `vp check` passed formatting, lint, and type checks; `vp run typecheck` passed; `vp test --run --passWithNoTests=false` passed **23 tests in 2 files** (17 integration tests and 6 rendered-form tests) against PostgreSQL 17; `vp run build` passed client and server production builds; `vp exec drizzle-kit check` passed migration-journal validation. The [F01 verification ledger](#f01-verification-ledger) maps requirements and AC/STS IDs to executed tests and records the tested revision and open acceptance gates. Live Cloud Run behavior remains outside this evidence.
 
 ## F01 verification ledger
 
-Local execution on **2026-11-14**, by **Codex**. Reviewed [issue #4](https://github.com/thrxpt/habitarc/issues/4), the [F01 contract](sprints/sprint-1/f01-accounts-and-authorization.md), and the approved Drizzle, Docker Compose, shadcn/ui, and three-test-boundary decisions. Standards and specification reviews found no concrete local implementation defect. These agent reviews do not replace the required substantive student teammate review.
+Local execution on **2026-11-14**, by **Codex**, re-checked for [PR #24](https://github.com/thrxpt/habitarc/pull/24). Reviewed [issue #4](https://github.com/thrxpt/habitarc/issues/4), the [F01 contract](sprints/sprint-1/f01-accounts-and-authorization.md), and the approved Drizzle, Docker Compose, shadcn/ui, and three-test-boundary decisions. This re-check does not replace the required substantive student teammate review or integrated-release verification.
 
-The tested revision is `fb677289156d853375ad5f268deb6ddce1d7bb2e` **plus the uncommitted local-account command changes** in `README.md`, `docs/auth.md`, `package.json`, `scripts/local-accounts.ts`, `src/server/provision.ts`, and `tests/auth.integration.test.ts`. This is local working-tree evidence, not an integrated release or CI result. The integration test file SHA-256 is `aafe78425ab78e321048924ed273475a28e00de89648c97ba2412c9800ba5730`; the local-account command SHA-256 is `df2dd1ae5a0124f13bd5094f1d6cdf3dbc68264bd911b03c723847e3d1713242`.
+The tested implementation revision is [`1f484bf644217da5a1b8bd39b0944558cadba8cc`](https://github.com/thrxpt/habitarc/commit/1f484bf644217da5a1b8bd39b0944558cadba8cc). It includes private local-account setup, the Tailwind refactor, invalid-field feedback, softer green focus styling, CI, and the named migration advisory lock. The ledger refresh following that revision changes only `docs/auth.md`; application code, tests, dependencies, and CI configuration match the tested revision. Local execution and GitHub CI evidence are recorded separately below; neither constitutes deployed-release evidence.
 
 ### Requirement results
 
@@ -80,22 +80,22 @@ Test names below are exact. The commit, tester, and date columns reference the e
 | FR-01, NFR-01 | F01 / AC-F01-3 / STS-F01-3 | [auth.integration.test.ts](../tests/auth.integration.test.ts): `production cookies expire in seven days and logout revokes the session on both instances`; `session reads stay read-only, trusted POST renews at most daily, and expiry is shared` | PASS (local, two independent pools) | Tested revision above | Local run below | Codex | 2026-11-14 |
 | FR-02, NFR-01 | F01 / AC-F01-4 / STS-F01-4 | [auth.integration.test.ts](../tests/auth.integration.test.ts): `cross-origin and missing-origin writes fail before credentials or logout are processed`; `the eleventh login in a minute is throttled across replicas and forged forwarding prefixes cannot evade it`; `concurrent login requests cannot exceed ten admissions across independent pools`; `local requests cannot choose their own IP and malformed production forwarding fails closed` | PASS (simulated proxy headers); live ingress INCOMPLETE | Tested revision above | Local run and deployment gate below | Codex | 2026-11-14 |
 | BR-07 (account configuration), NFR-07 (local setup) | F01 / issue #4 provisioning | [auth.integration.test.ts](../tests/auth.integration.test.ts): `repeat provisioning and migration preserve existing passwords, identities, and sessions`; `invalid provisioning is rejected before creating any accounts`; `a rejected credential in a provisioning batch leaves no partially created accounts`; `local account generation is private, concurrent-safe, and preserves working credentials on reruns`; `local account generation rejects production, remote databases, and repository credential paths` | PASS (local); calendar behavior belongs to later slices | Tested revision above | Local run below | Codex | 2026-11-14 |
-| FR-01 | F01 / AC-F01-1, AC-F01-3 / STS-F01-1, STS-F01-3 | [account-screen.test.tsx](../tests/account-screen.test.tsx): `invalid sign in gives generic feedback and clears the password for a retry`; `a valid sign in refreshes the server-validated workspace`; `a Program Manager sees their own identity and can sign out`; `throttled sign in explains how to retry` | PASS (rendered forms) | Tested revision above | Local run below | Codex | 2026-11-14 |
+| FR-01 | F01 / AC-F01-1, AC-F01-3 / STS-F01-1, STS-F01-3 | [account-screen.test.tsx](../tests/account-screen.test.tsx): `invalid sign in gives generic feedback and clears the password for a retry`; `fields show native validation after interaction and clear it when corrected`; `submitting an empty form marks both required fields without sending a request`; `a valid sign in refreshes the server-validated workspace`; `a Program Manager sees their own identity and can sign out`; `throttled sign in explains how to retry` | PASS (rendered forms) | Tested revision above | Local run below | Codex | 2026-11-14 |
 
 ### Local run
 
 PostgreSQL 17 Alpine ran healthy through Docker Compose at `127.0.0.1:55432`. The integration suite created and removed its own uniquely named database. No persistent accounts were reset during this re-check.
 
 ```text
-vp install
+vp install --frozen-lockfile
   Checked 528 installs across 709 packages (no changes).
 vp check
-  PASS after normalizing AGENTS.md formatting regenerated by vp install.
+  PASS (formatting, lint, and types).
 vp run typecheck
   PASS (tsc --noEmit).
-TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test vp test
-  Test Files: 2 passed (2). Tests: 21 passed (21).
-  Start: 17:02:05 Asia/Bangkok. Duration: 8.31s.
+TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test vp test --run --passWithNoTests=false
+  Test Files: 2 passed (2). Tests: 23 passed (23).
+  Start: 22:29:59 Asia/Bangkok. Duration: 8.37s.
 vp run build
   PASS (client and server production bundles).
 vp exec drizzle-kit check
@@ -105,6 +105,12 @@ git diff --check
 ```
 
 The suite covers the approved boundaries: HTTP authentication with real PostgreSQL and two instances; private provisioning commands; and rendered account forms. The running TanStack HTTP journey additionally proves compatibility with the installed application toolchain. Production cookie flags are checked through HTTPS requests to the configured handler; this is not deployed HTTPS evidence.
+
+### GitHub CI evidence
+
+The `Validate` job passed on the tested implementation revision `1f484bf644217da5a1b8bd39b0944558cadba8cc`: [run 43610596605](https://github.com/thrxpt/habitarc/actions/runs/43610596605), completed on 2026-11-14 at 15:31:59 UTC. It used frozen dependencies and Compose PostgreSQL, then checked formatting/lint/types, the TypeScript project, migration history, all 23 tests, and the application build. The earlier PR-head evidence remains available in [run 43591916881](https://github.com/thrxpt/habitarc/actions/runs/43591916881) for `0b0cebc0de31b4d4f02f805e4c9cfde1eb7b8f25`; the newer run also covers the named-lock refactor.
+
+Required-check enforcement was separately verified with [temporary PR #25](https://github.com/thrxpt/habitarc/pull/25). An intentional TypeScript syntax error [failed `Validate` in run 43592070147](https://github.com/thrxpt/habitarc/actions/runs/43592070147), and GitHub reported `mergeStateStatus: BLOCKED`. That PR was closed without merging and its temporary branch deleted. The CI work covers part of [issue #8](https://github.com/thrxpt/habitarc/issues/8); container image creation, GCP deployment, and deployed-release verification remain incomplete.
 
 ### Open acceptance gates
 
