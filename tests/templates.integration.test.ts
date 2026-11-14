@@ -194,11 +194,11 @@ test("invalid template definitions are rejected without partial writes and datab
   ];
 
   await Promise.all(
-    invalidPayloads.map((payload) =>
-      expect(
+    invalidPayloads.map(async (payload) => {
+      await expect(
         firstTemplates.createTemplate(managerM, payload)
-      ).rejects.toMatchObject({ status: 400 })
-    )
+      ).rejects.toMatchObject({ status: 400 });
+    })
   );
 
   expect(await secondTemplates.listTemplates(participantA)).toEqual([]);
