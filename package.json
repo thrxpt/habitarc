@@ -12,7 +12,7 @@
     "generate-routes": "vp build",
     "build": "vp build",
     "preview": "vp preview",
-    "prepare": "vp config",
+    "prepare": "vp config && oxfmt --write AGENTS.md",
     "check": "ultracite check",
     "fix": "ultracite fix",
     "db:migrate": "vpx scripts/migrate.ts",
