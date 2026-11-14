@@ -233,7 +233,8 @@ test("Participants cannot create templates directly through the template service
 
 const serverFunctionPatterns = {
   listTemplates: /\blistTemplates\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
-  createTemplate: /\bcreateTemplate\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  createTemplate:
+    /\bcreateTemplate\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
 };
 
 const templateServerClient = async (origin: string) => {
@@ -279,7 +280,11 @@ const templateServerClient = async (origin: string) => {
         )
       );
     }
-    const response = await fetch(url, { method: options.method, headers, body });
+    const response = await fetch(url, {
+      method: options.method,
+      headers,
+      body,
+    });
     const text = await response.text();
     let parsed: unknown = text;
     try {
@@ -364,12 +369,12 @@ test(
 
       const callServerFn = await templateServerClient(origin);
 
-      expect(await callServerFn("listTemplates", { method: "GET" })).toMatchObject(
-        {
-          status: 401,
-          body: { error: { message: "Sign in required" } },
-        }
-      );
+      expect(
+        await callServerFn("listTemplates", { method: "GET" })
+      ).toMatchObject({
+        status: 401,
+        body: { error: { message: "Sign in required" } },
+      });
       expect(
         await callServerFn("createTemplate", {
           method: "POST",

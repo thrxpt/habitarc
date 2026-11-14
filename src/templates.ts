@@ -32,11 +32,7 @@ export interface ActivityTemplateDraft {
 }
 
 export type TemplateField =
-  | "name"
-  | "description"
-  | "unit"
-  | "entryMinimum"
-  | "entryMaximum";
+  "name" | "description" | "unit" | "entryMinimum" | "entryMaximum";
 
 export type TemplateFieldErrors = Partial<Record<TemplateField, string>>;
 
@@ -108,14 +104,12 @@ const validateTemplateBounds = (
 ): { entryMinimum: number; entryMaximum: number } | undefined => {
   const entryMinimum = isWholePositiveNumber(rawMin) ? rawMin : undefined;
   if (entryMinimum === undefined) {
-    fieldErrors.entryMinimum =
-      "Minimum must be a whole number of at least 1.";
+    fieldErrors.entryMinimum = "Minimum must be a whole number of at least 1.";
   }
 
   const entryMaximum = isWholePositiveNumber(rawMax) ? rawMax : undefined;
   if (entryMaximum === undefined) {
-    fieldErrors.entryMaximum =
-      "Maximum must be a whole number of at least 1.";
+    fieldErrors.entryMaximum = "Maximum must be a whole number of at least 1.";
   }
 
   if (unit) {

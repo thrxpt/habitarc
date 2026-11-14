@@ -37,7 +37,9 @@ const focusedStudy: ActivityTemplate = {
   updatedAt: "2026-11-15T00:00:00.000Z",
 };
 
-const noSessionChange = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+const noSessionChange = vi
+  .fn<() => Promise<void>>()
+  .mockResolvedValue(undefined);
 
 afterEach(() => {
   cleanup();
@@ -63,7 +65,10 @@ test("Program Manager can create a valid Activity Template with labeled keyboard
     screen.getByLabelText("Description"),
     "Quiet reading and problem sets"
   );
-  await user.selectOptions(screen.getByLabelText("Measurement Unit"), "minutes");
+  await user.selectOptions(
+    screen.getByLabelText("Measurement Unit"),
+    "minutes"
+  );
   await user.type(screen.getByLabelText("Minimum"), "5");
   await user.type(screen.getByLabelText("Maximum"), "45");
   await user.click(
@@ -108,7 +113,10 @@ test("invalid template inputs show accessible field errors without submitting", 
 
   const user = userEvent.setup();
   await user.type(screen.getByLabelText("Name"), "Study");
-  await user.selectOptions(screen.getByLabelText("Measurement Unit"), "minutes");
+  await user.selectOptions(
+    screen.getByLabelText("Measurement Unit"),
+    "minutes"
+  );
   await user.type(screen.getByLabelText("Minimum"), "5.5");
   await user.type(screen.getByLabelText("Maximum"), "1441");
   await user.click(

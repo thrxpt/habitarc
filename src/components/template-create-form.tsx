@@ -277,9 +277,7 @@ export const TemplateCreateForm = ({
                     value={value}
                     aria-invalid={fieldError !== undefined}
                     aria-describedby={
-                      fieldError === undefined
-                        ? undefined
-                        : fieldErrorId(field)
+                      fieldError === undefined ? undefined : fieldErrorId(field)
                     }
                     onChange={(event) => {
                       setValue(event.currentTarget.value);
