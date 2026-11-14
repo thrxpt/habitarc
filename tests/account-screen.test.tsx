@@ -45,7 +45,56 @@ test("invalid sign in gives generic feedback and clears the password for a retry
     "Email or password is incorrect"
   );
   expect(screen.getByLabelText("Password")).toHaveValue("");
+  expect(screen.getByLabelText("Email")).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(screen.getByLabelText("Password")).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(screen.getByLabelText("Password")).toHaveAccessibleDescription(
+    "Email or password is incorrect. Please try again."
+  );
   expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+});
+
+test("fields show native validation after interaction and clear it when corrected", async () => {
+  render(<AccountScreen identity={null} onSessionChanged={noChange} />);
+  const user = userEvent.setup();
+  const email = screen.getByLabelText("Email");
+  const password = screen.getByLabelText("Password");
+  expect(email).toHaveAttribute("aria-invalid", "false");
+  expect(password).toHaveAttribute("aria-invalid", "false");
+  await user.type(email, "invalid-email");
+  await user.tab();
+  expect(email).toHaveAttribute("aria-invalid", "true");
+  expect(email.closest("fieldset")).toHaveAttribute("data-invalid", "true");
+  expect(password).toHaveAttribute("aria-invalid", "false");
+  await user.tab();
+  expect(password).toHaveAttribute("aria-invalid", "true");
+  await user.clear(email);
+  await user.type(email, "a@example.test");
+  await user.type(password, "synthetic-test-input");
+  expect(email).toHaveAttribute("aria-invalid", "false");
+  expect(password).toHaveAttribute("aria-invalid", "false");
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("submitting an empty form marks both required fields without sending a request", async () => {
+  render(<AccountScreen identity={null} onSessionChanged={noChange} />);
+  await userEvent
+    .setup()
+    .click(screen.getByRole("button", { name: "Sign in" }));
+  expect(screen.getByLabelText("Email")).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(screen.getByLabelText("Password")).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(fetchMock).not.toHaveBeenCalled();
 });
 
 test("a valid sign in refreshes the server-validated workspace", async () => {
@@ -105,5 +154,13 @@ test("throttled sign in explains how to retry", async () => {
   await user.click(screen.getByRole("button", { name: "Sign in" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "Too many sign-in attempts. Wait a minute"
+  );
+  expect(screen.getByLabelText("Email")).toHaveAttribute(
+    "aria-invalid",
+    "false"
+  );
+  expect(screen.getByLabelText("Password")).toHaveAttribute(
+    "aria-invalid",
+    "false"
   );
 });

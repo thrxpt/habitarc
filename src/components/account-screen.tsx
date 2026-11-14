@@ -21,6 +21,18 @@ export const AccountScreen = ({
 }: AccountScreenProps) => {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [invalidFields, setInvalidFields] = useState({
+    email: false,
+    password: false,
+  });
+  const updateFieldValidity = (input: HTMLInputElement) => {
+    const { name } = input;
+    if (name !== "email" && name !== "password") {
+      return;
+    }
+    const invalid = !input.validity.valid;
+    setInvalidFields((previous) => ({ ...previous, [name]: invalid }));
+  };
   const signIn = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -33,6 +45,7 @@ export const AccountScreen = ({
     }
     setPending(true);
     setError("");
+    setInvalidFields({ email: false, password: false });
     try {
       const result = await authClient.signIn.email({
         email,
@@ -44,6 +57,9 @@ export const AccountScreen = ({
         } else if (result.error.status >= 500) {
           setError("Sign in is temporarily unavailable. Please try again.");
         } else {
+          if (result.error.status === 401) {
+            setInvalidFields({ email: true, password: true });
+          }
           setError("Email or password is incorrect. Please try again.");
         }
       } else {
@@ -201,7 +217,10 @@ export const AccountScreen = ({
                 aria-busy={pending}
               >
                 <FieldGroup className="mt-6">
-                  <Field data-disabled={pending}>
+                  <Field
+                    data-disabled={pending}
+                    data-invalid={invalidFields.email}
+                  >
                     <FieldLabel htmlFor="email">Email</FieldLabel>
                     <Input
                       autoComplete="username"
@@ -210,9 +229,29 @@ export const AccountScreen = ({
                       type="email"
                       required
                       disabled={pending}
+                      aria-invalid={invalidFields.email}
+                      aria-describedby={
+                        invalidFields.email && error
+                          ? "sign-in-error"
+                          : undefined
+                      }
+                      onBlur={(event) => {
+                        updateFieldValidity(event.currentTarget);
+                      }}
+                      onInvalid={(event) => {
+                        updateFieldValidity(event.currentTarget);
+                      }}
+                      onChange={(event) => {
+                        if (invalidFields.email) {
+                          updateFieldValidity(event.currentTarget);
+                        }
+                      }}
                     />
                   </Field>
-                  <Field data-disabled={pending}>
+                  <Field
+                    data-disabled={pending}
+                    data-invalid={invalidFields.password}
+                  >
                     <FieldLabel htmlFor="password">Password</FieldLabel>
                     <Input
                       autoComplete="current-password"
@@ -221,10 +260,27 @@ export const AccountScreen = ({
                       type="password"
                       required
                       disabled={pending}
+                      aria-invalid={invalidFields.password}
+                      aria-describedby={
+                        invalidFields.password && error
+                          ? "sign-in-error"
+                          : undefined
+                      }
+                      onBlur={(event) => {
+                        updateFieldValidity(event.currentTarget);
+                      }}
+                      onInvalid={(event) => {
+                        updateFieldValidity(event.currentTarget);
+                      }}
+                      onChange={(event) => {
+                        if (invalidFields.password) {
+                          updateFieldValidity(event.currentTarget);
+                        }
+                      }}
                     />
                   </Field>
                   {error && (
-                    <Alert variant="destructive">
+                    <Alert id="sign-in-error" variant="destructive">
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
