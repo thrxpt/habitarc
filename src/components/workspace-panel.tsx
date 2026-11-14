@@ -6,9 +6,11 @@ import { PageHeading } from "./page-heading";
 import { TemplateCreateForm } from "./template-create-form";
 import { TemplateLibrary } from "./template-library";
 
+const EMPTY_TEMPLATES: ActivityTemplate[] = [];
+
 export const WorkspacePanel = ({
   identity,
-  templates = [],
+  templates = EMPTY_TEMPLATES,
   error,
   onCreateTemplate,
 }: {

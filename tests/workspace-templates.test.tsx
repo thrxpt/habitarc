@@ -133,10 +133,10 @@ test("invalid template inputs show accessible field errors without submitting", 
     "true"
   );
   expect(screen.getByLabelText("Minimum")).toHaveAccessibleDescription(
-    /whole number/i
+    /whole number/iu
   );
   expect(screen.getByLabelText("Maximum")).toHaveAccessibleDescription(
-    /1,440 minutes/i
+    /1,440 minutes/iu
   );
 
   await user.clear(screen.getByLabelText("Minimum"));
@@ -149,7 +149,7 @@ test("invalid template inputs show accessible field errors without submitting", 
 
   expect(onCreateTemplate).not.toHaveBeenCalled();
   expect(screen.getByLabelText("Maximum")).toHaveAccessibleDescription(
-    /greater than or equal to minimum/i
+    /greater than or equal to minimum/iu
   );
 });
 
@@ -192,7 +192,7 @@ test("Participant sees persisted templates in a selectable library without manag
     screen.queryByRole("button", { name: "Create Activity Template" })
   ).not.toBeInTheDocument();
 
-  const option = screen.getByRole("button", { name: /Focused Study/i });
+  const option = screen.getByRole("button", { name: /Focused Study/iu });
   expect(option).toHaveAttribute("aria-pressed", "false");
   expect(screen.getByText("Quiet reading and problem sets")).toBeVisible();
   expect(screen.getByText("5–45 minutes")).toBeVisible();

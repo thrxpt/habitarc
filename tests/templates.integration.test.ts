@@ -1,3 +1,4 @@
+/* eslint-disable promise/avoid-new -- Promises bridge Node process and socket events in this HTTP integration test. */
 import { spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createServer } from "node:net";
@@ -192,11 +193,13 @@ test("invalid template definitions are rejected without partial writes and datab
     },
   ];
 
-  for (const payload of invalidPayloads) {
-    await expect(
-      firstTemplates.createTemplate(managerM, payload)
-    ).rejects.toMatchObject({ status: 400 });
-  }
+  await Promise.all(
+    invalidPayloads.map((payload) =>
+      expect(
+        firstTemplates.createTemplate(managerM, payload)
+      ).rejects.toMatchObject({ status: 400 })
+    )
+  );
 
   expect(await secondTemplates.listTemplates(participantA)).toEqual([]);
 

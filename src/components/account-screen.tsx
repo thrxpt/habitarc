@@ -19,9 +19,11 @@ interface AccountScreenProps {
   ) => Promise<ActivityTemplate>;
 }
 
+const EMPTY_TEMPLATES: ActivityTemplate[] = [];
+
 export const AccountScreen = ({
   identity,
-  templates = [],
+  templates = EMPTY_TEMPLATES,
   onSessionChanged,
   onCreateTemplate,
 }: AccountScreenProps) => {

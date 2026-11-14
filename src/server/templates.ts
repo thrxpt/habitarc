@@ -84,7 +84,7 @@ export const createTemplateService = (database: Database) => {
     if (!validation.ok) {
       throw new TemplateError(400, validation.message, validation.fieldErrors);
     }
-    const [created] = await database
+    const rows = await database
       .insert(activityTemplate)
       .values({
         id: randomUUID(),
@@ -95,7 +95,8 @@ export const createTemplateService = (database: Database) => {
         entryMaximum: validation.value.entryMaximum,
       })
       .returning();
-    if (!created) {
+    const created = rows.at(0);
+    if (created === undefined) {
       throw new Error("Activity Template creation did not return a record.");
     }
     return toActivityTemplate(created);

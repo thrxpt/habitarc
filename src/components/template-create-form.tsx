@@ -105,7 +105,9 @@ export const TemplateCreateForm = ({
       setUnit("minutes");
       setEntryMinimum("");
       setEntryMaximum("");
+      setPending(false);
     } catch (error) {
+      setPending(false);
       if (hasFieldErrors(error)) {
         setFieldErrors(error.fieldErrors);
       }
@@ -114,8 +116,6 @@ export const TemplateCreateForm = ({
           ? error.message
           : "We couldn’t save the Activity Template. Please try again."
       );
-    } finally {
-      setPending(false);
     }
   };
 

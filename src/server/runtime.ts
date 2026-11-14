@@ -56,9 +56,7 @@ export const createPool = () => {
 
 let database: Database | undefined;
 const getDatabase = () => {
-  if (!database) {
-    database = createDatabase(createPool());
-  }
+  database ??= createDatabase(createPool());
   return database;
 };
 
@@ -78,8 +76,6 @@ export const getAuthentication = () => {
 
 let templateService: ReturnType<typeof createTemplateService> | undefined;
 export const getTemplateService = () => {
-  if (!templateService) {
-    templateService = createTemplateService(getDatabase());
-  }
+  templateService ??= createTemplateService(getDatabase());
   return templateService;
 };
