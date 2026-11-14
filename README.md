@@ -17,11 +17,13 @@ Edit `.env.local`: the example database URLs already match Compose. Privately se
 
 ```sh
 vp run db:migrate
-vp run accounts:provision < /private/path/synthetic-accounts.json
+vp run accounts:local
 vp run dev
 ```
 
-Provisioning takes a private JSON array through stdin, with at least two Participants and one Program Manager. It never prints credentials or changes existing accounts. See [authentication and operator instructions](docs/auth.md) for the input format, migrations, production policy, and security boundaries.
+`accounts:local` creates `one@example.test`, `two@example.test` (Participants), and `manager@example.test` (Program Manager), with random passwords and the `Asia/Bangkok` Account Timezone. It saves credentials to `~/.local/share/habitarc/local-accounts.json` with permissions `0600` and prints only the path and counts. Open that private file to sign in. Reruns reuse the file and preserve existing accounts. If the file is lost while the accounts still exist, setup stops rather than generating replacement passwords.
+
+For a different private file location, run `vp run accounts:local /absolute/private/accounts.json`. Local generation requires development mode, loopback PostgreSQL, and a file outside the repository. Custom provisioning remains available through `vp run accounts:provision < /private/path/synthetic-accounts.json`. See [authentication and operator instructions](docs/auth.md) for the input format, migrations, production policy, and security boundaries.
 
 ## UI components
 

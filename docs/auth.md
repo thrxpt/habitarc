@@ -4,6 +4,12 @@ Issue [#4](https://github.com/thrxpt/habitarc/issues/4) implements the F01 accou
 
 ## Provision synthetic accounts privately
 
+For the standard local accounts, configure `.env.local`, start Compose, run migrations, then run `vp run accounts:local`. This generates two Participants (`one@example.test`, `two@example.test`) and one Program Manager (`manager@example.test`) with independent random 32-character passwords and the `Asia/Bangkok` Account Timezone. Credentials are saved outside the repository in `~/.local/share/habitarc/local-accounts.json` (`0600`); an optional positional argument selects a different private file. Passwords never appear in command output. The command refuses production mode and non-loopback databases.
+
+Reruns reuse the same credentials file and the existing transactional provisioner. The shared provisioning lock also protects the initial existence check and file generation, so concurrent runs cannot replace passwords. If any standard account already exists but the credentials file is missing, the command stops without creating accounts or a replacement file. Restore the original file; this command does not reset passwords. Keep the file private while using these local accounts.
+
+For custom account batches, use the stdin command below.
+
 Start the local PostgreSQL service with `docker compose up -d --wait postgres`, then run migrations. Compose creates the development and test databases on first startup and preserves them in a named volume. Create a private UTF-8 JSON file outside the repository with permissions `0600`. Its array contains at least two distinct Participants and one Program Manager. Each object has `name`, `email`, `password`, and `role` (`participant` or `program-manager`); optional `timezone` defaults to `Asia/Bangkok`. Use unique synthetic email addresses and privately generated passwords of 12–128 characters. Timezones must be named IANA zones recognized by both the JavaScript runtime and PostgreSQL; `UTC` is also accepted.
 
 Do not put credentials in command arguments, shell history, source files, screenshots, or logs. The command accepts stdin only:
@@ -55,6 +61,59 @@ Local mode ignores all caller-supplied address headers and uses one loopback rat
 
 Run the commands in the root README with real PostgreSQL. Integration tests exercise private provisioning and safe repeat runs; invalid credentials; server-owned identity; role denial; disabled endpoints; production cookie attributes; seven-day rolling expiry/daily renewal; logout across independent pools; exact-origin write protection; spoofed/malformed forwarding headers; and sequential/concurrent shared throttling. A running TanStack Start smoke test verifies actual mounted endpoints, rendered identities/workspaces, logout, signup denial, and global cross-origin write rejection. Component tests exercise the rendered login, error/rate-limit feedback, role workspaces, and logout.
 
-Local verification on 2026-11-14: `vp check` passed formatting, lint, and type checks; `vp test` passed **19 tests in 2 files** against PostgreSQL 17; `vp run build` passed client and server production builds; `vp exec drizzle-kit check` passed migration-journal validation. Live Cloud Run behavior remains outside this evidence.
+Local verification on 2026-11-14: `vp check` passed formatting, lint, and type checks; `vp run typecheck` passed; `vp test` passed **21 tests in 2 files** against PostgreSQL 17; `vp run build` passed client and server production builds; `vp exec drizzle-kit check` passed migration-journal validation. The [F01 verification ledger](#f01-verification-ledger) maps requirements and AC/STS IDs to executed tests and records the tested revision and open acceptance gates. Live Cloud Run behavior remains outside this evidence.
+
+## F01 verification ledger
+
+Local execution on **2026-11-14**, by **Codex**. Reviewed [issue #4](https://github.com/thrxpt/habitarc/issues/4), the [F01 contract](sprints/sprint-1/f01-accounts-and-authorization.md), and the approved Drizzle, Docker Compose, shadcn/ui, and three-test-boundary decisions. Standards and specification reviews found no concrete local implementation defect. These agent reviews do not replace the required substantive student teammate review.
+
+The tested revision is `fb677289156d853375ad5f268deb6ddce1d7bb2e` **plus the uncommitted local-account command changes** in `README.md`, `docs/auth.md`, `package.json`, `scripts/local-accounts.ts`, `src/server/provision.ts`, and `tests/auth.integration.test.ts`. This is local working-tree evidence, not an integrated release or CI result. The integration test file SHA-256 is `aafe78425ab78e321048924ed273475a28e00de89648c97ba2412c9800ba5730`; the local-account command SHA-256 is `df2dd1ae5a0124f13bd5094f1d6cdf3dbc68264bd911b03c723847e3d1713242`.
+
+### Requirement results
+
+Test names below are exact. The commit, tester, and date columns reference the execution context above. PASS applies only to the stated local scope; whole-product requirements remain subject to later slices and release verification.
+
+| Requirement ID | Feature / AC / STS | Actual test file / name or measurement | Execution status | Commit | Evidence | Tester | Date |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| FR-01, NFR-01 | F01 / AC-F01-1 / STS-F01-1 | [auth.integration.test.ts](../tests/auth.integration.test.ts): `two pre-provisioned Participants and a Program Manager sign in with server-owned identity`; `invalid credentials are generic for existing and unknown accounts`; `operator commands accept private stdin, support twelve-character passwords, and never print credentials`; `TanStack Start serves sign in, server-validated role workspaces, logout, and global write protection` | PASS (local) | Tested revision above | Local run below | Codex | 2026-11-14 |
+| FR-02, BR-01, NFR-01 | F01 / AC-F01-2 / STS-F01-2 | [auth.integration.test.ts](../tests/auth.integration.test.ts): `only login, current session, and logout are mounted; signup, recovery, and role changes cannot bypass this`; `workspace authorization rejects anonymous and wrong-role calls and returns only the signed-in identity` | PASS (current workspace operations only) | Tested revision above | Local run below | Codex | 2026-11-14 |
+| FR-01, NFR-01 | F01 / AC-F01-3 / STS-F01-3 | [auth.integration.test.ts](../tests/auth.integration.test.ts): `production cookies expire in seven days and logout revokes the session on both instances`; `session reads stay read-only, trusted POST renews at most daily, and expiry is shared` | PASS (local, two independent pools) | Tested revision above | Local run below | Codex | 2026-11-14 |
+| FR-02, NFR-01 | F01 / AC-F01-4 / STS-F01-4 | [auth.integration.test.ts](../tests/auth.integration.test.ts): `cross-origin and missing-origin writes fail before credentials or logout are processed`; `the eleventh login in a minute is throttled across replicas and forged forwarding prefixes cannot evade it`; `concurrent login requests cannot exceed ten admissions across independent pools`; `local requests cannot choose their own IP and malformed production forwarding fails closed` | PASS (simulated proxy headers); live ingress INCOMPLETE | Tested revision above | Local run and deployment gate below | Codex | 2026-11-14 |
+| BR-07 (account configuration), NFR-07 (local setup) | F01 / issue #4 provisioning | [auth.integration.test.ts](../tests/auth.integration.test.ts): `repeat provisioning and migration preserve existing passwords, identities, and sessions`; `invalid provisioning is rejected before creating any accounts`; `a rejected credential in a provisioning batch leaves no partially created accounts`; `local account generation is private, concurrent-safe, and preserves working credentials on reruns`; `local account generation rejects production, remote databases, and repository credential paths` | PASS (local); calendar behavior belongs to later slices | Tested revision above | Local run below | Codex | 2026-11-14 |
+| FR-01 | F01 / AC-F01-1, AC-F01-3 / STS-F01-1, STS-F01-3 | [account-screen.test.tsx](../tests/account-screen.test.tsx): `invalid sign in gives generic feedback and clears the password for a retry`; `a valid sign in refreshes the server-validated workspace`; `a Program Manager sees their own identity and can sign out`; `throttled sign in explains how to retry` | PASS (rendered forms) | Tested revision above | Local run below | Codex | 2026-11-14 |
+
+### Local run
+
+PostgreSQL 17 Alpine ran healthy through Docker Compose at `127.0.0.1:55432`. The integration suite created and removed its own uniquely named database. No persistent accounts were reset during this re-check.
+
+```text
+vp install
+  Checked 528 installs across 709 packages (no changes).
+vp check
+  PASS after normalizing AGENTS.md formatting regenerated by vp install.
+vp run typecheck
+  PASS (tsc --noEmit).
+TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test vp test
+  Test Files: 2 passed (2). Tests: 21 passed (21).
+  Start: 17:02:05 Asia/Bangkok. Duration: 8.31s.
+vp run build
+  PASS (client and server production bundles).
+vp exec drizzle-kit check
+  PASS (migration journal).
+git diff --check
+  PASS.
+```
+
+The suite covers the approved boundaries: HTTP authentication with real PostgreSQL and two instances; private provisioning commands; and rendered account forms. The running TanStack HTTP journey additionally proves compatibility with the installed application toolchain. Production cookie flags are checked through HTTPS requests to the configured handler; this is not deployed HTTPS evidence.
+
+### Open acceptance gates
+
+| Requirement / gate | Status | Remaining evidence |
+| --- | --- | --- |
+| NFR-01 / AC-F01-4 live proxy handling | INCOMPLETE | Verify actual managed Cloud Run ingress and appended client address under forged forwarding prefixes. Additional proxies require a reviewed policy. See [runtime policy](#runtime-and-trusted-client-addresses). |
+| NFR-03 / NFR-04 delivered-screen accessibility and responsiveness | INCOMPLETE | Manual keyboard/focus/error announcement checks, automated accessibility results, 360px/1280px layouts, and 200% zoom. Rendered component tests do not prove these measurements. |
+| NFR-07 / feature Definition of Done | INCOMPLETE | Substantive student teammate review, sprint-staging integration, and re-verification of the integrated/deployed release with its immutable commit and CI evidence. |
+
+Future protected operations must extend STS-F01-2 with their own role and ownership cases. No cross-participant tracking operation exists in this slice. Other features retain the planned status in the [baseline traceability matrix](traceability.md); this ledger does not claim whole-product completion.
 
 References: [Better Auth Drizzle adapter](https://better-auth.com/docs/adapters/drizzle), [TanStack integration](https://better-auth.com/docs/integrations/tanstack), [Drizzle node-postgres](https://orm.drizzle.team/docs/get-started-postgresql).

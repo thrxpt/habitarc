@@ -1,7 +1,10 @@
 import { spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
+import { chmod, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 /* eslint-disable no-await-in-loop, promise/avoid-new -- Ordered requests test lifecycle; promises bridge process/socket events. */
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
+import nodePath from "node:path";
 
 import { Pool } from "pg";
 import {
@@ -114,16 +117,22 @@ const cookieFrom = (response: Response) =>
     .map((value) => value.split(";")[0])
     .join("; ");
 
-const runOperator = async (command: "migrate" | "provision", input = "") =>
+const runOperator = async (
+  command: "migrate" | "provision" | "local-accounts",
+  input = "",
+  args: string[] = [],
+  environment: NodeJS.ProcessEnv = {}
+) =>
   await new Promise<{ code: number | null; output: string }>(
     (resolve, reject) => {
-      const child = spawn("vpx", [`scripts/${command}.ts`], {
+      const child = spawn("vpx", [`scripts/${command}.ts`, ...args], {
         env: {
           ...process.env,
           DATABASE_URL: isolatedURL.toString(),
           BETTER_AUTH_URL: "http://localhost:3000",
           BETTER_AUTH_SECRET: config.secret,
           NODE_ENV: "test",
+          ...environment,
         },
         stdio: ["pipe", "pipe", "pipe"],
       });
@@ -524,6 +533,117 @@ test("operator commands accept private stdin, support twelve-character passwords
       result.output.includes(commandPassword)
     )
   ).toBe(false);
+});
+
+test("local account generation is private, concurrent-safe, and preserves working credentials on reruns", async () => {
+  const directory = await mkdtemp(
+    nodePath.join(tmpdir(), "habitarc-local-accounts-")
+  );
+  const path = nodePath.join(directory, "accounts.json");
+  try {
+    const runs = await Promise.all([
+      runOperator("local-accounts", "", [path]),
+      runOperator("local-accounts", "", [path]),
+    ]);
+    expect(runs.map((run) => run.code)).toEqual([0, 0]);
+    expect(runs.map((run) => run.output)).toEqual(
+      expect.arrayContaining([
+        `Local accounts ready: 3 created, 0 preserved.\nCredentials: ${path}\n`,
+        `Local accounts ready: 0 created, 3 preserved.\nCredentials: ${path}\n`,
+      ])
+    );
+    const original = await readFile(path, "utf-8");
+    const metadata = await stat(path);
+    // eslint-disable-next-line no-bitwise -- Inspect the file's Unix permission bits.
+    expect(metadata.mode & 0o777).toBe(0o600);
+    const generated: unknown = JSON.parse(original);
+    if (!Array.isArray(generated)) {
+      throw new TypeError("Expected a private array of local accounts.");
+    }
+    const entries: unknown[] = generated;
+    expect(entries).toHaveLength(3);
+    const passwords = new Set<string>();
+    for (const account of entries) {
+      if (!isRecord(account) || typeof account.password !== "string") {
+        throw new Error("Expected generated account credentials.");
+      }
+      const generatedPassword = account.password;
+      expect(generatedPassword).toHaveLength(32);
+      passwords.add(generatedPassword);
+      expect(runs.some((run) => run.output.includes(generatedPassword))).toBe(
+        false
+      );
+      const login = await first.handle(
+        request("sign-in/email", {
+          email: account.email,
+          password: account.password,
+        })
+      );
+      expect(login.status).toBe(200);
+      expect(
+        await second.identity(new Headers({ cookie: cookieFrom(login) }))
+      ).toMatchObject({
+        email: account.email,
+        role: account.role,
+        timezone: "Asia/Bangkok",
+      });
+    }
+    expect(passwords.size).toBe(3);
+    const repeated = await runOperator("local-accounts", "", [path]);
+    expect(repeated.code).toBe(0);
+    expect(repeated.output).toContain("0 created, 3 preserved");
+    expect(await readFile(path, "utf-8")).toBe(original);
+
+    await chmod(path, 0o644);
+    const publicFile = await runOperator("local-accounts", "", [path]);
+    expect(publicFile.code).toBe(1);
+    expect(publicFile.output).toContain("permissions 0600");
+    await rm(path);
+    const lostFile = await runOperator("local-accounts", "", [path]);
+    expect(lostFile.code).toBe(1);
+    expect(lostFile.output).toContain("Restore the original credentials file");
+    await expect(stat(path)).rejects.toMatchObject({ code: "ENOENT" });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("local account generation rejects production, remote databases, and repository credential paths", async () => {
+  const directory = await mkdtemp(
+    nodePath.join(tmpdir(), "habitarc-local-guard-")
+  );
+  const path = nodePath.join(directory, "accounts.json");
+  try {
+    for (const environment of [
+      { NODE_ENV: "production", BETTER_AUTH_URL: "https://habitarc.example" },
+      { DATABASE_URL: "postgresql://postgres@db.example.test/habitarc" },
+      {
+        DATABASE_URL:
+          "postgresql://postgres@localhost/habitarc?host=db.example.test",
+      },
+    ]) {
+      const rejected = await runOperator(
+        "local-accounts",
+        "",
+        [path],
+        environment
+      );
+      expect(rejected.code).toBe(1);
+      expect(rejected.output).toContain(
+        "development origin and loopback PostgreSQL"
+      );
+    }
+    await expect(stat(path)).rejects.toMatchObject({ code: "ENOENT" });
+    const repositoryPath = nodePath.join(process.cwd(), "local-accounts.json");
+    const rejected = await runOperator("local-accounts", "", [repositoryPath]);
+    expect(rejected.code).toBe(1);
+    expect(rejected.output).toContain("outside the repository");
+    await expect(stat(repositoryPath)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("local requests cannot choose their own IP and malformed production forwarding fails closed", async () => {

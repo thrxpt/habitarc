@@ -4,8 +4,10 @@ import { eq, sql } from "drizzle-orm";
 import { isAccountTimezone, isRole } from "../identity";
 import { authOptions } from "./auth";
 import type { AuthConfig } from "./auth";
-import type { Database } from "./database";
+import type { Database, Transaction } from "./database";
 import { user } from "./schema";
+
+export const ACCOUNT_PROVISIONING_LOCK = 480_104;
 
 const parseAccounts = (input: unknown) => {
   if (!Array.isArray(input)) {
@@ -60,13 +62,15 @@ const parseAccounts = (input: unknown) => {
 };
 
 export const provisionAccounts = async (
-  database: Database,
+  database: Database | Transaction,
   config: AuthConfig,
   input: unknown
 ) => {
   const accounts = parseAccounts(input);
   return await database.transaction(async (transaction) => {
-    await transaction.execute(sql`SELECT pg_advisory_xact_lock(480104)`);
+    await transaction.execute(
+      sql`SELECT pg_advisory_xact_lock(${ACCOUNT_PROVISIONING_LOCK})`
+    );
     const options = authOptions(transaction, config);
     // This signup-enabled instance is private to operator tooling and is never mounted.
     const provisioner = betterAuth({

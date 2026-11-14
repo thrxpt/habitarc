@@ -17,6 +17,7 @@
     "fix": "ultracite fix",
     "db:migrate": "vpx scripts/migrate.ts",
     "accounts:provision": "vpx scripts/provision.ts",
+    "accounts:local": "vpx scripts/local-accounts.ts",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate"
   },
