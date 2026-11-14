@@ -15,6 +15,13 @@
       "when": 1794640909954,
       "tag": "0001_account-timezone",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794681683414,
+      "tag": "0002_activity-templates",
+      "breakpoints": true
     }
   ]
 }

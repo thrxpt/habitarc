@@ -5,18 +5,25 @@ import { Button } from "#components/ui/button.tsx";
 
 import { authClient } from "../auth-client";
 import type { Identity } from "../identity";
+import type { ActivityTemplate, ActivityTemplateDraft } from "../templates";
 import { PageHeading } from "./page-heading";
 import { SignInPanel } from "./sign-in-panel";
 import { WorkspacePanel } from "./workspace-panel";
 
 interface AccountScreenProps {
   identity: Identity | null;
+  templates?: ActivityTemplate[];
   onSessionChanged: () => Promise<void>;
+  onCreateTemplate?: (
+    draft: ActivityTemplateDraft
+  ) => Promise<ActivityTemplate>;
 }
 
 export const AccountScreen = ({
   identity,
+  templates = [],
   onSessionChanged,
+  onCreateTemplate,
 }: AccountScreenProps) => {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -76,7 +83,12 @@ export const AccountScreen = ({
         )}
       >
         {identity ? (
-          <WorkspacePanel identity={identity} error={error} />
+          <WorkspacePanel
+            identity={identity}
+            templates={templates}
+            error={error}
+            onCreateTemplate={onCreateTemplate}
+          />
         ) : (
           <>
             <div>

@@ -118,6 +118,48 @@ export const rateLimit = pgTable("rateLimit", {
   lastRequest: bigint("lastRequest", { mode: "number" }).notNull(),
 });
 
+export const activityTemplate = pgTable(
+  "activity_template",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description").default("").notNull(),
+    unit: text("unit").notNull(),
+    entryMinimum: integer("entry_minimum").notNull(),
+    entryMaximum: integer("entry_maximum").notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    // Keep SQL check literals aligned with TEMPLATE_* and MEASUREMENT_CEILINGS in ../templates.ts.
+    check(
+      "activity_template_name_nonempty",
+      sql`char_length(btrim(${table.name})) between 1 and 120`
+    ),
+    check(
+      "activity_template_description_length",
+      sql`char_length(${table.description}) <= 500`
+    ),
+    check(
+      "activity_template_unit_check",
+      sql`${table.unit} in ('minutes', 'counts')`
+    ),
+    check(
+      "activity_template_bounds_check",
+      sql`${table.entryMinimum} >= 1 and ${table.entryMinimum} <= ${table.entryMaximum} and ((${table.unit} = 'minutes' and ${table.entryMaximum} <= 1440) or (${table.unit} = 'counts' and ${table.entryMaximum} <= 1000000))`
+    ),
+    check("activity_template_version_positive", sql`${table.version} >= 1`),
+    index("activity_template_active_name_idx").on(table.archivedAt, table.name),
+  ]
+);
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),

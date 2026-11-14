@@ -1,14 +1,23 @@
 import { Alert, AlertDescription } from "#components/ui/alert.tsx";
 
 import type { Identity } from "../identity";
+import type { ActivityTemplate, ActivityTemplateDraft } from "../templates";
 import { PageHeading } from "./page-heading";
+import { TemplateCreateForm } from "./template-create-form";
+import { TemplateLibrary } from "./template-library";
 
 export const WorkspacePanel = ({
   identity,
+  templates = [],
   error,
+  onCreateTemplate,
 }: {
   identity: Identity;
+  templates?: ActivityTemplate[];
   error: string;
+  onCreateTemplate?: (
+    draft: ActivityTemplateDraft
+  ) => Promise<ActivityTemplate>;
 }) => (
   <>
     <PageHeading>
@@ -57,6 +66,10 @@ export const WorkspacePanel = ({
           : "Your workspace is for maintaining Activity Templates. Participants’ personal tracking histories stay private."}
       </p>
     </section>
+    {identity.role === "program-manager" && (
+      <TemplateCreateForm onCreateTemplate={onCreateTemplate} />
+    )}
+    <TemplateLibrary role={identity.role} templates={templates} />
     {error && (
       <Alert variant="destructive" className="mt-4">
         <AlertDescription>{error}</AlertDescription>
