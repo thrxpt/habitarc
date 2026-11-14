@@ -1,6 +1,7 @@
 import { Alert, AlertDescription } from "#components/ui/alert.tsx";
 
 import type { Identity } from "../identity";
+import { PageHeading } from "./page-heading";
 
 export const WorkspacePanel = ({
   identity,
@@ -10,11 +11,11 @@ export const WorkspacePanel = ({
   error: string;
 }) => (
   <>
-    <h1 className="font-heading mb-6 text-[clamp(38px,4.5vw,62px)] leading-[1.12] font-normal tracking-[-0.035em] text-balance">
+    <PageHeading>
       {identity.role === "participant"
         ? "Your workspace"
         : "Activity Templates"}
-    </h1>
+    </PageHeading>
     <p className="text-muted-foreground mb-6 max-w-prose text-xl leading-[1.65]">
       Welcome, {identity.name}.
     </p>

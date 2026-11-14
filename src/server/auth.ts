@@ -7,6 +7,10 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { isAccountTimezone, isRole } from "../identity";
 import type { Identity, Role } from "../identity";
 import {
+  DEFAULT_ACCOUNT_TIMEZONE,
+  MIN_PASSWORD_LENGTH,
+} from "./account-policy";
+import {
   AuthError,
   authenticationError,
   authenticationErrorResponse,
@@ -37,7 +41,7 @@ export const authOptions = (
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,
-    minPasswordLength: 12,
+    minPasswordLength: MIN_PASSWORD_LENGTH,
     autoSignIn: false,
   },
   user: {
@@ -47,7 +51,7 @@ export const authOptions = (
         type: "string" as const,
         required: true,
         input: false,
-        defaultValue: "Asia/Bangkok",
+        defaultValue: DEFAULT_ACCOUNT_TIMEZONE,
       },
     },
   },

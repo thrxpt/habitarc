@@ -64,6 +64,8 @@ const fieldVariants = cva(
   }
 );
 
+// Retain shadcn's fieldset wrapper. Single controls use FieldLabel for their name;
+// related control groups use FieldSet with FieldLegend. Screen-reader review is pending.
 const Field = ({
   className,
   orientation = "vertical",

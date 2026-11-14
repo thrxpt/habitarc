@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { inArray } from "drizzle-orm";
 import { Client } from "pg";
 
+import { DEFAULT_ACCOUNT_TIMEZONE } from "../src/server/account-policy";
 import { createDatabase } from "../src/server/database";
 import { isLoopbackHost } from "../src/server/loopback";
 import { prepareAndProvisionAccounts } from "../src/server/provision";
@@ -116,7 +117,7 @@ const main = async () => {
           accounts = templates.map((account) => ({
             ...account,
             password: randomBytes(24).toString("base64url"),
-            timezone: "Asia/Bangkok",
+            timezone: DEFAULT_ACCOUNT_TIMEZONE,
           }));
           const file = await open(path, "wx", 0o600);
           try {

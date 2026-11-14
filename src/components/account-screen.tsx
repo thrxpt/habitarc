@@ -5,6 +5,7 @@ import { Button } from "#components/ui/button.tsx";
 
 import { authClient } from "../auth-client";
 import type { Identity } from "../identity";
+import { PageHeading } from "./page-heading";
 import { SignInPanel } from "./sign-in-panel";
 import { WorkspacePanel } from "./workspace-panel";
 
@@ -79,10 +80,10 @@ export const AccountScreen = ({
         ) : (
           <>
             <div>
-              <h1 className="font-heading compact:text-[clamp(36px,7vw,48px)] mb-6 text-[clamp(38px,4.5vw,62px)] leading-[1.12] font-normal tracking-[-0.035em] text-balance">
+              <PageHeading className="compact:text-[clamp(36px,7vw,48px)]">
                 Make room for
                 <br />a steady routine.
-              </h1>
+              </PageHeading>
               <p className="text-muted-foreground compact:mb-0 compact:text-lg mb-6 max-w-prose text-xl leading-[1.65]">
                 A little study. A little movement.
                 <br />A space to keep track of your effort.

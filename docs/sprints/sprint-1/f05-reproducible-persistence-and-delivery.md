@@ -1,6 +1,6 @@
 # F05 — Reproducible persistence and delivery
 
-Status: accepted contract baseline following Q25. Implementation and all verification are PLANNED.
+Status: accepted contract baseline following Q25. The CI portion is implemented, and AC-F05-2 / STS-F05-2 required-check blocking is verified through an actual deliberately failed check; see [CI evidence](../../auth.md#github-ci-evidence). Container image creation, GCP deployment, and the remaining system/operational verification are PLANNED. This partial CI result does not establish release acceptance.
 
 Sprint 1 and Lab 5. FR-12, NFR-06–08. Infrastructure work begins alongside F01; release acceptance depends on F01–F04. Owner B for deployment, A for migrations/verification; each reviews the other's work.
 

@@ -11,6 +11,8 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 
+import { DEFAULT_ACCOUNT_TIMEZONE } from "./account-policy";
+
 export const user = pgTable(
   "user",
   {
@@ -27,7 +29,7 @@ export const user = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
     role: text("role").notNull(),
-    timezone: text("timezone").default("Asia/Bangkok").notNull(),
+    timezone: text("timezone").default(DEFAULT_ACCOUNT_TIMEZONE).notNull(),
   },
   (table) => [
     check(

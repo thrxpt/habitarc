@@ -2,6 +2,10 @@ import { betterAuth } from "better-auth";
 import { eq, sql } from "drizzle-orm";
 
 import { isAccountTimezone, isRole } from "../identity";
+import {
+  DEFAULT_ACCOUNT_TIMEZONE,
+  MIN_PASSWORD_LENGTH,
+} from "./account-policy";
 import { authOptions } from "./auth";
 import type { AuthConfig } from "./auth";
 import type { Database, Transaction } from "./database";
@@ -25,20 +29,21 @@ const parseAccounts = (input: unknown) => {
       throw new Error("Each account requires name, email, password, and role.");
     }
     const { name, email, password, role } = value;
-    const timezone = "timezone" in value ? value.timezone : "Asia/Bangkok";
+    const timezone =
+      "timezone" in value ? value.timezone : DEFAULT_ACCOUNT_TIMEZONE;
     if (
       typeof name !== "string" ||
       !name.trim() ||
       typeof email !== "string" ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email) ||
       typeof password !== "string" ||
-      password.length < 12 ||
+      password.length < MIN_PASSWORD_LENGTH ||
       password.length > 128 ||
       !isRole(role) ||
       !isAccountTimezone(timezone)
     ) {
       throw new Error(
-        "Invalid account. Use a valid email, role, IANA timezone and a 12–128 character password."
+        `Invalid account. Use a valid email, role, IANA timezone and a ${MIN_PASSWORD_LENGTH}–128 character password.`
       );
     }
     return {
