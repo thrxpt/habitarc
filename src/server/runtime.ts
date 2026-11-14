@@ -5,7 +5,9 @@ import { Pool } from "pg";
 import { createAuthentication } from "./auth";
 import type { AuthConfig } from "./auth";
 import { createDatabase } from "./database";
+import type { Database } from "./database";
 import { isLoopbackHost } from "./loopback";
+import { createTemplateService } from "./templates";
 
 // Node loads private local configuration without publishing it through Vite's client env.
 if (existsSync(".env.local")) {
@@ -52,6 +54,12 @@ export const createPool = () => {
   return new Pool({ connectionString, max: 5 });
 };
 
+let database: Database | undefined;
+const getDatabase = () => {
+  database ??= createDatabase(createPool());
+  return database;
+};
+
 let authentication: ReturnType<typeof createAuthentication> | undefined;
 export const getAuthentication = () => {
   if (!authentication) {
@@ -61,7 +69,13 @@ export const getAuthentication = () => {
         "Production IP handling requires the managed Cloud Run ingress."
       );
     }
-    authentication = createAuthentication(createDatabase(createPool()), config);
+    authentication = createAuthentication(getDatabase(), config);
   }
   return authentication;
+};
+
+let templateService: ReturnType<typeof createTemplateService> | undefined;
+export const getTemplateService = () => {
+  templateService ??= createTemplateService(getDatabase());
+  return templateService;
 };

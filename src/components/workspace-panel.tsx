@@ -1,14 +1,33 @@
 import { Alert, AlertDescription } from "#components/ui/alert.tsx";
 
 import type { Identity } from "../identity";
+import type { ActivityTemplate, ActivityTemplateDraft } from "../templates";
 import { PageHeading } from "./page-heading";
+import { TemplateCreateForm } from "./template-create-form";
+import { TemplateLibrary } from "./template-library";
+
+const EMPTY_TEMPLATES: ActivityTemplate[] = [];
 
 export const WorkspacePanel = ({
   identity,
+  templates = EMPTY_TEMPLATES,
+  hasMoreTemplates = false,
+  loadingMoreTemplates = false,
+  loadMoreTemplatesError = "",
   error,
+  onCreateTemplate,
+  onLoadMoreTemplates,
 }: {
   identity: Identity;
+  templates?: ActivityTemplate[];
+  hasMoreTemplates?: boolean;
+  loadingMoreTemplates?: boolean;
+  loadMoreTemplatesError?: string;
   error: string;
+  onCreateTemplate?: (
+    draft: ActivityTemplateDraft
+  ) => Promise<ActivityTemplate>;
+  onLoadMoreTemplates?: () => Promise<void> | void;
 }) => (
   <>
     <PageHeading>
@@ -57,6 +76,17 @@ export const WorkspacePanel = ({
           : "Your workspace is for maintaining Activity Templates. Participants’ personal tracking histories stay private."}
       </p>
     </section>
+    {identity.role === "program-manager" && (
+      <TemplateCreateForm onCreateTemplate={onCreateTemplate} />
+    )}
+    <TemplateLibrary
+      role={identity.role}
+      templates={templates}
+      hasMore={hasMoreTemplates}
+      loadingMore={loadingMoreTemplates}
+      loadMoreError={loadMoreTemplatesError}
+      onLoadMore={onLoadMoreTemplates}
+    />
     {error && (
       <Alert variant="destructive" className="mt-4">
         <AlertDescription>{error}</AlertDescription>

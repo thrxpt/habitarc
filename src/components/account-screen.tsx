@@ -5,18 +5,35 @@ import { Button } from "#components/ui/button.tsx";
 
 import { authClient } from "../auth-client";
 import type { Identity } from "../identity";
+import type { ActivityTemplate, ActivityTemplateDraft } from "../templates";
 import { PageHeading } from "./page-heading";
 import { SignInPanel } from "./sign-in-panel";
 import { WorkspacePanel } from "./workspace-panel";
 
 interface AccountScreenProps {
   identity: Identity | null;
+  templates?: ActivityTemplate[];
+  hasMoreTemplates?: boolean;
+  loadingMoreTemplates?: boolean;
+  loadMoreTemplatesError?: string;
   onSessionChanged: () => Promise<void>;
+  onCreateTemplate?: (
+    draft: ActivityTemplateDraft
+  ) => Promise<ActivityTemplate>;
+  onLoadMoreTemplates?: () => Promise<void> | void;
 }
+
+const EMPTY_TEMPLATES: ActivityTemplate[] = [];
 
 export const AccountScreen = ({
   identity,
+  templates = EMPTY_TEMPLATES,
+  hasMoreTemplates = false,
+  loadingMoreTemplates = false,
+  loadMoreTemplatesError = "",
   onSessionChanged,
+  onCreateTemplate,
+  onLoadMoreTemplates,
 }: AccountScreenProps) => {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -76,7 +93,16 @@ export const AccountScreen = ({
         )}
       >
         {identity ? (
-          <WorkspacePanel identity={identity} error={error} />
+          <WorkspacePanel
+            identity={identity}
+            templates={templates}
+            hasMoreTemplates={hasMoreTemplates}
+            loadingMoreTemplates={loadingMoreTemplates}
+            loadMoreTemplatesError={loadMoreTemplatesError}
+            error={error}
+            onCreateTemplate={onCreateTemplate}
+            onLoadMoreTemplates={onLoadMoreTemplates}
+          />
         ) : (
           <>
             <div>

@@ -5,19 +5,29 @@ import {
 } from "@tanstack/react-start/server";
 
 import { isRole } from "../identity";
+import { validateTemplateListQuery } from "../templates";
 import { AuthError, authenticationError } from "./auth-error";
-import { getAuthentication } from "./runtime";
+import { getAuthentication, getTemplateService } from "./runtime";
+import { TemplateError } from "./templates";
 
-const authenticationErrors = createMiddleware({ type: "function" }).server(
-  async ({ next }) => {
+const serverErrors = (mapUnexpected: (error: unknown) => AuthError) =>
+  createMiddleware({ type: "function" }).server(async ({ next }) => {
     try {
       return await next();
     } catch (error) {
-      const failure = authenticationError(error);
+      if (error instanceof AuthError || error instanceof TemplateError) {
+        setResponseStatus(error.status);
+        throw error;
+      }
+      const failure = mapUnexpected(error);
       setResponseStatus(failure.status);
       throw failure;
     }
-  }
+  });
+
+const authenticationErrors = serverErrors(authenticationError);
+const templateErrors = serverErrors(
+  () => new AuthError(503, "Service temporarily unavailable")
 );
 
 export const getIdentity = createServerFn({ method: "GET" })
@@ -36,3 +46,31 @@ export const getWorkspace = createServerFn({ method: "GET" })
     async ({ data }) =>
       await getAuthentication().authorizeWorkspace(getRequestHeaders(), data)
   );
+
+export const listTemplates = createServerFn({ method: "GET" })
+  .middleware([templateErrors])
+  .validator((input: unknown) => {
+    const validation = validateTemplateListQuery(input);
+    if (!validation.ok) {
+      throw new TemplateError(400, validation.message);
+    }
+    return validation.value;
+  })
+  .handler(async ({ data }) => {
+    const actor = await getAuthentication().identity(getRequestHeaders());
+    if (!actor) {
+      throw new AuthError(401, "Sign in required");
+    }
+    return await getTemplateService().listTemplates(actor, data);
+  });
+
+export const createTemplate = createServerFn({ method: "POST" })
+  .middleware([templateErrors])
+  .validator((input: unknown) => input)
+  .handler(async ({ data }) => {
+    const actor = await getAuthentication().authorizeWorkspace(
+      getRequestHeaders(),
+      "program-manager"
+    );
+    return await getTemplateService().createTemplate(actor, data);
+  });
