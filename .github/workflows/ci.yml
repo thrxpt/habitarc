@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, "sprint-*"]
+  push:
+    branches: [main, "sprint-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TEST_DATABASE_URL: postgresql://postgres@127.0.0.1:55432/habitarc_auth_test
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          version-file: package.json
+          node-version-file: .node-version
+          run-install: false
+          cache: true
+
+      - name: Install pinned dependencies
+        run: vp install --frozen-lockfile
+
+      - name: Check formatting, lint, and types
+        run: vp check
+
+      - name: Check TypeScript project
+        run: vp run typecheck
+
+      - name: Check migration history
+        run: vp exec drizzle-kit check
+
+      - name: Start PostgreSQL
+        run: docker compose up -d --wait postgres
+
+      - name: Run all tests
+        run: vp test --run --passWithNoTests=false
+
+      - name: Build application
+        run: vp run build
+
+      - name: Remove CI database and volume
+        if: always()
+        run: docker compose down --volumes

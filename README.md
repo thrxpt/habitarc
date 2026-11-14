@@ -1,179 +1,75 @@
-Welcome to your new TanStack Start app!
+# Habitarc
 
-# Getting Started
+Private study and movement workspaces for pre-provisioned Participants and Program Managers. Built with TanStack Start, Better Auth, Drizzle, and PostgreSQL.
 
-To run this application:
+## Local setup
 
-```bash
-bun install
-bun --bun run dev
+Use the repository’s pinned Vite+ toolchain and Docker Compose. Compose runs PostgreSQL 17 on `127.0.0.1:55432` and creates the development database `habitarc` and test database `habitarc_auth_test`.
+
+```sh
+vp install
+cp .env.example .env.local
+chmod 600 .env.local
+docker compose up -d --wait postgres
 ```
 
-# Building For Production
+Edit `.env.local`: the example database URLs already match Compose. Privately set `BETTER_AUTH_SECRET` to a generated random secret of at least 32 characters. The application and operator commands load this ignored file using Node’s environment-file support; exported environment variables take precedence. Keep the origin exactly `http://localhost:3000` when using the development command.
 
-To build this application for production:
-
-```bash
-bun --bun run build
+```sh
+vp run db:migrate
+vp run accounts:local
+vp run dev
 ```
 
-## Styling
+`accounts:local` creates `one@example.test`, `two@example.test` (Participants), and `manager@example.test` (Program Manager), with random passwords and the `Asia/Bangkok` Account Timezone. It saves credentials to `~/.local/share/habitarc/local-accounts.json` with permissions `0600` and prints only the path and counts. Open that private file to sign in. Reruns reuse the file and preserve existing accounts. If the file is lost while the accounts still exist, setup stops rather than generating replacement passwords.
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+For a different private file location, run `vp run accounts:local /absolute/private/accounts.json`. Local generation requires development mode, loopback PostgreSQL, and a file outside the repository. Custom provisioning remains available through `vp run accounts:provision < /private/path/synthetic-accounts.json`. See [authentication and operator instructions](docs/auth.md) for the input format, migrations, production policy, and security boundaries.
 
-### Removing Tailwind CSS
+## UI components
 
-If you prefer not to use Tailwind CSS:
+shadcn/ui uses the Nova style with Base UI primitives. `components.json` configures the CLI, shared components live in `src/components/ui`, and semantic theme tokens in `src/styles.css` retain Habitarc’s palette and fonts. The account screen uses Button, Input, Field, and Alert components.
 
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Remove `@tailwindcss/vite` and `tailwindcss` from `package.json`
+Add components from the official registry with the project’s Bun runner:
 
-## Routing
-
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
+```sh
+bunx --bun shadcn@latest add @shadcn/dialog
 ```
 
-Then anywhere in your JSX you can use it like so:
+Component imports use `#components/ui/<name>.tsx`; class-name composition imports `cn` directly from the `cn` package. Generated components are maintained source and follow the repository’s TypeScript and accessibility rules. Installed agent-skill examples are excluded from application formatting, lint, and type checks.
 
-```tsx
-<Link to="/about">About</Link>
+## Validation
+
+Set `TEST_DATABASE_URL` to a disposable PostgreSQL database. The database user must be allowed to create databases: integration tests create a uniquely named database and remove only that database afterward. Tests fail when PostgreSQL configuration is missing. Never point tests at a production database.
+
+```sh
+vp check
+vp run typecheck
+vp test
+vp run build
 ```
 
-This will create a link that will navigate to the `/about` route.
+Start PostgreSQL with Compose before running the suite:
 
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "My App" },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-});
+```sh
+docker compose up -d --wait postgres
+export TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test
+vp test
 ```
 
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
+Compose binds PostgreSQL to loopback and uses trust authentication for local development and tests. Production uses private database credentials and Cloud SQL. The named volume preserves local databases across container restarts and `docker compose down`; start again with `docker compose up -d --wait postgres`. The initialization SQL runs only when that volume is first created. Application schema migrations remain an explicit `vp run db:migrate` step.
 
-## Server Functions
+Stop the local service with:
 
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from "@tanstack/react-start";
-
-const getServerTime = createServerFn({
-  method: "GET",
-}).handler(async () => {
-  return new Date().toISOString();
-});
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState("");
-
-  useEffect(() => {
-    getServerTime().then(setTime);
-  }, []);
-
-  return <div>Server time: {time}</div>;
-}
+```sh
+docker compose down
 ```
 
-## API Routes
+Export `TEST_DATABASE_URL` in the test shell; the test runner intentionally does not load `.env.local`. The suite covers real PostgreSQL, independent authentication instances/pools, operator commands, rendered forms, and the running TanStack HTTP application. The production build checks client/server separation; it does not deploy cloud resources.
 
-You can create API routes by using the `server` property in your route definitions:
+## Continuous integration
 
-```tsx
-import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-start";
+[GitHub Actions](https://github.com/thrxpt/habitarc/actions/workflows/ci.yml) runs the `CI / Validate` check for pull requests targeting `main` or `sprint-*` and pushes to those branches. Vite+ comes from the pinned package version, Node.js from `.node-version`, and Bun from `devEngines.packageManager`. Dependencies install with a frozen lockfile; the prepare hook formats Vite+'s generated agent instructions so installation does not introduce formatting failures.
 
-export const Route = createFileRoute("/api/hello")({
-  server: {
-    handlers: {
-      GET: () => json({ message: "Hello, World!" }),
-    },
-  },
-});
-```
+The workflow checks formatting/lint/types and the Drizzle migration history, starts PostgreSQL through the same Docker Compose configuration used locally, runs all tests (failing if none are discovered), and builds the client/server application. Each runner uses disposable database storage and removes its Compose volume afterward. Test accounts and auth secrets are generated by the suite; no production secrets are needed.
 
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from "@tanstack/react-router";
-
-export const Route = createFileRoute("/people")({
-  loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
-    return response.json();
-  },
-  component: PeopleComponent,
-});
-
-function PeopleComponent() {
-  const data = Route.useLoaderData();
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  );
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+The `Validate` check must pass against the current base before merging into `sprint-1` or `main`. Cloud deployment, application-image packaging, and the remaining release acceptance checks are separate work tracked in [issue #8](https://github.com/thrxpt/habitarc/issues/8).

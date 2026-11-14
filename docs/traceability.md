@@ -1,6 +1,6 @@
 # Habitarc requirements traceability
 
-Status: accepted baseline mapping. All verification is PLANNED; there are no actual product test results, test locations, CI runs, or assessed commits in this document.
+Status: accepted baseline mapping of planned verification. The tables retain their planning status; actual F01 test results, tested revision, and incomplete acceptance gates are recorded in the [F01 verification ledger](auth.md#f01-verification-ledger). Other features remain planned. This matrix is not proof of integrated-release acceptance.
 
 Requirement definitions live in the [SRS](srs.md), feature descriptions/dependencies in the [inventory](features.md), and dates/release gates in the [sprint plan](sprints/plan.md). Each link below opens the feature contract containing the paired AC/STS, test level, preconditions/actions, and expected result.
 

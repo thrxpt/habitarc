@@ -1,15 +1,95 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-* {
-  box-sizing: border-box;
+@custom-variant dark (&:is(.dark *));
+@custom-variant compact (@media (max-width: 800px));
+
+:root {
+  --background: #f7f5ed;
+  --foreground: #183d31;
+  --card: #fffef9;
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: #245943;
+  --primary-foreground: #fffef9;
+  --secondary: #e8eddf;
+  --secondary-foreground: var(--foreground);
+  --muted: #e8eddf;
+  --muted-foreground: #456052;
+  --accent: #d1dfc5;
+  --accent-foreground: var(--foreground);
+  --destructive: #9a3028;
+  --border: #d7dccd;
+  --input: #7d8d7c;
+  --ring: #648b72;
+  --radius: 0.375rem;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  accent-color: var(--primary);
+  caret-color: var(--primary);
 }
 
-html,
-body,
-#app {
-  min-height: 100%;
+a {
+  text-underline-offset: 0.2em;
+}
+:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 4px;
+}
+::selection {
+  background: var(--accent);
+  color: var(--foreground);
+}
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
 }
 
-body {
-  margin: 0;
+@theme inline {
+  --font-heading: Georgia, "Times New Roman", serif;
+  --font-sans: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+  }
 }
