@@ -7,7 +7,7 @@ import type { AuthConfig } from "./auth";
 import type { Database, Transaction } from "./database";
 import { user } from "./schema";
 
-export const ACCOUNT_PROVISIONING_LOCK = 480_104;
+const ACCOUNT_PROVISIONING_LOCK = 480_104;
 
 const parseAccounts = (input: unknown) => {
   if (!Array.isArray(input)) {
@@ -61,16 +61,17 @@ const parseAccounts = (input: unknown) => {
   return accounts;
 };
 
-export const provisionAccounts = async (
-  database: Database | Transaction,
+export const prepareAndProvisionAccounts = async (
+  database: Database,
   config: AuthConfig,
-  input: unknown
-) => {
-  const accounts = parseAccounts(input);
-  return await database.transaction(async (transaction) => {
+  prepareInput: (transaction: Transaction) => unknown
+) =>
+  await database.transaction(async (transaction) => {
     await transaction.execute(
       sql`SELECT pg_advisory_xact_lock(${ACCOUNT_PROVISIONING_LOCK})`
     );
+    // Local credential-file preparation and account writes share this one lock.
+    const accounts = parseAccounts(await prepareInput(transaction));
     const options = authOptions(transaction, config);
     // This signup-enabled instance is private to operator tooling and is never mounted.
     const provisioner = betterAuth({
@@ -101,4 +102,9 @@ export const provisionAccounts = async (
     }
     return { created, preserved: accounts.length - created };
   });
-};
+
+export const provisionAccounts = async (
+  database: Database,
+  config: AuthConfig,
+  input: unknown
+) => await prepareAndProvisionAccounts(database, config, () => input);

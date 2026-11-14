@@ -6,18 +6,13 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 
 import { isAccountTimezone, isRole } from "../identity";
 import type { Identity, Role } from "../identity";
+import {
+  AuthError,
+  authenticationError,
+  authenticationErrorResponse,
+} from "./auth-error";
 import type { Database, Transaction } from "./database";
 import * as schema from "./schema";
-
-export class AuthError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "AuthError";
-    this.status = status;
-  }
-}
 
 export interface AuthConfig {
   baseURL: string;
@@ -123,13 +118,13 @@ export const createAuthentication = (
       }
       return { id, name, email, role, timezone };
     } catch (error) {
-      if (error instanceof AuthError) {
-        throw error;
-      }
-      throw new AuthError(503, "Authentication temporarily unavailable");
+      throw authenticationError(error);
     }
   };
-  const workspace = async (headers: Headers, role: Role): Promise<Identity> => {
+  const authorizeWorkspace = async (
+    headers: Headers,
+    role: Role
+  ): Promise<Identity> => {
     const user = await identity(headers);
     if (!user) {
       throw new AuthError(401, "Sign in required");
@@ -168,14 +163,9 @@ export const createAuthentication = (
       response.headers.set("Cache-Control", "no-store");
       return response;
     } catch (error) {
-      if (error instanceof AuthError) {
-        return new Response(error.message, { status: error.status });
-      }
       // Never serialize database/credential errors into the response or logs.
-      return new Response("Authentication temporarily unavailable", {
-        status: 503,
-      });
+      return authenticationErrorResponse(error);
     }
   };
-  return { handle, identity, workspace };
+  return { handle, identity, authorizeWorkspace };
 };

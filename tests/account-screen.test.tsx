@@ -164,3 +164,32 @@ test("throttled sign in explains how to retry", async () => {
     "false"
   );
 });
+
+test("a new sign in clears an earlier sign-out error", async () => {
+  fetchMock.mockResolvedValueOnce(
+    Response.json({ message: "Unavailable" }, { status: 503 })
+  );
+  const changed = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  const { rerender } = render(
+    <AccountScreen identity={participant} onSessionChanged={changed} />
+  );
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Sign out" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "We couldn’t sign you out"
+  );
+  expect(changed).not.toHaveBeenCalled();
+
+  // The server can expire a session after a failed logout request.
+  rerender(<AccountScreen identity={null} onSessionChanged={changed} />);
+  fetchMock.mockResolvedValueOnce(
+    Response.json({ user: participant, token: "test-token" })
+  );
+  await user.type(screen.getByLabelText("Email"), participant.email);
+  await user.type(screen.getByLabelText("Password"), "synthetic-test-input");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(changed).toHaveBeenCalledOnce();
+  rerender(<AccountScreen identity={participant} onSessionChanged={changed} />);
+  expect(screen.getByRole("heading", { name: "Your workspace" })).toBeVisible();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});

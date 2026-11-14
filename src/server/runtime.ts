@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { createAuthentication } from "./auth";
 import type { AuthConfig } from "./auth";
 import { createDatabase } from "./database";
+import { isLoopbackHost } from "./loopback";
 
 // Node loads private local configuration without publishing it through Vite's client env.
 if (existsSync(".env.local")) {
@@ -29,7 +30,7 @@ export const readAuthConfig = (): AuthConfig => {
   if (
     url.origin !== baseURL ||
     (production && url.protocol !== "https:") ||
-    (!production && !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))
+    (!production && !isLoopbackHost(url.hostname))
   ) {
     throw new Error(
       "Use a canonical HTTPS production origin or a loopback development origin."

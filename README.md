@@ -35,7 +35,7 @@ Add components from the official registry with the project’s Bun runner:
 bunx --bun shadcn@latest add @shadcn/dialog
 ```
 
-Component imports use `#components/ui/<name>.tsx`; shared utilities use `#lib/utils.ts`. Generated components are maintained source and follow the repository’s TypeScript and accessibility rules. Installed agent-skill examples are excluded from application formatting, lint, and type checks.
+Component imports use `#components/ui/<name>.tsx`; class-name composition imports `cn` directly from the `cn` package. Generated components are maintained source and follow the repository’s TypeScript and accessibility rules. Installed agent-skill examples are excluded from application formatting, lint, and type checks.
 
 ## Validation
 

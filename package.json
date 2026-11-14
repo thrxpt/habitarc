@@ -54,6 +54,7 @@
     "jsdom": "^31.0.1",
     "oxfmt": "^0.78.0",
     "oxlint": "^1.93.0",
+    "seroval": "1.6.12",
     "typescript": "^7.0.2",
     "ultracite": "8.2.0",
     "vite": "npm:@voidzero-dev/vite-plus-core@1.6.0",

@@ -6,14 +6,12 @@ import { homedir } from "node:os";
 import nodePath from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { inArray, sql } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { Client } from "pg";
 
 import { createDatabase } from "../src/server/database";
-import {
-  ACCOUNT_PROVISIONING_LOCK,
-  provisionAccounts,
-} from "../src/server/provision";
+import { isLoopbackHost } from "../src/server/loopback";
+import { prepareAndProvisionAccounts } from "../src/server/provision";
 import { createPool, readAuthConfig } from "../src/server/runtime";
 import { user } from "../src/server/schema";
 
@@ -59,10 +57,7 @@ const main = async () => {
   const databaseClient = new Client({
     connectionString: process.env.DATABASE_URL,
   });
-  if (
-    config.production ||
-    !["localhost", "127.0.0.1", "::1"].includes(databaseClient.host)
-  ) {
+  if (config.production || !isLoopbackHost(databaseClient.host)) {
     throw new LocalAccountsError(
       "Local accounts require a development origin and loopback PostgreSQL."
     );
@@ -97,11 +92,10 @@ const main = async () => {
   }
   const pool = createPool();
   try {
-    const result = await createDatabase(pool).transaction(
+    const result = await prepareAndProvisionAccounts(
+      createDatabase(pool),
+      config,
       async (transaction) => {
-        await transaction.execute(
-          sql`SELECT pg_advisory_xact_lock(${ACCOUNT_PROVISIONING_LOCK})`
-        );
         let accounts = await readCredentials(path);
         if (accounts === undefined) {
           const existing = await transaction
@@ -132,7 +126,7 @@ const main = async () => {
             await file.close();
           }
         }
-        return await provisionAccounts(transaction, config, accounts);
+        return accounts;
       }
     );
     process.stdout.write(

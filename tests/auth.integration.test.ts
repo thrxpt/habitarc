@@ -6,7 +6,10 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import nodePath from "node:path";
 
+import { defaultSerovalDeserializerPlugins } from "@tanstack/react-router/ssr/server";
 import { Pool } from "pg";
+import { fromCrossJSON, toJSONAsync } from "seroval";
+import type { SerovalNode } from "seroval";
 import {
   afterAll,
   beforeAll,
@@ -116,6 +119,47 @@ const cookieFrom = (response: Response) =>
     .getSetCookie()
     .map((value) => value.split(";")[0])
     .join("; ");
+
+const serverFunctionPatterns = {
+  getIdentity: /\bgetIdentity\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  getWorkspace: /\bgetWorkspace\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+};
+
+const serverFunctionClient = async (origin: string) => {
+  // Use the dev compiler's real IDs and TanStack's serializer, without mocking auth.
+  const module = await fetch(`${origin}/src/server/functions.ts`);
+  if (!module.ok) {
+    throw new Error("Could not load compiled server functions.");
+  }
+  const source = await module.text();
+  return async (
+    name: keyof typeof serverFunctionPatterns,
+    data?: unknown,
+    cookie = ""
+  ) => {
+    const id = serverFunctionPatterns[name].exec(source)?.groups?.id;
+    if (id === undefined || id.length === 0) {
+      throw new Error(`Missing compiled server function: ${name}`);
+    }
+    const url = new URL(`/_serverFn/${id}`, origin);
+    if (data !== undefined) {
+      url.searchParams.set(
+        "payload",
+        JSON.stringify(await toJSONAsync({ data }))
+      );
+    }
+    const response = await fetch(url, {
+      headers: { cookie, "x-tsr-serverFn": "true", accept: "application/json" },
+    });
+    const serialized: unknown = await response.json();
+    // eslint-disable-next-line typescript/no-unsafe-type-assertion -- The running TanStack server emits Seroval nodes; Seroval validates and decodes them.
+    const body: unknown = fromCrossJSON(serialized as SerovalNode, {
+      refs: new Map(),
+      plugins: defaultSerovalDeserializerPlugins,
+    });
+    return { status: response.status, body };
+  };
+};
 
 const runOperator = async (
   command: "migrate" | "provision" | "local-accounts",
@@ -273,7 +317,7 @@ test("only login, current session, and logout are mounted; signup, recovery, and
 
 test("workspace authorization rejects anonymous and wrong-role calls and returns only the signed-in identity", async () => {
   await expect(
-    first.workspace(new Headers(), "participant")
+    first.authorizeWorkspace(new Headers(), "participant")
   ).rejects.toMatchObject({ status: 401 });
   for (const account of accounts) {
     const response = await first.handle(
@@ -282,12 +326,12 @@ test("workspace authorization rejects anonymous and wrong-role calls and returns
     const headers = new Headers({ cookie: cookieFrom(response) });
     const role =
       account.role === "participant" ? "participant" : "program-manager";
-    expect(await second.workspace(headers, role)).toMatchObject({
+    expect(await second.authorizeWorkspace(headers, role)).toMatchObject({
       email: account.email,
       role,
     });
     await expect(
-      second.workspace(
+      second.authorizeWorkspace(
         headers,
         role === "participant" ? "program-manager" : "participant"
       )
@@ -542,7 +586,9 @@ test("local account generation is private, concurrent-safe, and preserves workin
   const path = nodePath.join(directory, "accounts.json");
   try {
     const runs = await Promise.all([
-      runOperator("local-accounts", "", [path]),
+      runOperator("local-accounts", "", [path], {
+        BETTER_AUTH_URL: "http://[::1]:3000",
+      }),
       runOperator("local-accounts", "", [path]),
     ]);
     expect(runs.map((run) => run.code)).toEqual([0, 0]);
@@ -746,7 +792,18 @@ test(
       expect(loginPage.status).toBe(200);
       expect(await loginPage.text()).toContain("Sign in to Habitarc");
       expect(loginPage.headers.get("cache-control")).toContain("no-store");
-      for (const account of [accounts[0], accounts[2]]) {
+      const callServerFunction = await serverFunctionClient(origin);
+      expect(await callServerFunction("getIdentity")).toMatchObject({
+        status: 200,
+        body: { result: null },
+      });
+      for (const role of ["participant", "program-manager"]) {
+        expect(await callServerFunction("getWorkspace", role)).toMatchObject({
+          status: 401,
+          body: { error: { message: "Sign in required" } },
+        });
+      }
+      for (const account of accounts) {
         const login = await fetch(`${origin}/api/auth/sign-in/email`, {
           method: "POST",
           headers: { origin, "content-type": "application/json" },
@@ -754,6 +811,62 @@ test(
         });
         expect(login.status).toBe(200);
         const cookie = cookieFrom(login);
+        const identity = await callServerFunction(
+          "getIdentity",
+          undefined,
+          cookie
+        );
+        expect(identity).toMatchObject({
+          status: 200,
+          body: {
+            result: {
+              email: account.email,
+              role: account.role,
+              timezone: account.timezone ?? "Asia/Bangkok",
+            },
+          },
+        });
+        expect(
+          await callServerFunction("getWorkspace", account.role, cookie)
+        ).toEqual(identity);
+        expect(
+          await callServerFunction(
+            "getWorkspace",
+            account.role === "participant" ? "program-manager" : "participant",
+            cookie
+          )
+        ).toMatchObject({
+          status: 403,
+          body: { error: { message: "Forbidden" } },
+        });
+        expect(
+          await callServerFunction("getWorkspace", "admin", cookie)
+        ).toMatchObject({
+          status: 400,
+          body: { error: { message: "Invalid workspace." } },
+        });
+        if (account === accounts[0]) {
+          // Only this suite's disposable database is changed; restore it before continuing.
+          await pool.query(
+            'ALTER TABLE "session" RENAME TO "unavailable_session"'
+          );
+          try {
+            for (const name of ["getIdentity", "getWorkspace"] as const) {
+              expect(
+                await callServerFunction(name, account.role, cookie)
+              ).toMatchObject({
+                status: 503,
+                body: {
+                  error: { message: "Authentication temporarily unavailable" },
+                },
+              });
+            }
+          } finally {
+            await pool.query(
+              'ALTER TABLE "unavailable_session" RENAME TO "session"'
+            );
+          }
+        }
         const workspace = await fetch(origin, { headers: { cookie } });
         const html = await workspace.text();
         expect(workspace.status).toBe(200);
@@ -774,6 +887,18 @@ test(
           body: "{}",
         });
         expect(logout.status).toBe(200);
+        expect(
+          await callServerFunction("getIdentity", undefined, cookie)
+        ).toMatchObject({
+          status: 200,
+          body: { result: null },
+        });
+        expect(
+          await callServerFunction("getWorkspace", account.role, cookie)
+        ).toMatchObject({
+          status: 401,
+          body: { error: { message: "Sign in required" } },
+        });
         const signedOut = await fetch(origin, { headers: { cookie } });
         expect(await signedOut.text()).toContain("Sign in to Habitarc");
       }

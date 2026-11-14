@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-start/server";
 
 import { isRole } from "../identity";
-import { AuthError } from "./auth";
+import { AuthError, authenticationError } from "./auth-error";
 import { getAuthentication } from "./runtime";
 
 const authenticationErrors = createMiddleware({ type: "function" }).server(
@@ -13,12 +13,9 @@ const authenticationErrors = createMiddleware({ type: "function" }).server(
     try {
       return await next();
     } catch (error) {
-      if (error instanceof AuthError) {
-        setResponseStatus(error.status);
-        throw error;
-      }
-      setResponseStatus(503);
-      throw new AuthError(503, "Authentication temporarily unavailable.");
+      const failure = authenticationError(error);
+      setResponseStatus(failure.status);
+      throw failure;
     }
   }
 );
@@ -37,5 +34,5 @@ export const getWorkspace = createServerFn({ method: "GET" })
   })
   .handler(
     async ({ data }) =>
-      await getAuthentication().workspace(getRequestHeaders(), data)
+      await getAuthentication().authorizeWorkspace(getRequestHeaders(), data)
   );
