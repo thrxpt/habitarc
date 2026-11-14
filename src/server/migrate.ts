@@ -5,11 +5,13 @@ import type { Pool } from "pg";
 
 import { createDatabase } from "./database";
 
+const MIGRATION_LOCK = 480_103;
+
 export const migrate = async (pool: Pool) => {
   const client = await pool.connect();
   try {
     // A release job owns migrations. The session lock also serializes accidental duplicate jobs.
-    await client.query("SELECT pg_advisory_lock(480103)");
+    await client.query("SELECT pg_advisory_lock($1)", [MIGRATION_LOCK]);
     await migrateDrizzle(createDatabase(client), {
       migrationsFolder: fileURLToPath(
         new URL("../../drizzle", import.meta.url)
@@ -17,7 +19,7 @@ export const migrate = async (pool: Pool) => {
     });
   } finally {
     try {
-      await client.query("SELECT pg_advisory_unlock(480103)");
+      await client.query("SELECT pg_advisory_unlock($1)", [MIGRATION_LOCK]);
     } finally {
       client.release();
     }
