@@ -1,15 +1,229 @@
 @import "tailwindcss";
 
+:root {
+  font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  color: #183d31;
+  background: #f7f5ed;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  accent-color: #245943;
+  caret-color: #245943;
+}
+
 * {
   box-sizing: border-box;
 }
-
-html,
-body,
-#app {
-  min-height: 100%;
-}
-
 body {
   margin: 0;
+}
+button,
+input {
+  font: inherit;
+}
+a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+:focus-visible {
+  outline: 3px solid #9b570f;
+  outline-offset: 4px;
+}
+::selection {
+  background: #d1dfc5;
+  color: #183d31;
+}
+.app-shell {
+  max-width: 1240px;
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: 0 48px;
+  display: flex;
+  flex-direction: column;
+}
+.site-header {
+  min-height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid #d7dccd;
+}
+.wordmark {
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+.wordmark span {
+  color: #9b570f;
+}
+.sign-in-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: clamp(48px, 7vw, 112px);
+  align-items: center;
+  padding: 72px 0 96px;
+}
+h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: clamp(38px, 4.5vw, 62px);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  margin: 0 0 24px;
+  text-wrap: balance;
+}
+h2 {
+  font-size: 23px;
+  line-height: 1.3;
+  font-weight: 650;
+  margin: 0 0 12px;
+}
+p {
+  line-height: 1.65;
+  margin: 0 0 24px;
+  max-width: 65ch;
+}
+.intro {
+  color: #456052;
+  font-size: 20px;
+  line-height: 1.7;
+}
+.sign-in-panel {
+  border-top: 3px solid #245943;
+  padding-top: 28px;
+}
+.sign-in-panel > p {
+  color: #456052;
+}
+form {
+  display: flex;
+  flex-direction: column;
+}
+label {
+  margin: 20px 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #7d8d7c;
+  border-radius: 6px;
+  background: #fffef9;
+  padding: 11px 14px;
+  color: #183d31;
+}
+.primary-button,
+.secondary-button {
+  min-height: 46px;
+  border-radius: 6px;
+  padding: 11px 20px;
+  font-weight: 650;
+  transition: background-color 120ms ease-out;
+}
+.primary-button {
+  border: 1px solid #245943;
+  background: #245943;
+  color: #fffef9;
+  margin-top: 28px;
+}
+.primary-button:hover:enabled {
+  background: #183d31;
+}
+.secondary-button {
+  border: 1px solid #7d8d7c;
+  background: transparent;
+}
+.secondary-button:hover:enabled {
+  background: #e8eddf;
+}
+.account-help {
+  margin-top: 24px;
+  font-size: 14px;
+}
+.form-error {
+  color: #9a3028;
+  font-size: 15px;
+  margin: 16px 0 0;
+}
+.site-footer {
+  padding: 24px 0;
+  border-top: 1px solid #d7dccd;
+  font-size: 14px;
+  color: #456052;
+}
+.workspace {
+  flex: 1;
+  padding: 64px 0 80px;
+}
+.identity-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 56px;
+  padding: 28px 0;
+  margin: 36px 0 0;
+  border-top: 1px solid #d7dccd;
+  border-bottom: 1px solid #d7dccd;
+}
+dt {
+  color: #456052;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+dd {
+  margin: 0;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.workspace-note {
+  max-width: 640px;
+  margin-top: 48px;
+}
+.workspace-note p {
+  color: #456052;
+}
+@media (max-width: 800px) {
+  .app-shell {
+    padding: 0 24px;
+  }
+  .site-header {
+    min-height: 88px;
+  }
+  .sign-in-layout {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 44px 0 56px;
+  }
+  .welcome-copy h1 {
+    font-size: clamp(36px, 7vw, 48px);
+  }
+  .welcome-copy .intro {
+    font-size: 18px;
+    margin-bottom: 0;
+  }
+  .sign-in-panel {
+    max-width: 480px;
+    width: 100%;
+  }
+  .workspace {
+    padding: 40px 0 56px;
+  }
+  .identity-details {
+    flex-direction: column;
+    gap: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
 }

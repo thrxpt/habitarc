@@ -1,6 +1,6 @@
 # F01 — Accounts and authorization
 
-Status: accepted contract baseline following Q25. Implementation and all verification are PLANNED.
+Status: accepted contract baseline following Q25. Implemented locally with real-PostgreSQL integration, rendered-form, and running TanStack HTTP tests; see [operator and verification instructions](../../auth.md). Live Cloud Run deployment and its actual proxy/IP chain remain unverified.
 
 Sprint 1. FR-01–02, BR-01/07, NFR-01/07. No feature prerequisites. Deliver secure provisioning, login/logout/current identity, and reusable server-side role/ownership checks. Owner A; teammate B reviews and attempts misuse. The Better Auth compatibility/provisioning spike is an early gate.
 

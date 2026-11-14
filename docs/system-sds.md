@@ -1,6 +1,6 @@
 # Habitarc System-Level SDS
 
-Status: accepted implementation design following user confirmation of Q25. This document does not claim these components exist or that the integration spike has passed. The inspected repository contains only the TanStack Start starter.
+Status: accepted implementation design following user confirmation of Q25. F01 authentication is implemented locally with Better Auth, Drizzle, and PostgreSQL; see [authentication and verification instructions](auth.md). Other feature components and cloud deployment remain planned until their own implementation and verification.
 
 Read the [SRS](srs.md), [feature inventory](features.md), [traceability matrix](traceability.md), and [sprint contracts](sprints/README.md) alongside this system-level design.
 
@@ -20,7 +20,7 @@ Browser input never determines role, owner, trusted current date, or derived tot
 
 ## Authentication design
 
-Use Better Auth with its PostgreSQL adapter and documented TanStack Start integration, subject to an early compatibility spike against the installed toolchain. This adds a maintained dependency instead of implementing password/session cryptography. Pin the selected version; no compatibility claim is established by this plan.
+Use Better Auth 1.7.23 with its Drizzle PostgreSQL adapter and documented TanStack Start integration. Drizzle owns the shared schema, application queries, and versioned migrations, with `pg` as the connection driver and adapter transactions explicitly enabled; [ADR 0004](adr/0004-shared-drizzle-persistence.md) records this choice. Local real-PostgreSQL integration and running TanStack HTTP tests exercise compatibility with the installed toolchain; production ingress verification remains a deployment gate. Better Auth owns password/session cryptography.
 
 - Mount the library handler at `/api/auth/$`. Use its client for login/logout so handler-level security and rate limiting run.
 - Enable email/password login and disable signup in the serving configuration. No recovery/invitation/admin plugin endpoints are part of this release.
