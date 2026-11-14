@@ -4,15 +4,16 @@ Private study and movement workspaces for pre-provisioned Participants and Progr
 
 ## Local setup
 
-Use the repository’s pinned Vite+ toolchain and a running PostgreSQL 17 instance.
+Use the repository’s pinned Vite+ toolchain and Docker Compose. Compose runs PostgreSQL 17 on `127.0.0.1:55432` and creates the development database `habitarc` and test database `habitarc_auth_test`.
 
 ```sh
 vp install
 cp .env.example .env.local
 chmod 600 .env.local
+docker compose up -d --wait postgres
 ```
 
-Edit `.env.local`: point `DATABASE_URL` at your development database and privately set `BETTER_AUTH_SECRET` to a generated random secret of at least 32 characters. The application and operator commands load this ignored file using Node’s environment-file support; exported environment variables take precedence. Keep the origin exactly `http://localhost:3000` when using the development command.
+Edit `.env.local`: the example database URLs already match Compose. Privately set `BETTER_AUTH_SECRET` to a generated random secret of at least 32 characters. The application and operator commands load this ignored file using Node’s environment-file support; exported environment variables take precedence. Keep the origin exactly `http://localhost:3000` when using the development command.
 
 ```sh
 vp run db:migrate
@@ -33,14 +34,20 @@ vp test
 vp run build
 ```
 
-A local disposable test server can be started with:
+Start PostgreSQL with Compose before running the suite:
 
 ```sh
-docker run --name habitarc-postgres-test -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=habitarc_auth_test -p 127.0.0.1:55432:5432 -d postgres:17-alpine
+docker compose up -d --wait postgres
 export TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test
 vp test
 ```
 
-This loopback-only container uses trust authentication for disposable local tests. Production uses private database credentials and Cloud SQL. Create a separate development database before running the application’s migrations and provisioning commands.
+Compose binds PostgreSQL to loopback and uses trust authentication for local development and tests. Production uses private database credentials and Cloud SQL. The named volume preserves local databases across container restarts and `docker compose down`; start again with `docker compose up -d --wait postgres`. The initialization SQL runs only when that volume is first created. Application schema migrations remain an explicit `vp run db:migrate` step.
+
+Stop the local service with:
+
+```sh
+docker compose down
+```
 
 Export `TEST_DATABASE_URL` in the test shell; the test runner intentionally does not load `.env.local`. The suite covers real PostgreSQL, independent authentication instances/pools, operator commands, rendered forms, and the running TanStack HTTP application. The production build checks client/server separation; it does not deploy cloud resources.
