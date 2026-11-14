@@ -31,8 +31,10 @@ export const Route = createFileRoute("/")({
   },
   component: Home,
   errorComponent: () => (
-    <main className="workspace">
-      <h1>We couldn’t load your workspace</h1>
+    <main className="compact:pt-10 compact:pb-14 flex-1 pt-16 pb-20">
+      <h1 className="font-heading mb-6 text-[clamp(38px,4.5vw,62px)] leading-[1.12] font-normal tracking-[-0.035em] text-balance">
+        We couldn’t load your workspace
+      </h1>
       <p>Please try again in a moment.</p>
       <a href="/">Reload Habitarc</a>
     </main>

@@ -76,10 +76,17 @@ export const AccountScreen = ({
   };
 
   return (
-    <div className="app-shell">
-      <header className="site-header">
-        <a className="wordmark" href="/" aria-label="Habitarc home">
-          habitarc<span aria-hidden="true">.</span>
+    <div className="compact:px-6 mx-auto flex min-h-svh max-w-[1240px] flex-col px-12">
+      <header className="compact:min-h-22 flex min-h-28 items-center justify-between gap-6 border-b">
+        <a
+          className="text-3xl leading-normal font-[750] tracking-[-0.04em] no-underline"
+          href="/"
+          aria-label="Habitarc home"
+        >
+          habitarc
+          <span className="text-ring" aria-hidden="true">
+            .
+          </span>
         </a>
         {identity && (
           <Button
@@ -96,41 +103,61 @@ export const AccountScreen = ({
         )}
       </header>
       <main
-        className={cn(identity && "workspace", !identity && "sign-in-layout")}
+        className={cn(
+          "flex-1",
+          identity
+            ? "compact:pt-10 compact:pb-14 pt-16 pb-20"
+            : "compact:grid-cols-1 compact:gap-10 compact:pt-11 compact:pb-14 grid grid-cols-[1fr_400px] items-center gap-[clamp(48px,7vw,112px)] pt-18 pb-24"
+        )}
       >
         {identity ? (
           <>
-            <h1>
+            <h1 className="font-heading mb-6 text-[clamp(38px,4.5vw,62px)] leading-[1.12] font-normal tracking-[-0.035em] text-balance">
               {identity.role === "participant"
                 ? "Your workspace"
                 : "Activity Templates"}
             </h1>
-            <p className="intro">Welcome, {identity.name}.</p>
-            <dl className="identity-details">
+            <p className="text-muted-foreground mb-6 max-w-prose text-xl leading-[1.65]">
+              Welcome, {identity.name}.
+            </p>
+            <dl className="compact:flex-col compact:gap-6 mt-9 flex flex-wrap gap-x-14 gap-y-7 border-y py-7">
               <div>
-                <dt>Signed in as</dt>
-                <dd>{identity.email}</dd>
+                <dt className="text-muted-foreground mb-2 text-sm leading-normal">
+                  Signed in as
+                </dt>
+                <dd className="m-0 text-[17px] leading-normal wrap-anywhere">
+                  {identity.email}
+                </dd>
               </div>
               <div>
-                <dt>Role</dt>
-                <dd>
+                <dt className="text-muted-foreground mb-2 text-sm leading-normal">
+                  Role
+                </dt>
+                <dd className="m-0 text-[17px] leading-normal wrap-anywhere">
                   {identity.role === "participant"
                     ? "Participant"
                     : "Program Manager"}
                 </dd>
               </div>
               <div>
-                <dt>Account Timezone</dt>
-                <dd>{identity.timezone}</dd>
+                <dt className="text-muted-foreground mb-2 text-sm leading-normal">
+                  Account Timezone
+                </dt>
+                <dd className="m-0 text-[17px] leading-normal wrap-anywhere">
+                  {identity.timezone}
+                </dd>
               </div>
             </dl>
-            <section className="workspace-note" aria-label="Workspace overview">
-              <h2>
+            <section
+              className="mt-12 max-w-160"
+              aria-label="Workspace overview"
+            >
+              <h2 className="mb-3 text-[23px] leading-[1.3] font-[650]">
                 {identity.role === "participant"
                   ? "A place for your routines"
                   : "Shared activities start here"}
               </h2>
-              <p>
+              <p className="text-muted-foreground mb-6 max-w-prose leading-[1.65]">
                 {identity.role === "participant"
                   ? "Your workspace is private. Your study and movement routines will live here."
                   : "Your workspace is for maintaining Activity Templates. Participants’ personal tracking histories stay private."}
@@ -144,22 +171,29 @@ export const AccountScreen = ({
           </>
         ) : (
           <>
-            <div className="welcome-copy">
-              <h1>
+            <div>
+              <h1 className="font-heading compact:text-[clamp(36px,7vw,48px)] mb-6 text-[clamp(38px,4.5vw,62px)] leading-[1.12] font-normal tracking-[-0.035em] text-balance">
                 Make room for
                 <br />a steady routine.
               </h1>
-              <p className="intro">
+              <p className="text-muted-foreground compact:mb-0 compact:text-lg mb-6 max-w-prose text-xl leading-[1.65]">
                 A little study. A little movement.
                 <br />A space to keep track of your effort.
               </p>
             </div>
             <section
-              className="sign-in-panel"
+              className="border-primary compact:w-full compact:max-w-120 border-t-3 pt-7"
               aria-labelledby="sign-in-heading"
             >
-              <h2 id="sign-in-heading">Sign in to Habitarc</h2>
-              <p>Use the account provided by your program.</p>
+              <h2
+                id="sign-in-heading"
+                className="mb-3 text-[23px] leading-[1.3] font-[650]"
+              >
+                Sign in to Habitarc
+              </h2>
+              <p className="text-muted-foreground mb-6 max-w-prose leading-[1.65]">
+                Use the account provided by your program.
+              </p>
               <form
                 onSubmit={(event) => {
                   void signIn(event);
@@ -199,14 +233,16 @@ export const AccountScreen = ({
                   </Button>
                 </FieldGroup>
               </form>
-              <p className="account-help">
+              <p className="text-muted-foreground mt-4 mb-6 max-w-prose text-sm leading-[1.65]">
                 Need help with your account? Contact your program’s organizer.
               </p>
             </section>
           </>
         )}
       </main>
-      <footer className="site-footer">Small steps, at your own pace.</footer>
+      <footer className="text-muted-foreground border-t py-6 text-sm leading-normal">
+        Small steps, at your own pace.
+      </footer>
     </div>
   );
 };
