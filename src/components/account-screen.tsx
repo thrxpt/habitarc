@@ -1,6 +1,12 @@
 import { useState } from "react";
 import type { SubmitEvent } from "react";
 
+import { Alert, AlertDescription } from "#components/ui/alert.tsx";
+import { Button } from "#components/ui/button.tsx";
+import { Field, FieldGroup, FieldLabel } from "#components/ui/field.tsx";
+import { Input } from "#components/ui/input.tsx";
+import { cn } from "#lib/utils.ts";
+
 import { authClient } from "../auth-client";
 import type { Identity } from "../identity";
 
@@ -76,8 +82,9 @@ export const AccountScreen = ({
           habitarc<span aria-hidden="true">.</span>
         </a>
         {identity && (
-          <button
-            className="secondary-button"
+          <Button
+            variant="outline"
+            size="lg"
             disabled={pending}
             onClick={() => {
               void signOut();
@@ -85,10 +92,12 @@ export const AccountScreen = ({
             type="button"
           >
             {pending ? "Signing out…" : "Sign out"}
-          </button>
+          </Button>
         )}
       </header>
-      <main className={identity ? "workspace" : "sign-in-layout"}>
+      <main
+        className={cn(identity && "workspace", !identity && "sign-in-layout")}
+      >
         {identity ? (
           <>
             <h1>
@@ -128,9 +137,9 @@ export const AccountScreen = ({
               </p>
             </section>
             {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
+              <Alert variant="destructive" className="mt-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
           </>
         ) : (
@@ -157,36 +166,38 @@ export const AccountScreen = ({
                 }}
                 aria-busy={pending}
               >
-                <label htmlFor="email">Email</label>
-                <input
-                  autoComplete="username"
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  disabled={pending}
-                />
-                <label htmlFor="password">Password</label>
-                <input
-                  autoComplete="current-password"
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  disabled={pending}
-                />
-                {error && (
-                  <p className="form-error" role="alert">
-                    {error}
-                  </p>
-                )}
-                <button
-                  className="primary-button"
-                  disabled={pending}
-                  type="submit"
-                >
-                  {pending ? "Signing in…" : "Sign in"}
-                </button>
+                <FieldGroup className="mt-6">
+                  <Field data-disabled={pending}>
+                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <Input
+                      autoComplete="username"
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      disabled={pending}
+                    />
+                  </Field>
+                  <Field data-disabled={pending}>
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <Input
+                      autoComplete="current-password"
+                      id="password"
+                      name="password"
+                      type="password"
+                      required
+                      disabled={pending}
+                    />
+                  </Field>
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                  <Button size="lg" disabled={pending} type="submit">
+                    {pending ? "Signing in…" : "Sign in"}
+                  </Button>
+                </FieldGroup>
               </form>
               <p className="account-help">
                 Need help with your account? Contact your program’s organizer.

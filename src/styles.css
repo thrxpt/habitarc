@@ -1,13 +1,46 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
-  color: #183d31;
-  background: #f7f5ed;
+  --background: #f7f5ed;
+  --foreground: #183d31;
+  --card: #fffef9;
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: #245943;
+  --primary-foreground: #fffef9;
+  --secondary: #e8eddf;
+  --secondary-foreground: var(--foreground);
+  --muted: #e8eddf;
+  --muted-foreground: #456052;
+  --accent: #d1dfc5;
+  --accent-foreground: var(--foreground);
+  --destructive: #9a3028;
+  --border: #d7dccd;
+  --input: #7d8d7c;
+  --ring: #9b570f;
+  --chart-1: #245943;
+  --chart-2: #456052;
+  --chart-3: #7d8d7c;
+  --chart-4: #9b570f;
+  --chart-5: #9a3028;
+  --radius: 0.375rem;
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  accent-color: #245943;
-  caret-color: #245943;
+  accent-color: var(--primary);
+  caret-color: var(--primary);
 }
 
 * {
@@ -16,28 +49,17 @@
 body {
   margin: 0;
 }
-button,
-input {
-  font: inherit;
-}
 a {
   color: inherit;
   text-underline-offset: 0.2em;
 }
-button {
-  cursor: pointer;
-}
-button:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
 :focus-visible {
-  outline: 3px solid #9b570f;
+  outline: 3px solid var(--ring);
   outline-offset: 4px;
 }
 ::selection {
-  background: #d1dfc5;
-  color: #183d31;
+  background: var(--accent);
+  color: var(--foreground);
 }
 .app-shell {
   max-width: 1240px;
@@ -53,7 +75,7 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  border-bottom: 1px solid #d7dccd;
+  border-bottom: 1px solid var(--border);
 }
 .wordmark {
   font-size: 30px;
@@ -62,7 +84,7 @@ button:disabled {
   text-decoration: none;
 }
 .wordmark span {
-  color: #9b570f;
+  color: var(--ring);
 }
 .sign-in-layout {
   flex: 1;
@@ -72,7 +94,8 @@ button:disabled {
   align-items: center;
   padding: 72px 0 96px;
 }
-h1 {
+.welcome-copy h1,
+.workspace h1 {
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 400;
   font-size: clamp(38px, 4.5vw, 62px);
@@ -81,85 +104,42 @@ h1 {
   margin: 0 0 24px;
   text-wrap: balance;
 }
-h2 {
+.sign-in-panel h2,
+.workspace-note h2 {
   font-size: 23px;
   line-height: 1.3;
   font-weight: 650;
   margin: 0 0 12px;
 }
-p {
+.welcome-copy p,
+.sign-in-panel > p,
+.workspace > .intro,
+.workspace-note p {
   line-height: 1.65;
   margin: 0 0 24px;
   max-width: 65ch;
 }
 .intro {
-  color: #456052;
+  color: var(--muted-foreground);
   font-size: 20px;
   line-height: 1.7;
 }
 .sign-in-panel {
-  border-top: 3px solid #245943;
+  border-top: 3px solid var(--primary);
   padding-top: 28px;
 }
 .sign-in-panel > p {
-  color: #456052;
-}
-form {
-  display: flex;
-  flex-direction: column;
-}
-label {
-  margin: 20px 0 8px;
-  font-size: 15px;
-  font-weight: 600;
-}
-input {
-  width: 100%;
-  min-height: 48px;
-  border: 1px solid #7d8d7c;
-  border-radius: 6px;
-  background: #fffef9;
-  padding: 11px 14px;
-  color: #183d31;
-}
-.primary-button,
-.secondary-button {
-  min-height: 46px;
-  border-radius: 6px;
-  padding: 11px 20px;
-  font-weight: 650;
-  transition: background-color 120ms ease-out;
-}
-.primary-button {
-  border: 1px solid #245943;
-  background: #245943;
-  color: #fffef9;
-  margin-top: 28px;
-}
-.primary-button:hover:enabled {
-  background: #183d31;
-}
-.secondary-button {
-  border: 1px solid #7d8d7c;
-  background: transparent;
-}
-.secondary-button:hover:enabled {
-  background: #e8eddf;
+  color: var(--muted-foreground);
 }
 .account-help {
   margin-top: 24px;
   font-size: 14px;
 }
-.form-error {
-  color: #9a3028;
-  font-size: 15px;
-  margin: 16px 0 0;
-}
 .site-footer {
   padding: 24px 0;
-  border-top: 1px solid #d7dccd;
+  border-top: 1px solid var(--border);
   font-size: 14px;
-  color: #456052;
+  color: var(--muted-foreground);
 }
 .workspace {
   flex: 1;
@@ -171,11 +151,11 @@ input {
   gap: 28px 56px;
   padding: 28px 0;
   margin: 36px 0 0;
-  border-top: 1px solid #d7dccd;
-  border-bottom: 1px solid #d7dccd;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 dt {
-  color: #456052;
+  color: var(--muted-foreground);
   font-size: 14px;
   margin-bottom: 8px;
 }
@@ -189,7 +169,7 @@ dd {
   margin-top: 48px;
 }
 .workspace-note p {
-  color: #456052;
+  color: var(--muted-foreground);
 }
 @media (max-width: 800px) {
   .app-shell {
@@ -225,5 +205,98 @@ dd {
 @media (prefers-reduced-motion: reduce) {
   button {
     transition: none;
+  }
+}
+
+@theme inline {
+  --font-heading: Georgia, "Times New Roman", serif;
+  --font-sans: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
   }
 }

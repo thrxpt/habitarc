@@ -23,6 +23,18 @@ vp run dev
 
 Provisioning takes a private JSON array through stdin, with at least two Participants and one Program Manager. It never prints credentials or changes existing accounts. See [authentication and operator instructions](docs/auth.md) for the input format, migrations, production policy, and security boundaries.
 
+## UI components
+
+shadcn/ui uses the Nova style with Base UI primitives. `components.json` configures the CLI, shared components live in `src/components/ui`, and semantic theme tokens in `src/styles.css` retain Habitarc’s palette and fonts. The account screen uses Button, Input, Field, and Alert components.
+
+Add components from the official registry with the project’s Bun runner:
+
+```sh
+bunx --bun shadcn@latest add @shadcn/dialog
+```
+
+Component imports use `#components/ui/<name>.tsx`; shared utilities use `#lib/utils.ts`. Generated components are maintained source and follow the repository’s TypeScript and accessibility rules. Installed agent-skill examples are excluded from application formatting, lint, and type checks.
+
 ## Validation
 
 Set `TEST_DATABASE_URL` to a disposable PostgreSQL database. The database user must be allowed to create databases: integration tests create a uniquely named database and remove only that database afterward. Tests fail when PostgreSQL configuration is missing. Never point tests at a production database.

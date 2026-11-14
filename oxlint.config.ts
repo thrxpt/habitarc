@@ -6,7 +6,7 @@ import tanstack from "ultracite/oxlint/tanstack";
 export default defineConfig({
   env: core.env,
   extends: [core, react, tanstack],
-  ignorePatterns: core.ignorePatterns,
+  ignorePatterns: [...(core.ignorePatterns ?? []), ".agents/**", ".claude/**"],
   jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
   rules: { "vite-plus/prefer-vite-plus-imports": "error" },
 });
