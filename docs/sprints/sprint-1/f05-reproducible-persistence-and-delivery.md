@@ -2,7 +2,7 @@
 
 Status: accepted contract baseline following Q25. The CI portion is implemented, and AC-F05-2 / STS-F05-2 required-check blocking is verified through an actual deliberately failed check; see [CI evidence](../../auth.md#github-ci-evidence). Container image creation, GCP deployment, and the remaining system/operational verification are PLANNED. This partial CI result does not establish release acceptance.
 
-Sprint 1 and Lab 5. FR-12, NFR-06–08. Infrastructure work begins alongside F01; release acceptance depends on F01–F04. Owner B for deployment, A for migrations/verification; each reviews the other's work.
+Sprint 1 and Lab 5, with Lab 5 submission extended to **November 22, 2026**, as confirmed by the user on November 15. Deliverable 1 remains due November 15; F05 acceptance criteria remain unchanged. FR-12, NFR-06–08. Infrastructure work begins alongside F01; release acceptance depends on F01–F04. Owner B for deployment, A for migrations/verification; each reviews the other's work.
 
 Read the [SRS](../../srs.md), [System-Level SDS](../../system-sds.md), [feature inventory](../../features.md), [traceability matrix](../../traceability.md), [sprint plan](../plan.md), and [shared verification and Definition of Done](../README.md).
 

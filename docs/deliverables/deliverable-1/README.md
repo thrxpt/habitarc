@@ -19,6 +19,8 @@ Team: 67070501063 Theeraphat Jaingam and 67070501058 Chanya Poolketkij. Context:
 
 ## Remaining handoff gates
 
+Execution order: integrate reviewed PR #31, accept the local release through draft PR #32, then update PR #30 against the latest staging base for Lab 5. Lab 5 is due November 22, 2026; live GCP delivery does not block the November 15 local Deliverable 1 checkpoint. The [teammate acceptance record](acceptance.md) gives the remaining checks and required actual-result fields.
+
 1. Teammate reviews this preparation and its F02 cursor correction, then integrates it into `sprint-1` through the PR. Preserve review findings/fixes in the actual history.
 2. Teammate follows clean README setup/migration/private account generation, confirms safe repeated setup and saved retrieval, and records expected/actual outcomes under issue #9. Current tests were executed by an agent and do not replace that acceptance.
 3. Review and merge the staging release into `main`, retain an immutable release reference/tag, run the complete commands on that version, and refresh Part F/board/snapshot/source manifest/metadata/PDF. No accepted main release currently exists in this package. Do not point `acceptedReleaseCommit` at an unreviewed candidate to remove the PENDING label.

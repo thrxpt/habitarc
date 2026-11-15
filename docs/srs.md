@@ -78,6 +78,7 @@ No high-availability SLA is promised for the single-zone course deployment. Cred
 - ADR 0001 freezes used template measurements; ADR 0003 preserves effective-dated goals. These prevent later maintenance from rewriting the meaning of private history.
 - ADR 0002 chooses Cloud Run/ordinary Cloud SQL within the existing trial budget. Actual project, costs, ingress, backup/restore, and grading access require later operational verification. No cloud success is assumed here.
 - The planning record reports the user's Deliverable 1 deadline correction to November 15, 2026. The original reference still says November 8; it remains unchanged. Course deadline timezone and later lab handouts need current course confirmation.
+- On November 15, the user separately extended Lab 5 to November 22, 2026. Deliverable 1 and all other deadlines remain unchanged. This moves cloud delivery's checkpoint without changing its acceptance criteria.
 - Later features F06–F12 remain allocated rather than silently removed. Cloud delivery belongs to Lab 5; its incomplete status does not erase the local release and teammate-review requirements for Deliverable 1.
 
 ## Change control
