@@ -53,6 +53,19 @@ const workspace: HabitWorkspace = {
 const sessionChanged = async () => {};
 afterEach(cleanup);
 
+const DESCRIPTION_SEPARATOR = /\s+/u;
+const findMissingDescriptionTargets = (container: HTMLElement): string[] =>
+  [...container.querySelectorAll("[aria-describedby]")].flatMap((element) =>
+    (element.getAttribute("aria-describedby") ?? "")
+      .split(DESCRIPTION_SEPARATOR)
+      .filter(
+        (id) =>
+          id.length > 0 &&
+          // eslint-disable-next-line unicorn/prefer-query-selector -- ARIA references contain literal IDs, not CSS selectors.
+          container.ownerDocument.getElementById(id) === null
+      )
+  );
+
 test("Participant selects a template, starts a weekday Habit above the entry maximum, and sees persisted settings", async () => {
   const create = vi
     .fn<(draft: HabitDraft) => Promise<CreateHabitResult>>()
@@ -97,7 +110,10 @@ test("Participant selects a template, starts a weekday Habit above the entry max
   expect(screen.getByText(/Account date: 2026-11-15/u)).toHaveTextContent(
     "Asia/Bangkok"
   );
-  expect(screen.getByText(/You already have an active Habit/u)).toBeVisible();
+  expect(screen.getByText("Your Habit is saved.")).toBeVisible();
+  expect(
+    screen.queryByText(/You already have an active Habit/u)
+  ).not.toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: "Start Habit" })
   ).not.toBeInTheDocument();
@@ -133,6 +149,40 @@ test.each(["4", "1.5", "1441", "1e2"])(
     ).toHaveAccessibleDescription(/Choose at least one weekday/u);
   }
 );
+
+test("Habit field descriptions reference existing elements before, during, and after validation errors", async () => {
+  const { container } = render(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={workspace}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: /Focused Study/u }));
+  const target = screen.getByLabelText("Daily Target");
+  const monday = screen.getByRole("checkbox", { name: "Monday" });
+  const schedule = screen.getByRole("group", { name: "Schedule" });
+  expect(findMissingDescriptionTargets(container)).toEqual([]);
+  expect(target).toHaveAccessibleDescription(/per scheduled day/u);
+  expect(schedule).toHaveAccessibleDescription(/Choose at least one weekday/u);
+
+  await user.click(screen.getByRole("button", { name: "Start Habit" }));
+  expect(target).toHaveAccessibleDescription(
+    /whole number from 5 to 1,440 minutes/u
+  );
+  expect(monday).toHaveAccessibleDescription(/Choose at least one weekday/u);
+  expect(findMissingDescriptionTargets(container)).toEqual([]);
+
+  await user.type(target, "60");
+  await user.click(monday);
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(findMissingDescriptionTargets(container)).toEqual([]);
+  expect(target).toHaveAccessibleDescription(/per scheduled day/u);
+  expect(schedule).toHaveAccessibleDescription(/Choose at least one weekday/u);
+  expect(monday).not.toHaveAttribute("aria-describedby");
+});
 
 test("a save failure preserves inputs for retry and a concurrent existing Habit shows its actual settings", async () => {
   const create = vi

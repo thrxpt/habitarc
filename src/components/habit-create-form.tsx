@@ -96,7 +96,7 @@ export const HabitCreateForm = ({
       <Alert className="mt-6">
         <AlertDescription>
           <p>
-            {!existingHabit && result?.kind === "created"
+            {result?.kind === "created" && result.habit.id === saved.id
               ? "Your Habit is saved."
               : "You already have an active Habit for this Activity Template."}
           </p>
@@ -138,7 +138,11 @@ export const HabitCreateForm = ({
             value={dailyTarget}
             disabled={pending}
             aria-invalid={Boolean(fieldErrors.dailyTarget)}
-            aria-describedby="habit-target-help habit-target-error"
+            aria-describedby={
+              fieldErrors.dailyTarget === undefined
+                ? "habit-target-help"
+                : "habit-target-help habit-target-error"
+            }
             onChange={(event) => {
               setDailyTarget(event.target.value);
               setFieldErrors((previous) => ({
@@ -159,7 +163,11 @@ export const HabitCreateForm = ({
         </Field>
         <FieldSet
           disabled={pending}
-          aria-describedby="habit-weekdays-help habit-weekdays-error"
+          aria-describedby={
+            fieldErrors.weekdays === undefined
+              ? "habit-weekdays-help"
+              : "habit-weekdays-help habit-weekdays-error"
+          }
         >
           <FieldLegend>Schedule</FieldLegend>
           <FieldDescription id="habit-weekdays-help">
@@ -176,7 +184,11 @@ export const HabitCreateForm = ({
                   id={`habit-day-${day.value}`}
                   checked={weekdays.includes(day.value)}
                   aria-invalid={Boolean(fieldErrors.weekdays)}
-                  aria-describedby="habit-weekdays-error"
+                  aria-describedby={
+                    fieldErrors.weekdays === undefined
+                      ? undefined
+                      : "habit-weekdays-error"
+                  }
                   onCheckedChange={(checked) => {
                     setWeekdays((previous) =>
                       checked

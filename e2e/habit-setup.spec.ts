@@ -87,6 +87,7 @@ test("a Participant starts a private weekday Habit and retrieves it after reload
     await page.getByRole("checkbox", { name: weekday, exact: true }).check();
   }
   await page.getByRole("button", { name: "Start Habit", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Your Habit is saved.");
   const habits = page.getByRole("region", { name: "Your Habits", exact: true });
   await expect(
     habits.getByRole("heading", { name: templateName, exact: true })
