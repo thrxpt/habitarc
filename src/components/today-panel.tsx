@@ -1,3 +1,4 @@
+import { useHydrated } from "@tanstack/react-router";
 import { useState } from "react";
 import type { SubmitEvent } from "react";
 
@@ -303,6 +304,7 @@ const TodayHabitCard = ({
   onToggleForm: () => void;
   onRecordEntry?: (draft: ActivityEntryDraft) => Promise<RecordEntryResponse>;
 }) => {
+  const hydrated = useHydrated();
   const { habit, progress, entries } = item;
   const { template } = habit;
   const { unit } = template;
@@ -380,6 +382,7 @@ const TodayHabitCard = ({
           type="button"
           variant="outline"
           size="sm"
+          disabled={!hydrated}
           aria-expanded={isFormOpen}
           onClick={onToggleForm}
         >
