@@ -13,7 +13,7 @@ Before authorizing resource creation, record these facts with dates and source l
 | Region and quota | Supported common Cloud Run/Cloud SQL region, available regional CPU/SQL quota, Artifact Registry availability |
 | Cost and runway | Current regional estimate for ordinary PostgreSQL compute, 10 GiB SSD, growth up to 20 GiB, seven daily backups, retained logs/PITR, Run CPU/memory/requests, migration jobs, image/artifact storage, Secret Manager, logging, and networking; compare the daily estimate with remaining credit and expiry |
 | Continuity | Instructor's actual grading-access end date; backups, credit and expiry must cover that period; define a teardown date after access ends |
-| Authorization | Record the separate implementation/provisioning authorization required by the parent spec against the reviewed project, region, size and estimate |
+| Authorization | The user's `$implement #8` request authorizes implementation of this ticket within its accepted constraints. Record that request with the reviewed project, region, size and estimate before creating resources |
 
 Read-only starting commands after installing the Google Cloud CLI and signing in:
 
@@ -124,3 +124,33 @@ The prior required-check failure is already genuine: [PR #25](https://github.com
 | Production image/entrypoint | Local image execution recorded after validation; no deployed-release claim |
 | AC-F05-3 deployed identity and record persistence | INCOMPLETE: requires authorized project access, actual release, accounts and live restart/retrieval evidence |
 | AC-F05-4 cost, IAM, backup, migration and rollback review | Implementation/runbook prepared; live configuration, prices, trial balance/expiry and operational review INCOMPLETE |
+
+### Local verification
+
+Executed by **Codex on 2026-11-15 (Asia/Bangkok)** against implementation commit `160e4b6ff2fc5aaa2073a12ee390f2c6516c4915`. The subsequent documentation commit records these results and clarifies authorization; it does not change the tested application, image definition, workflows or scripts.
+
+| Check | Actual result |
+| --- | --- |
+| `vp install` | PASS; pinned Bun 1.4.4 and frozen dependency versions used in the image |
+| `vp check` | PASS; formatting, lint and types, 120 formatted files and 65 lint/type source files |
+| `vp run typecheck` | PASS |
+| `vp exec drizzle-kit check` | PASS |
+| `TEST_DATABASE_URL=… vp test --run --passWithNoTests=false` | PASS; **97 tests in 11 files**, including six release-script tests |
+| `TEST_DATABASE_URL=… vp run test:e2e` | PASS; **4 Chromium tests** |
+| `vp run build`, `vp run build:operators` | PASS; also executed successfully inside the production Docker build |
+| `docker build --build-arg REVISION=160e4b6ff2fc5aaa2073a12ee390f2c6516c4915 --tag habitarc:verify .` | PASS; Linux ARM64 local image |
+| `vp run test:image` on that image | PASS; **1 full image/HTTP/database lifecycle test**, final run at 21:18 Asia/Bangkok |
+| Actionlint 1.7.12 on both workflows | PASS; shellcheck integration disabled because shellcheck was unavailable |
+| `bash -n scripts/deploy.sh`, `git diff --check` | PASS |
+
+The exported image archive's actual OCI configuration contains revision label `160e4b6ff2fc5aaa2073a12ee390f2c6516c4915` and source `https://github.com/thrxpt/habitarc`. Its local image configuration ID is `sha256:f479397e7f0a64e5c5db46aa2f04211cc6a6a42e218553ec925006b2bc23e087`; this is **not** a published Artifact Registry digest. CI's Linux AMD64 build and the updated GitHub workflow remain unexecuted remotely. The new image test first failed against the absent image before the Dockerfile was implemented; that observed red run was uncommitted, and no historical test-only commit is claimed.
+
+The release-script tests substitute only external cloud/container/HTTP CLIs. They verify migration failure prevents staging/promotion, candidate failure preserves traffic, successful ordering records immutable identity, and invalid secret versions/origins/regions fail before cloud mutations. They do not verify GCP permissions or command execution against a live project. The image test uses the real Docker image, PostgreSQL and HTTP boundary.
+
+### Standards review
+
+Independent Codex subagent review of `git diff 0f24d8fec1f26676ce510f7aafa4fc4468ee43f1...160e4b6ff2fc5aaa2073a12ee390f2c6516c4915`: no documented-standard violations or actionable baseline-smell findings identified. **0 findings.**
+
+### Spec review
+
+Independent Codex subagent review of the same diff against #8, its parent spec and F05: no additional Spec findings. The tested image is transferred without rebuilding; scoped OIDC identities and a serialized migration job precede staging; failed migration/candidate checks prevent promotion. Bootstrap covers separate database roles, secret access, first-service public access and compatible rollback. No scope creep found. Live acceptance remains explicitly incomplete. **0 implementation findings; live GCP acceptance outstanding.** These agent reviews do not supply the required student teammate review.

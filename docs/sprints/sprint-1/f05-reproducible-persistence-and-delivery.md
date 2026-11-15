@@ -1,6 +1,6 @@
 # F05 — Reproducible persistence and delivery
 
-Status: accepted contract baseline following Q25. The CI portion is implemented, and AC-F05-2 / STS-F05-2 required-check blocking is verified through an actual deliberately failed check; see [CI evidence](../../auth.md#github-ci-evidence). Production image creation, isolated image verification, and a gated OIDC release workflow are implemented; see [deployment preparation and evidence](../../deployment.md). GCP provisioning/deployment and live system/operational verification remain INCOMPLETE pending project/trial review and separate provisioning authorization. Local image proof does not establish release acceptance.
+Status: accepted contract baseline following Q25. The CI portion is implemented, and AC-F05-2 / STS-F05-2 required-check blocking is verified through an actual deliberately failed check; see [CI evidence](../../auth.md#github-ci-evidence). Production image creation, isolated image verification, and a gated OIDC release workflow are implemented; see [deployment preparation and evidence](../../deployment.md). GCP provisioning/deployment and live system/operational verification remain INCOMPLETE pending project, trial, access and regional cost review. Local image proof does not establish release acceptance.
 
 Sprint 1 and Lab 5. FR-12, NFR-06–08. Infrastructure work begins alongside F01; release acceptance depends on F01–F04. Owner B for deployment, A for migrations/verification; each reviews the other's work.
 
