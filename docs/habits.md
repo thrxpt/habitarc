@@ -38,7 +38,7 @@ Local verification on 2026-11-15: `vp check`, `vp run typecheck`, `vp exec drizz
 
 ## Playwright browser coverage
 
-Run `vp exec playwright install chromium`, then `vp run test:e2e` with `TEST_DATABASE_URL` exported. Playwright owns a separate server on loopback port 4173 and a newly migrated disposable database with generated synthetic credentials. It never reuses a running application. Teardown stops its processes and drops only its generated database.
+Run `vp exec playwright install chromium`, then `vp run test:e2e` with `TEST_DATABASE_URL` in `.env.local` or exported. An exported value takes precedence; no fallback to the development `DATABASE_URL` is used. Playwright owns a separate server on loopback port 4173 and a newly migrated disposable database with generated synthetic credentials. It never reuses a running application. Teardown stops its processes and drops only its generated database.
 
 Three local Chromium tests pass: sign-in remains disabled before hydration with a POST fallback; a Program Manager publishes a 5–45 minute template and Participant A starts target 60 on Monday–Friday, reloads, sees duplicate prevention, switches accounts to check privacy, and signs back in to retrieve the Habit; a Participant corrects invalid target/weekday settings and uses the keyboard to choose every day on a 390px viewport. Account date/start-date assertions use `Asia/Bangkok` despite the browser's `America/Los_Angeles` timezone. These journeys supply local browser evidence for AC-F03-1 and supplementary validation/privacy presentation checks.
 

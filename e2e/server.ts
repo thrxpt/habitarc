@@ -106,7 +106,7 @@ const serve = async (databaseURL: string) => {
 const databaseURL = process.env.TEST_DATABASE_URL;
 if (databaseURL === undefined || databaseURL.length === 0) {
   throw new Error(
-    "TEST_DATABASE_URL is not set. Export a disposable PostgreSQL connection string in this terminal before running test:e2e (see README.md)."
+    "TEST_DATABASE_URL is not set. Add a disposable PostgreSQL connection string to .env.local or export it before running test:e2e (see README.md)."
   );
 }
 

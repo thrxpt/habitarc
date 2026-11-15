@@ -70,19 +70,24 @@ Stop the local service with:
 docker compose down
 ```
 
-Export `TEST_DATABASE_URL` in the test shell; the test runner intentionally does not load `.env.local`. The suite covers real PostgreSQL, independent authentication instances/pools, operator commands, rendered forms, and the running TanStack HTTP application. The production build checks client/server separation; it does not deploy cloud resources.
+Export `TEST_DATABASE_URL` in the test shell for Vitest; that runner does not load `.env.local`. The suite covers real PostgreSQL, independent authentication instances/pools, operator commands, rendered forms, and the running TanStack HTTP application. The production build checks client/server separation; it does not deploy cloud resources.
 
 ### Playwright browser tests
 
-With PostgreSQL running, export `TEST_DATABASE_URL` in the same terminal, install Chromium once, and run:
+With PostgreSQL running, set `TEST_DATABASE_URL` in the repository's ignored `.env.local`:
+
+```dotenv
+TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test
+```
+
+Install Chromium once, then run the browser suite:
 
 ```sh
-export TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test
 vp exec playwright install chromium
 vp run test:e2e
 ```
 
-With that variable exported, `bun test:e2e` also runs the browser suite. The Playwright setup does not load `.env.local` itself. A missing `TEST_DATABASE_URL` fails before server startup with an explicit configuration error.
+`bun test:e2e` also runs the browser suite. Playwright reads only `TEST_DATABASE_URL` from `.env.local`; an explicitly exported value takes precedence, including in CI. It never substitutes the development `DATABASE_URL`. If neither source supplies a nonempty value, setup fails before server startup with an explicit configuration error.
 
 The runner starts its own application on `http://127.0.0.1:4173`, creates a uniquely named disposable database, applies migrations, and provisions two Participants and a Program Manager with a generated test password. Teardown stops the server and removes only that database. Port 4173 must be free; an existing application is never reused. No private credential file or development accounts are needed.
 

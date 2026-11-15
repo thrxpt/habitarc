@@ -1,8 +1,18 @@
 import { randomBytes } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 
 import { defineConfig, devices } from "@playwright/test";
 
 import { E2E_ORIGIN } from "./e2e/accounts";
+
+const localEnvFile = new URL(".env.local", import.meta.url);
+if (process.env.TEST_DATABASE_URL === undefined && existsSync(localEnvFile)) {
+  const { TEST_DATABASE_URL } = parseEnv(readFileSync(localEnvFile, "utf-8"));
+  if (TEST_DATABASE_URL !== undefined) {
+    process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
+  }
+}
 
 process.env.HABITARC_E2E_PASSWORD ??= randomBytes(24).toString("base64url");
 
