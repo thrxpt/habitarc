@@ -1,7 +1,7 @@
 {
-  "capturedAt": "2026-11-15T15:15:32.443914+00:00",
+  "capturedAt": "2026-11-15T16:40:05.426334+00:00",
   "repository": "https://github.com/thrxpt/habitarc",
-  "testedApplicationCommit": "0f24d8fec1f26676ce510f7aafa4fc4468ee43f1",
+  "testedApplicationCommit": "9be6a80041c732cac97e20b87c83dfe8153f42ce",
   "pullRequests": [
     {
       "author": {
@@ -11,39 +11,8 @@
         "name": "Theeraphat Jaingam"
       },
       "baseRefName": "sprint-1",
-      "commits": [
-        {
-          "authoredDate": "2026-11-14T04:13:10Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T04:13:10Z",
-          "messageBody": "",
-          "messageHeadline": "docs: establish accepted three-sprint product baseline",
-          "oid": "07f143a376e8401c9c8a53566fc6dbabe60bc796"
-        },
-        {
-          "authoredDate": "2026-11-14T05:51:39Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T05:51:39Z",
-          "messageBody": "",
-          "messageHeadline": "docs: align planning artifacts with course layout",
-          "oid": "03f2d40c3a112f1e665e0ccc02823070bae79de7"
-        }
-      ],
       "headRefName": "docs/three-sprint-plan",
+      "headRefOid": "03f2d40c3a112f1e665e0ccc02823070bae79de7",
       "mergeCommit": {
         "oid": "89fa4b8e38705ec636d8411e85c09f1993fdbc2b"
       },
@@ -66,6 +35,7 @@
           }
         }
       ],
+      "state": "MERGED",
       "title": "docs: establish accepted three-sprint product baseline",
       "url": "https://github.com/thrxpt/habitarc/pull/23"
     },
@@ -77,264 +47,8 @@
         "name": "Theeraphat Jaingam"
       },
       "baseRefName": "sprint-1",
-      "commits": [
-        {
-          "authoredDate": "2026-11-14T07:39:33Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T07:45:48Z",
-          "messageBody": "Implement #4 with private account provisioning, PostgreSQL-backed sessions and throttling, server-owned identity, and Participant and Program Manager workspaces.",
-          "messageHeadline": "feat(auth): secure provisioned workspaces with Drizzle",
-          "oid": "41e0494c09bd54b53727bbb9669336f81aae4a5b"
-        },
-        {
-          "authoredDate": "2026-11-14T07:52:23Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T07:52:23Z",
-          "messageBody": "",
-          "messageHeadline": "chore(db): use Docker Compose for local PostgreSQL",
-          "oid": "40522fb1b774f6a8e5a840401b72757d1f2dd761"
-        },
-        {
-          "authoredDate": "2026-11-14T07:55:01Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T07:55:01Z",
-          "messageBody": "",
-          "messageHeadline": "chore(skills): add Better Auth guidance",
-          "oid": "077fa7f4c81853019cd7f032eda02e513dcfabf6"
-        },
-        {
-          "authoredDate": "2026-11-14T08:18:16Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T08:18:16Z",
-          "messageBody": "",
-          "messageHeadline": "feat(ui): initialize shadcn component foundation",
-          "oid": "7af81317290be2d66b01839247cc337da8046287"
-        },
-        {
-          "authoredDate": "2026-11-14T08:22:04Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T08:22:04Z",
-          "messageBody": "",
-          "messageHeadline": "chore(skills): add shadcn guidance",
-          "oid": "fb677289156d853375ad5f268deb6ddce1d7bb2e"
-        },
-        {
-          "authoredDate": "2026-11-14T10:16:51Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T10:16:51Z",
-          "messageBody": "Refs #4",
-          "messageHeadline": "feat(auth): add private local account setup",
-          "oid": "2a63901e38ac1d540f0d084909f1c43671abba7b"
-        },
-        {
-          "authoredDate": "2026-11-14T10:54:30Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T10:54:30Z",
-          "messageBody": "",
-          "messageHeadline": "refactor(ui): use Tailwind for page styling",
-          "oid": "3c62c1701e4c1410ac970b3369ec7c659cf2c845"
-        },
-        {
-          "authoredDate": "2026-11-14T11:00:36Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T11:00:36Z",
-          "messageBody": "",
-          "messageHeadline": "fix(ui): mark invalid sign-in fields",
-          "oid": "805fd6bd423b136f5d675a49ec8c169cba18cefe"
-        },
-        {
-          "authoredDate": "2026-11-14T11:09:50Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T11:09:50Z",
-          "messageBody": "",
-          "messageHeadline": "fix(ui): distinguish focus with softer green",
-          "oid": "b819abe6571fac25b3b33f9b454dcbde875f198e"
-        },
-        {
-          "authoredDate": "2026-11-14T11:50:00Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T11:50:00Z",
-          "messageBody": "Refs #8",
-          "messageHeadline": "ci: validate pull requests with PostgreSQL",
-          "oid": "0b0cebc0de31b4d4f02f805e4c9cfde1eb7b8f25"
-        },
-        {
-          "authoredDate": "2026-11-14T15:30:41Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T15:30:41Z",
-          "messageBody": "",
-          "messageHeadline": "refactor(db): name migration advisory lock",
-          "oid": "1f484bf644217da5a1b8bd39b0944558cadba8cc"
-        },
-        {
-          "authoredDate": "2026-11-14T15:32:47Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T15:32:47Z",
-          "messageBody": "",
-          "messageHeadline": "docs(auth): refresh verification evidence",
-          "oid": "a57a670e50f2b5ef2625edf56ed444d9ae3f2b79"
-        },
-        {
-          "authoredDate": "2026-11-14T15:47:15Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T15:47:15Z",
-          "messageBody": "",
-          "messageHeadline": "refactor(auth): address optional review feedback",
-          "oid": "e08f732d454afad34a9d317ff869755ea74ce940"
-        },
-        {
-          "authoredDate": "2026-11-14T15:49:35Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T15:49:35Z",
-          "messageBody": "",
-          "messageHeadline": "docs(auth): record review cleanup verification",
-          "oid": "de850fdfed9b6efb11f4b01ed789673454877fa3"
-        },
-        {
-          "authoredDate": "2026-11-14T17:08:55Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T17:08:55Z",
-          "messageBody": "",
-          "messageHeadline": "fix(auth): resolve latest review findings",
-          "oid": "0e8cd31cb2c9999eb167c310b6053435a553015f"
-        },
-        {
-          "authoredDate": "2026-11-14T17:11:20Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T17:11:20Z",
-          "messageBody": "",
-          "messageHeadline": "docs(auth): refresh reviewed verification evidence",
-          "oid": "d2f8627216d891d39947fafbf3aa93fd9bd868a3"
-        },
-        {
-          "authoredDate": "2026-11-14T17:21:22Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T17:21:22Z",
-          "messageBody": "",
-          "messageHeadline": "chore(ui): retain Lucide for future components",
-          "oid": "c2aa7a4110fe88fae60eb9f40c5648d4128e281e"
-        }
-      ],
       "headRefName": "feat/auth-workspaces",
+      "headRefOid": "c2aa7a4110fe88fae60eb9f40c5648d4128e281e",
       "mergeCommit": {
         "oid": "e00dd69117b77d232c73c048a64176d3afb5f1eb"
       },
@@ -387,6 +101,7 @@
           }
         }
       ],
+      "state": "MERGED",
       "title": "feat(auth): secure provisioned role workspaces",
       "url": "https://github.com/thrxpt/habitarc/pull/24"
     },
@@ -398,114 +113,8 @@
         "name": "chanya poolketkij"
       },
       "baseRefName": "sprint-1",
-      "commits": [
-        {
-          "authoredDate": "2026-11-14T19:35:17Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-14T19:35:17Z",
-          "messageBody": "Implements F02 (AC-F02-1, AC-F02-2, AC-F02-3) for #5.",
-          "messageHeadline": "feat(templates): create and browse Activity Templates",
-          "oid": "397c400733eefd0a7ed2dd7c57d8018d1a947a71"
-        },
-        {
-          "authoredDate": "2026-11-14T19:43:53Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-14T19:43:53Z",
-          "messageBody": "",
-          "messageHeadline": "style: format Activity Template files",
-          "oid": "2746c988e002b0b124a1524f68a9571a40dd538b"
-        },
-        {
-          "authoredDate": "2026-11-14T19:47:34Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-14T19:47:34Z",
-          "messageBody": "",
-          "messageHeadline": "style: format src/templates.ts for oxfmt",
-          "oid": "efc91a0c154ad4e9872d6874dc3a97dce3473763"
-        },
-        {
-          "authoredDate": "2026-11-14T19:54:59Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-14T19:54:59Z",
-          "messageBody": "",
-          "messageHeadline": "fix: resolve lint errors across Activity Template files",
-          "oid": "9a2ddaa4ede67c2d58bea2a82261011dab4ba2c9"
-        },
-        {
-          "authoredDate": "2026-11-14T19:57:17Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-14T19:57:17Z",
-          "messageBody": "",
-          "messageHeadline": "fix: mark promise-returning map callback async",
-          "oid": "579789a390826f27527de1a944c8f270c7e4f77b"
-        },
-        {
-          "authoredDate": "2026-11-14T21:16:14Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-14T21:16:14Z",
-          "messageBody": "",
-          "messageHeadline": "feat(templates): add bounded pagination and share schema check constants",
-          "oid": "367436248d331bdb3790e6351035433d010e932e"
-        },
-        {
-          "authoredDate": "2026-11-14T21:21:04Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-14T21:21:04Z",
-          "messageBody": "",
-          "messageHeadline": "fix: satisfy no-negated-condition lint rule in Home route",
-          "oid": "bbee3c3d3f7e45222f831ef1a65707e6a210641d"
-        }
-      ],
       "headRefName": "feat/activity-templates",
+      "headRefOid": "bbee3c3d3f7e45222f831ef1a65707e6a210641d",
       "mergeCommit": {
         "oid": "b63a7b12d918e5abf843fe153604799f67c799f6"
       },
@@ -558,6 +167,7 @@
           }
         }
       ],
+      "state": "MERGED",
       "title": "feat(templates): create and browse Activity Templates",
       "url": "https://github.com/thrxpt/habitarc/pull/26"
     },
@@ -569,84 +179,8 @@
         "name": "Theeraphat Jaingam"
       },
       "baseRefName": "sprint-1",
-      "commits": [
-        {
-          "authoredDate": "2026-11-14T22:35:54Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-14T22:35:54Z",
-          "messageBody": "",
-          "messageHeadline": "feat(habits): start scheduled habits from templates (#6)",
-          "oid": "5d93c3194d06778da38b4124344fb08c2cce6ad5"
-        },
-        {
-          "authoredDate": "2026-11-15T07:51:17Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-15T07:51:17Z",
-          "messageBody": "Run isolated Chromium journeys in CI. Gate sign-in on hydration and use POST to prevent native GET submission before client handlers attach.",
-          "messageHeadline": "test(e2e): cover habit setup with Playwright",
-          "oid": "743b2a660ab935c6db6d2628f4165d744bd3997f"
-        },
-        {
-          "authoredDate": "2026-11-15T08:03:00Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-15T08:03:00Z",
-          "messageBody": "The generic startup catch masked an unset TEST_DATABASE_URL. Validate it before starting the server and document the export required by both Bun and Vite+.",
-          "messageHeadline": "fix(e2e): report missing test database configuration",
-          "oid": "2b7b1f33c4cafe4946821d77617c00acb731f3d6"
-        },
-        {
-          "authoredDate": "2026-11-15T08:08:50Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-15T08:08:50Z",
-          "messageBody": "",
-          "messageHeadline": "fix(e2e): load test database URL from local environment file",
-          "oid": "5cbc7bc0e3b6f847f31d78ab21b385a5d791c6df"
-        },
-        {
-          "authoredDate": "2026-11-15T09:47:51Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-15T09:47:51Z",
-          "messageBody": "Keep the created result visible after workspace refresh and reference field error descriptions only while they exist. Cover both review blockers with component and browser regressions.",
-          "messageHeadline": "fix(habits): preserve save confirmation and valid descriptions",
-          "oid": "865310fa58e194ede20a4a8b511ebccd57d29f77"
-        }
-      ],
       "headRefName": "feat/scheduled-habits",
+      "headRefOid": "865310fa58e194ede20a4a8b511ebccd57d29f77",
       "mergeCommit": {
         "oid": "0a40e39e2dfc9568f012e44a01888bc9849b9263"
       },
@@ -684,6 +218,7 @@
           }
         }
       ],
+      "state": "MERGED",
       "title": "feat(habits): start scheduled habits from activity templates",
       "url": "https://github.com/thrxpt/habitarc/pull/27"
     },
@@ -695,69 +230,8 @@
         "name": "chanya poolketkij"
       },
       "baseRefName": "sprint-1",
-      "commits": [
-        {
-          "authoredDate": "2026-11-15T13:04:59Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-15T13:04:59Z",
-          "messageBody": "\u2026gress",
-          "messageHeadline": "feat(entries): record activity entries and show trustworthy Today pro\u2026",
-          "oid": "f7502b82ad5e9a5ae917003922767448c10471a1"
-        },
-        {
-          "authoredDate": "2026-11-15T13:19:31Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-15T13:19:31Z",
-          "messageBody": "\u2026parallel CI load",
-          "messageHeadline": "test(auth): raise timeout for multi-process operator CLI tests under \u2026",
-          "oid": "79532267304e73e6b254bb2e3e59dcb7903012cb"
-        },
-        {
-          "authoredDate": "2026-11-15T13:36:51Z",
-          "authors": [
-            {
-              "email": "chanya.aa2504@gmail.com",
-              "id": "U_kgDOCqzMPw",
-              "login": "chanya06",
-              "name": "chanya poolketkij"
-            }
-          ],
-          "committedDate": "2026-11-15T13:36:51Z",
-          "messageBody": "Prevent Playwright or user clicks after page reload from firing on the\nSSR-rendered \"Add entry\" button before React attaches the click handler.",
-          "messageHeadline": "fix(today): disable Add entry toggle until hydration completes",
-          "oid": "454c6a3e5b738b76cd09cb787b4dd4bd925e1a54"
-        },
-        {
-          "authoredDate": "2026-11-15T13:40:33Z",
-          "authors": [
-            {
-              "email": "jain.theera@gmail.com",
-              "id": "U_kgDOBcLgBQ",
-              "login": "thrxpt",
-              "name": "Theeraphat Jaingam"
-            }
-          ],
-          "committedDate": "2026-11-15T13:40:33Z",
-          "messageBody": "",
-          "messageHeadline": "fix(entries): retain uncertain saves when closing entry forms",
-          "oid": "d13929e601dc2fb16af303ff0ecaf173bde2a494"
-        }
-      ],
       "headRefName": "feat/activity-entries",
+      "headRefOid": "d13929e601dc2fb16af303ff0ecaf173bde2a494",
       "mergeCommit": {
         "oid": "0f24d8fec1f26676ce510f7aafa4fc4468ee43f1"
       },
@@ -825,11 +299,110 @@
           }
         }
       ],
+      "state": "MERGED",
       "title": "feat(entries): record activity entries and show trustworthy Today progress",
       "url": "https://github.com/thrxpt/habitarc/pull/28"
+    },
+    {
+      "author": {
+        "id": "U_kgDOBcLgBQ",
+        "is_bot": false,
+        "login": "thrxpt",
+        "name": "Theeraphat Jaingam"
+      },
+      "baseRefName": "sprint-1",
+      "headRefName": "docs/complete-deliverable-one",
+      "headRefOid": "35e628d552093a404e2abdde87e255153639e98e",
+      "mergeCommit": {
+        "oid": "2a41472787e08c57b1f294c0c1e4c5175de549b2"
+      },
+      "mergedAt": "2026-11-15T16:12:05Z",
+      "number": 31,
+      "reviews": [
+        {
+          "id": "PRR_kwDOVtC4X88AAAABYFyrRw",
+          "author": {
+            "login": "chanya06"
+          },
+          "authorAssociation": "COLLABORATOR",
+          "body": "Reviewed `0f24d8f...35e628d`:\n- Verified engineering docs (Parts A\u2013F) and `src/templates.ts` UTC cursor calendar component check (`tests/templates.unit.test.ts`).\n- Confirmed GitHub Actions `CI / Validate` run `43732959599` passed cleanly against PR #31 head `35e628d`.\n- Non-blocking notes for final polish if time permits: extract magic number `19` in `src/templates.ts:271-273`, clean up `$dailyTarget $weekdays $templateId` in `docs/deliverables/deliverable-1/part-f.md`, and add `encoding=\"utf-8\"` in `scripts/deliverable_pdf.py`.\n\nApproving to unblock `sprint-1` \u2192 `main` release integration (`#32`).\n",
+          "submittedAt": "2026-11-15T16:11:24Z",
+          "includesCreatedEdit": false,
+          "reactionGroups": [],
+          "state": "APPROVED",
+          "commit": {
+            "oid": "35e628d552093a404e2abdde87e255153639e98e"
+          }
+        }
+      ],
+      "state": "MERGED",
+      "title": "docs(deliverable): prepare Project Deliverable 1 assessment package",
+      "url": "https://github.com/thrxpt/habitarc/pull/31"
+    },
+    {
+      "author": {
+        "id": "U_kgDOBcLgBQ",
+        "is_bot": false,
+        "login": "thrxpt",
+        "name": "Theeraphat Jaingam"
+      },
+      "baseRefName": "main",
+      "headRefName": "sprint-1",
+      "headRefOid": "2a41472787e08c57b1f294c0c1e4c5175de549b2",
+      "mergeCommit": {
+        "oid": "9be6a80041c732cac97e20b87c83dfe8153f42ce"
+      },
+      "mergedAt": "2026-11-15T16:27:43Z",
+      "number": 32,
+      "reviews": [
+        {
+          "id": "PRR_kwDOVtC4X88AAAABYF2Pfw",
+          "author": {
+            "login": "chanya06"
+          },
+          "authorAssociation": "COLLABORATOR",
+          "body": "Reviewed `7993d06...2a41472` (`sprint-1` \u2192 `main`):\n- Verified GitHub Actions `CI / Validate` passed on the integrated staging head (`2a41472`, runs `43734133090` and `43734128572`).\n- Verified PR #31 assessment package (`Parts A\u2013F`), schema migrations (`drizzle/0000`\u2013`0004`), and core Sprint 1 workflows are integrated on `sprint-1`.\n- Non-blocking follow-ups for after Deliverable 1 / Sprint 2:\n  1. Preserve `fieldErrors` cleanly on server-side `createTemplateFn` validation errors (matching `createHabitFn`/`createEntryFn`).\n  2. Mention Program Manager template publishing in the Participant empty-library message (`src/components/template-library.tsx`).\n  3. Update `readHabits` in `src/server/habits.ts` to resolve the latest effective `goal_revision` (`<= accountDate`, ADR-0003) before F07 goal revisions.\n  4. Replace remaining inline length/bound literals (`1000000`, `128`, `200`, `32`, `19`) with named constants and remove or expose `listEntries`.\n\nApproving release integration into `main` so we can tag the release commit, update final release metadata/PDF for submission, and keep Issue #9 open for clean teammate acceptance + Lab 5 delivery.\n",
+          "submittedAt": "2026-11-15T16:27:21Z",
+          "includesCreatedEdit": false,
+          "reactionGroups": [],
+          "state": "APPROVED",
+          "commit": {
+            "oid": "2a41472787e08c57b1f294c0c1e4c5175de549b2"
+          }
+        }
+      ],
+      "state": "MERGED",
+      "title": "release: prepare Sprint 1 tracking journey for Deliverable 1",
+      "url": "https://github.com/thrxpt/habitarc/pull/32"
+    },
+    {
+      "author": {
+        "id": "U_kgDOBcLgBQ",
+        "is_bot": false,
+        "login": "thrxpt",
+        "name": "Theeraphat Jaingam"
+      },
+      "baseRefName": "sprint-1",
+      "headRefName": "feat/cloud-run-delivery",
+      "headRefOid": "5427ae69a6a214e692c84811d94f51c8910d7016",
+      "mergeCommit": null,
+      "mergedAt": null,
+      "number": 30,
+      "reviews": [],
+      "state": "OPEN",
+      "title": "feat(delivery): prepare tested Cloud Run releases (#8)",
+      "url": "https://github.com/thrxpt/habitarc/pull/30"
     }
   ],
   "issues": [
+    {
+      "assignees": [],
+      "closedAt": null,
+      "number": 3,
+      "state": "OPEN",
+      "title": "Spec: Habitarc habit and activity tracking across three sprints",
+      "url": "https://github.com/thrxpt/habitarc/issues/3"
+    },
     {
       "assignees": [
         {
@@ -908,326 +481,146 @@
     }
   ],
   "board": {
+    "url": "https://github.com/users/thrxpt/projects/13",
+    "capturedAt": "2026-11-15T16:39:17.893357+00:00",
     "items": [
       {
-        "content": {
-          "body": "## Lab 5 deadline update \u2014 user-confirmed November 15, 2026\n\nLab 5 is now due **November 22, 2026**, extended from November 15. Deliverable 1 / Sprint 1 remains due November 15, and Lab 6 remains due November 22; all other deadlines are unchanged. F05 retains its Sprint 1 allocation, with GCP deployment and live delivery verification completed for the revised Lab 5 checkpoint. Repository preparation can be reviewed and integrated before live deployment; the acceptance criteria remain unchanged and #8 stays open until they are satisfied.\n\nThis dated update supersedes the original November 15 Lab 5 deadline in the baseline below; the original wording is retained as planning history.\n\n---\n\n## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nThe secure sign-in/identity journey runs from an immutable Docker image on Cloud Run with Cloud SQL, managed secrets, and a repeatable gated pipeline. This can proceed alongside template and tracking work.\n\nSprint 1. Accepted specification references: AC-F05-2, AC-F05-4.\n\n## Acceptance criteria\n\n- [ ] First verify project access, quotas, current regional costs, remaining $300 general trial credit and expiry. Keep non-upgraded billing; do not use the separate 30-day SQL promotion. Execution requires the separate implementation/provisioning authorization described by the parent spec.\n- [ ] Use ordinary single-zone Cloud SQL PostgreSQL with backups and same-region Cloud Run; keep durable records/sessions outside the container. Initial planning limits: minimum zero and maximum two app instances, at most five DB connections per instance, reviewed for rollout/migration headroom.\n- [ ] Use limited runtime IAM, supported Cloud SQL connectivity, Secret Manager, and GitHub OIDC deployment; never commit secrets/service-account keys. Prove the production entrypoint and stable release identity.\n- [ ] CI installs pinned tooling, checks formatting/lint/types, discovers and runs real tests, builds the app/image, and blocks integration/release on failure. Capture an actual deliberately failed required check on a temporary branch.\n- [ ] Run migrations once in a controlled job, deploy reviewed main as an immutable image, and prove deployed login/current identity/logout and persistent auth setup across app restart. Document cost review, one migration runner, backup configuration and compatible application rollback.\n",
-          "number": 8,
-          "repository": "thrxpt/habitarc",
-          "title": "Deploy signed-in workspaces to GCP through gated CI",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/8"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopZc",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
-        "status": "Ready",
-        "title": "Deploy signed-in workspaces to GCP through gated CI"
+        "number": 8,
+        "title": "Deploy signed-in workspaces to GCP through gated CI",
+        "status": "In review",
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopZc"
       },
       {
-        "assignees": ["chanya06"],
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Participant records multiple sessions toward a Habit and sees server-confirmed Daily Totals and progress on Today after reload, including deliberate identical sessions and safe retries.\n\nSprint 1. Accepted specification references: AC-F04-1, AC-F04-2, AC-F04-3, AC-F04-4, AC-F04-5.\n\n## Acceptance criteria\n\n- [ ] Entries are positive whole numbers inside the used template\u2019s per-entry bounds. Accumulate per Habit/date; totals cannot exceed 1,440 minutes or 1,000,000 counts even under concurrent writes.\n- [ ] Accept today and the preceding six account-calendar dates within the tracking period; reject future, pre-start, older and post-archive dates. Off-schedule activity is retained but creates no completion credit or obligation.\n- [ ] Authenticate/authorize before actor-scoped idempotency receipt lookup. Same key/payload counts once; different payload with the same key conflicts; deliberate separate submissions with identical values remain distinct. Store receipt and mutation atomically.\n- [ ] For target 60, two 25-minute entries show 50; adding 25 shows 75 and 125% with bar fill capped at 100%. Unscheduled dates have no target percentage.\n- [ ] Show pending/error/empty states and never label a lost/failed write saved. Retry a lost response with the same request key. Test real concurrent ceiling writes, midnight/window boundaries, timezone independence, replay, reload and ownership.\n",
-          "number": 7,
-          "repository": "thrxpt/habitarc",
-          "title": "Record Activity Entries and show trustworthy Today progress",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/7"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopXk",
-        "labels": ["ready-for-agent"],
-        "linked pull requests": ["https://github.com/thrxpt/habitarc/pull/28"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 7,
+        "title": "Record Activity Entries and show trustworthy Today progress",
         "status": "Done",
-        "title": "Record Activity Entries and show trustworthy Today progress"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopXk"
       },
       {
-        "assignees": ["thrxpt"],
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Participant selects an active Activity Template, chooses a Daily Target and weekdays, and sees the new Habit persisted with its initial effective-dated goal.\n\nSprint 1. Accepted specification references: AC-F03-1, AC-F03-2, AC-F03-3, AC-F03-4.\n\n## Acceptance criteria\n\n- [ ] Create Habit and initial Goal Revision atomically; start date is today in the fixed Account Timezone. Choose at least one weekday; all seven means every day.\n- [ ] Daily Target is a whole number at least the template minimum and no more than its unit ceiling; it may exceed the per-entry maximum. A 5\u201345 minute template must accept target 60.\n- [ ] Enforce at most one active Habit per Participant/template, including concurrent creates and a prior Habit whose archive begins tomorrow. An already-ended prior Habit permits a fresh one.\n- [ ] Serialize template use against measurement edits/archive so a concurrent create cannot select a retired template or change a newly used template\u2019s measurement meaning.\n- [ ] Only the owner sees the Habit; show unit/range, target/weekdays, account date/timezone, and an existing Habit when it prevents creation. Test persistence and direct ownership/role restrictions.\n",
-          "number": 6,
-          "repository": "thrxpt/habitarc",
-          "title": "Start a scheduled Habit from an Activity Template",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/6"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopWA",
-        "labels": ["ready-for-agent"],
-        "linked pull requests": ["https://github.com/thrxpt/habitarc/pull/27"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 6,
+        "title": "Start a scheduled Habit from an Activity Template",
         "status": "Done",
-        "title": "Start a scheduled Habit from an Activity Template"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopWA"
       },
       {
-        "assignees": ["chanya06"],
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Program Manager creates an Activity Template and a Participant sees its persisted name, description, unit, and entry range in a selectable library.\n\nSprint 1. Accepted specification references: AC-F02-1, AC-F02-2, AC-F02-3.\n\n## Acceptance criteria\n\n- [ ] Implement the complete manager form \u2192 authorized operation \u2192 durable template \u2192 participant library journey.\n- [ ] Units are minutes or counts. Whole-number bounds satisfy 1 \u2264 minimum \u2264 maximum \u2264 1,440 for minutes or 1,000,000 for counts; reject unsupported units, fractions, inverted ranges, and invalid values without partial records.\n- [ ] Participants cannot manage templates by direct backend calls; anonymous calls fail. Manager access never opens participant histories.\n- [ ] Reload the library to prove persistence; include keyboard-accessible labeled forms, field errors, and meaningful real-DB permission/validation tests.\n",
-          "number": 5,
-          "repository": "thrxpt/habitarc",
-          "title": "Create and browse Activity Templates",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/5"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopUY",
-        "labels": ["ready-for-agent"],
-        "linked pull requests": ["https://github.com/thrxpt/habitarc/pull/26"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 5,
+        "title": "Create and browse Activity Templates",
         "status": "Done",
-        "title": "Create and browse Activity Templates"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopUY"
       },
       {
-        "assignees": ["thrxpt"],
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nPre-provisioned Participants and Program Managers can sign in, see their server-validated identity and role-specific workspace, and log out. Establish the real PostgreSQL-backed authentication and permission boundary used by every later slice.\n\nSprint 1. Accepted specification references: AC-F01-1, AC-F01-2, AC-F01-3, AC-F01-4.\n\n## Acceptance criteria\n\n- [ ] Provision at least two synthetic Participants and one Program Manager using private operator input and supported Better Auth credential APIs; repeat setup preserves passwords and existing data. Prove compatibility with the installed TanStack Start toolchain.\n- [ ] Deployed auth configuration disables signup at the backend, accepts passwords of at least 12 characters at provisioning, keeps roles and valid IANA Account Timezones server-owned (default Asia/Bangkok), and exposes no recovery/invitation/admin endpoints.\n- [ ] Use database-validated seven-day rolling sessions with renewal no more frequently than daily; disable cookie-session caching. Verify Secure/HttpOnly/SameSite=Lax production cookies, expiry, and logout/revocation across two instances.\n- [ ] Enforce trusted-origin/cross-origin write protection and PostgreSQL-backed throttling of 10 login attempts per trusted client IP per minute. Verify proxy/IP handling and reject role tampering and bypasses; credentials never appear in output.\n- [ ] Demonstrate login/logout/current identity through the UI and real-DB integration tests, including invalid login and protected-operation denial. Later tickets extend the role/ownership matrix to their own operations.\n\n## Blocked by\n\nNone (can start immediately).\n",
-          "number": 4,
-          "repository": "thrxpt/habitarc",
-          "title": "Sign in to secure Participant and Program Manager workspaces",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/4"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopS4",
-        "labels": ["ready-for-agent"],
-        "linked pull requests": ["https://github.com/thrxpt/habitarc/pull/24"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 4,
+        "title": "Sign in to secure Participant and Program Manager workspaces",
         "status": "Done",
-        "title": "Sign in to secure Participant and Program Manager workspaces"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopS4"
       },
       {
-        "content": {
-          "body": "## Lab 5 deadline update \u2014 user-confirmed November 15, 2026\n\nLab 5 is now due **November 22, 2026**, extended from November 15. Deliverable 1 / Sprint 1 remains due November 15, and Lab 6 remains due November 22; all other deadlines are unchanged. F05 retains its Sprint 1 allocation, with GCP deployment and live delivery verification completed for the revised Lab 5 checkpoint. Repository preparation can be reviewed and integrated before live deployment; the acceptance criteria remain unchanged and #8 stays open until they are satisfied.\n\nThis dated update supersedes the original November 15 Lab 5 deadline in the baseline below; the original wording is retained as planning history.\n\n---\n\n## Problem Statement\n\nStudents need to build consistent study and movement routines, record actual effort quickly, and understand progress without misleading totals or rewritten history. They need private tracking, understandable scheduled-day goals, recoverable entry mistakes, and feedback that remains correct when targets, schedules, or routines change.\n\nThe project currently provides a configured TanStack Start/React starter, not a tracking product: no implemented authentication, domain workflow, database, automated product tests, CI, or deployment. The same two students must turn it into a complete, tested, reproducible Habit and Activity Tracking application across three course sprints while preserving requirements, review, delivery, and assessment evidence.\n\n## Solution\n\nBuild Habitarc for students\u2019 study and movement routines. Program Managers maintain Activity Templates; Participants create private Habits with Daily Targets and weekday Schedules, record Activity Entries in minutes or counts, and inspect Today, history, Streaks, Reminders, and per-Habit progress reports. Existing history remains meaningful when goals change or templates/Habits are archived.\n\nA template is the shared activity definition; a Habit is a Participant\u2019s recurring commitment; an Activity Entry records an amount toward exactly one Habit. Program Manager access never grants private-history access. Accounts are pre-provisioned, and Operators use documented tooling rather than a third application role.\n\nDeliver the accepted whole-product baseline in three increments: working private daily tracking and deployment; trustworthy history and routine management; then reports, complete verification, approved maintenance, and assessed handoff. The user accepted this baseline through Q25. All product implementation and verification remain PLANNED; publishing this specification does not claim completion or authorize cloud provisioning.\n\n## User Stories\n\n1. As a Participant, I want sign in with my pre-provisioned account and see my identity, so that I can use my own private tracking space.\n2. As a Participant, I want log out and have my session rejected on every application instance, so that my account remains protected on shared devices.\n3. As a Participant, I want keep my Habits, Activity Entries, and reports private from other Participants and Program Managers, so that I can track personal routines without unintended disclosure.\n4. As a Participant, I want browse manager-maintained Activity Templates with clear units and valid ranges, so that I can choose an activity I understand.\n5. As a Participant, I want create a Habit from a template with my own Daily Target, so that my commitment reflects my routine.\n6. As a Participant, I want select every day or particular weekdays for a Habit, so that I am accountable only on the days I intend to practice.\n7. As a Participant, I want see an existing active Habit when it prevents another Habit for the same template, so that I can avoid overlapping commitments.\n8. As a Participant, I want see that a new Habit starts on my account-calendar creation date, so that I understand when tracking begins.\n9. As a Participant, I want record positive whole-number minutes or counts with clear validation, so that my activity is meaningful and consistently measured.\n10. As a Participant, I want record several separate sessions toward one Habit on the same date, so that my Daily Total reflects all of my effort.\n11. As a Participant, I want set a Daily Target above the maximum size of one entry, so that I can meet a larger commitment through several sessions.\n12. As a Participant, I want retry a save after a connection failure without duplicating activity, so that my history stays accurate.\n13. As a Participant, I want record two deliberate sessions with identical amounts as distinct entries, so that valid repeated activity is not discarded.\n14. As a Participant, I want see saved Daily Totals after reloading the application, so that I know my progress is durably recorded.\n15. As a Participant, I want see actual amounts and percentages when I exceed my target, so that overachievement remains visible without breaking the progress display.\n16. As a Participant, I want receive clear errors for amounts beyond the daily ceiling, so that accidental or concurrent entries cannot create impossible totals.\n17. As a Participant, I want use a fixed Account Timezone even when my device timezone changes, so that my entries and daily obligations do not move between dates.\n18. As a Participant, I want add or correct activity for today and the preceding six calendar dates, so that I can repair recent omissions and mistakes.\n19. As a Participant, I want see older entries as read-only and be prevented from recording future or pre-start dates, so that the correction boundary is predictable.\n20. As a Participant, I want record activity on Unscheduled Days, so that extra effort remains visible without inventing a scheduled obligation.\n21. As a Participant, I want view dated entries and distinguish scheduled completion from extra activity, so that I can understand what contributed to my progress.\n22. As a Participant, I want edit an eligible entry amount or date and update all affected totals atomically, so that correcting one record cannot corrupt another date.\n23. As a Participant, I want delete an eligible mistaken entry after confirmation, so that my history reflects what actually happened.\n24. As a Participant, I want receive a visible conflict when another tab changed the same record, so that I do not silently overwrite newer work.\n25. As a Participant, I want know that retrying an earlier save cannot resurrect a deleted entry, so that corrections remain reliable.\n26. As a Participant, I want change my Daily Target and Schedule beginning tomorrow, so that I can adapt my routine while preserving today\u2019s commitment.\n27. As a Participant, I want see current and pending goal settings separately, so that I understand which rules apply now and next.\n28. As a Participant, I want replace tomorrow\u2019s pending goal change when I edit again today, so that I can refine my decision without creating competing revisions.\n29. As a Participant, I want retain the targets and weekdays that applied to historical dates, so that lowering a target cannot rewrite past completion.\n30. As a Participant, I want archive a Habit starting tomorrow while retaining today\u2019s obligation, so that I can end a routine without erasing its history.\n31. As a Participant, I want read an Archived Habit and correct still-eligible earlier entries, so that ending tracking does not prevent legitimate recent corrections.\n32. As a Participant, I want start a fresh Habit from the same active template after the previous Habit ends, so that a renewed commitment has its own history and Streak.\n33. As a Participant, I want see current and longest Streaks based on scheduled dates, so that weekends or other Unscheduled Days do not unfairly interrupt consistency.\n34. As a Participant, I want retain my current Streak while today is unfinished, so that I have the entire day to meet its target.\n35. As a Participant, I want have Streaks recalculate after a valid entry correction, so that my consistency measures reflect corrected activity.\n36. As a Participant, I want see an Archived Habit\u2019s longest Streak without treating it as currently active, so that historical achievement is distinguished from an ongoing commitment.\n37. As a Participant, I want set or disable one optional local Reminder time per Habit, so that I can choose when the app draws attention to unfinished activity.\n38. As a Participant, I want see a Reminder due indicator only for a scheduled, incomplete current day after the chosen time, so that the reminder is relevant to what still needs doing.\n39. As a Participant, I want see the reminder clear after completion and avoid promised background delivery, so that I understand the reminder\u2019s actual behavior.\n40. As a Participant, I want view reports for the last seven or thirty completed calendar dates with today separate, so that I can compare finished periods without partial-day distortion.\n41. As a Participant, I want see recorded amounts, scheduled/completed dates, and Completion Rate per Habit, so that I can distinguish activity volume from consistency.\n42. As a Participant, I want see extra activity in amounts but not in the completion denominator, so that off-schedule work does not inflate my adherence.\n43. As a Participant, I want see \u201cNot scheduled\u201d when a reporting window contains no obligations, so that an empty denominator is not misrepresented as failure.\n44. As a Participant, I want see reports calculated using each date\u2019s Goal Revision and tracking period, so that goal changes and archiving do not distort history.\n45. As a Participant, I want keep unrelated activity measurements separate and see lifetime Streaks labeled clearly, so that I do not mistake unlike amounts or time periods for comparable metrics.\n46. As a Participant, I want complete core journeys on a narrow screen, with a keyboard, and at enlarged zoom, so that I can use the product with my device and access needs.\n47. As a Participant, I want receive labeled inputs, announced errors, visible focus, and text equivalents for charts, so that I can understand and operate the interface without relying on visual cues alone.\n48. As a Program Manager, I want sign in to template management without gaining access to private participant records, so that I can perform my role within its proper boundary.\n49. As a Program Manager, I want create templates with a name, description, unit, and valid entry bounds, so that Participants have a consistent library of activities.\n50. As a Program Manager, I want correct an unused template\u2019s measurement definition, so that I can fix mistakes before Participants depend on it.\n51. As a Program Manager, I want edit descriptive text while used-template measurement rules remain frozen, so that I can improve clarity without invalidating history.\n52. As a Program Manager, I want archive a template to stop new selection while existing Habits continue, so that I can retire a library item safely.\n53. As a Operator, I want provision synthetic accounts securely without exposing a public signup endpoint, so that the course release can be demonstrated with controlled access.\n54. As a Operator, I want repeat setup without resetting existing passwords or deleting tracking records, so that reproduction does not destroy established data.\n55. As a Operator, I want deploy a versioned Docker image through gated CI to GCP, so that the assessed application is reproducible and tied to a known release.\n56. As a Operator, I want retrieve the same records after restart or redeployment, so that application lifecycle changes do not lose participant data.\n57. As a Operator, I want manage secrets and database connectivity with limited service identities, so that deployment credentials are not exposed in code or images.\n58. As a Operator, I want back up daily and verify an isolated restoration within the agreed recovery target, so that the team has evidence of recovery rather than an untested promise.\n59. As a Operator, I want monitor the trial credit, expiry, costs, and scaling limits, so that assessment access can be maintained within the accepted budget.\n60. As a Student contributor, I want work from stable requirements and contracts before implementation, so that my code and tests have observable acceptance criteria.\n61. As a Student contributor, I want rotate design, implementation, testing, review, and delivery responsibilities with my teammate, so that both of us understand and contribute to the complete system.\n62. As a Student contributor, I want receive substantive teammate review and failed-check gates before release, so that integration errors are caught before reaching the assessed version.\n63. As a Independent tester, I want execute normal, boundary, ownership, and history/persistence cases using safe accounts, so that I can evaluate the actual deployed product independently.\n64. As a Independent tester, I want re-test accepted fixes against an identified release, so that defect resolution is demonstrated rather than merely asserted.\n65. As a Student contributor, I want deliver an instructor-approved maintenance change with impact analysis and regression evidence, so that the maintenance lab proves a real change to working behavior.\n66. As a Assessor, I want trace every requirement through feature, acceptance criterion, actual verification, and final version, so that I can assess completion without relying on unsupported claims.\n67. As a Assessor, I want receive a self-contained PDF and a concise joint demonstration of the actual deployed release, so that the engineering work and product behavior are directly reviewable.\n68. As a Assessor, I want access the immutable assessed application and repository through grading, so that later changes do not silently replace the submitted evidence.\n\n## Implementation Decisions\n\nThis issue preserves the accepted decisions and stable identifiers; it is not a proposal to reopen the interview. The three accepted architectural decisions are: preserve used-template measurement rules; use Cloud Run with ordinary Cloud SQL within the trial budget; and retain effective-dated Habit goals.\n\n### Functional requirement coverage\n\n| ID | Required observable behavior | Feature | Sprint |\n| --- | --- | --- | --- |\n| FR-01 | Login, logout, and show current identity using real pre-provisioned Participant/Program Manager accounts | F01 | 1 |\n| FR-02 | Enforce role and ownership permissions on every backend read and write | F01; every protected feature | 1\u20133 |\n| FR-03 | Managers create templates with name, description, unit, and per-entry bounds; participants browse selectable templates | F02 | 1 |\n| FR-04 | Participants create a Habit with a Daily Target and selected weekdays, subject to one active Habit per template | F03 | 1 |\n| FR-05 | Participants record activity for eligible dates, safely retry saves, and see persisted Daily Totals and progress | F04 | 1 |\n| FR-06 | Participants inspect dated entry history and edit/delete eligible entries with recalculated results | F06 | 2 |\n| FR-07 | Participants revise future targets/schedules while earlier dates retain their applicable rules | F07 | 2 |\n| FR-08 | Managers maintain/archive templates; participants archive Habits without deleting history | F08 | 2 |\n| FR-09 | Participants see current/longest Streaks with scheduled-date and correction semantics | F09 | 2 |\n| FR-10 | Participants configure an optional local Reminder time and see its due indicator in-app | F10 | 2 |\n| FR-11 | Participants see seven-/thirty-completed-date reports for each Habit, with today separate | F11 | 3 |\n| FR-12 | Reproduce, verify, deploy, restore, and hand off the assessed release with durable data and traceable evidence | F05, F12 | 1, 3 |\n\n### Business rules\n\n| ID | Rule | Feature responsibility |\n| --- | --- | --- |\n| BR-01 | Participant records are private; Program Manager permissions cover templates only. Each Activity Entry belongs to exactly one owned Habit | F01, F03\u2013F11 |\n| BR-02 | Each template uses minutes or counts. Bounds are whole numbers with 1 \u2264 minimum \u2264 maximum \u2264 the unit's daily ceiling | F02, F08 |\n| BR-03 | Entry amounts are whole numbers within template bounds. Daily Targets are whole numbers at least the template minimum and at most the unit ceiling; targets may exceed the per-entry maximum | F03, F04, F06, F07 |\n| BR-04 | Unit ceilings are 1,440 minutes or 1,000,000 counts per Habit/date, applying to Daily Targets and accumulated Daily Totals. Reject writes that would exceed a ceiling, including concurrent writes | F03, F04, F06, F07 |\n| BR-05 | A Schedule selects at least one weekday; selecting all seven means every day. One target applies separately to each scheduled date; no weekly pooling | F03, F07, F09\u2013F11 |\n| BR-06 | Multiple deliberate entries accumulate. Retrying the same save counts once; identical values from separate deliberate submissions are distinct activity | F04, F06 |\n| BR-07 | Calendar dates follow the fixed Account Timezone, default Asia/Bangkok. Device timezone changes cannot move entries or redefine today | F01, F03\u2013F11 |\n| BR-08 | A Habit starts on its creation date. Entry writes are permitted only for today or the preceding six account-calendar dates and within the Habit's tracking period. Future, pre-start, and older dates are rejected | F03, F04, F06, F08 |\n| BR-09 | Off-schedule activity is permitted within the tracking period and correction window. It contributes to totals/history but not obligations, completion credit, or Streaks | F04, F06, F09, F11 |\n| BR-10 | Target/schedule changes start tomorrow. Repeated edits today replace the pending revision. Historical dates use their original applicable revision; entry corrections may recalculate results | F07, F09, F11 |\n| BR-11 | At most one active Habit per participant/template. Archiving takes effect tomorrow, retains today's obligation/history, and permits eligible corrections to earlier dates. No pause/reactivation; a later Habit starts fresh | F03, F08, F09\u2013F11 |\n| BR-12 | Once a template has been used, its unit/bounds cannot change. Descriptive text can change. Archived templates cannot supply new Habits; existing Habits continue working | F02, F03, F08 |\n| BR-13 | A scheduled date is complete when total \u2265 applicable target. Display actual amount/percentage above target; cap visual progress bars at 100%. Unscheduled dates have no completion percentage | F04, F06, F09, F11 |\n| BR-14 | A Streak counts consecutive completed scheduled dates. Unscheduled dates neither extend nor break it. An unfinished scheduled today breaks it only after the date ends. Eligible corrections recalculate current/longest Streaks | F09 |\n| BR-15 | A Reminder has one optional local time. Its in-app due indicator requires a scheduled current date, reminder time passed, and unmet Daily Target. No background delivery or snooze | F10 |\n| BR-16 | Reports cover the last seven or thirty completed calendar dates, ending yesterday; today is separate. Count only dates within the Habit's tracking period. Completion Rate = completed scheduled dates / scheduled dates; off-schedule amounts remain in totals | F11 |\n| BR-17 | Report activity totals per Habit, never combine unrelated activities. Apply the revision effective on each date. A zero scheduled-date denominator displays \u201cNot scheduled\u201d, not 0% | F11 |\n\n### Architecture and ownership\n\nUse the existing TanStack Start application as a modular monolith. React routes render the product; authenticated server functions own application operations; PostgreSQL owns durable data and transactional concurrency. Keep date/progress calculations in a small domain module shared by Today, history, Streaks, and reports. Do not introduce separate microservices, queues, background reminder workers, or generic repository interfaces with one implementation.\n\nSuggested responsibilities, to place within the existing source tree as features are implemented:\n\n- Authentication configuration and session lookup: library integration plus explicit application role checks.\n- Tracking rules: eligibility, applicable Goal Revision, numerical limits, completion, Streaks, and reporting periods. Pass a server-derived account date/time into calculations so tests can exercise boundaries deterministically.\n- Tracking operations: transactions, ownership-scoped queries, validation, request deduplication, and mutation conflicts.\n- Template operations: manager authorization, template validation, used-template immutability, and retirement.\n- Routes/components: accessible forms, pending/error/empty states, and rendering server-authoritative results.\n\nBrowser input never determines role, owner, trusted current date, or derived totals. Route navigation guards improve usability; every server operation independently authenticates and authorizes access.\n\n### Authentication design\n\nUse Better Auth with its PostgreSQL adapter and documented TanStack Start integration, subject to an early compatibility spike against the installed toolchain. This adds a maintained dependency instead of implementing password/session cryptography. Pin the selected version; no compatibility claim is established by this plan.\n\n- Mount the library handler at `/api/auth/$`. Use its client for login/logout so handler-level security and rate limiting run.\n- Enable email/password login and disable signup in the serving configuration. No recovery/invitation/admin plugin endpoints are part of this release.\n- Provision synthetic accounts through an operator-only script using a separate, unmounted provisioning configuration and supported credential APIs. Never manipulate password hashes manually. Production account provisioning reads secrets from private input, not committed defaults or logs; rerunning setup must not reset existing passwords or erase tracking data.\n- Use a server-owned application role and fixed Account Timezone; client requests cannot assign either. A Program Manager is not a library administrator.\n- Accepted session policy: library-managed seven-day rolling expiry with renewal no more frequently than daily, database validation, and cookie-session caching disabled so logout/revocation is observed across instances. Retain HttpOnly/Secure/SameSite=Lax production cookies, trusted-origin checks, and explicit production base URL.\n- Protect application server-function mutations against cross-origin requests as well; auth-handler protections alone do not cover them. Keep reads side-effect free.\n- Use database-backed login throttling across Cloud Run instances. Limit: 10 login attempts per trusted client IP per minute, with a generic authentication failure and a clear rate-limit response. Verify the trusted proxy/IP chain before trusting forwarding headers. Minimum new password length: 12 characters; use generated credentials for shared course demos.\n- Test expiry, revoked sessions, missing cookies, direct backend requests, role tampering, cross-user identifiers, signup denial, cross-origin writes, and replica-wide throttling. Never persist a bearer token in browser local storage.\n\nOfficial references: [TanStack integration](https://better-auth.com/docs/integrations/tanstack), [PostgreSQL](https://better-auth.com/docs/adapters/postgresql), [email/password](https://better-auth.com/docs/authentication/email-password), [sessions](https://better-auth.com/docs/concepts/session-management), [security](https://better-auth.com/docs/reference/security), and [rate limiting](https://better-auth.com/docs/concepts/rate-limit).\n\n### Data model\n\nNames describe responsibilities, not a frozen SQL migration. Use foreign keys, integer/check constraints, indexes, and versioned migrations. Auth-owned tables follow the pinned library schema rather than a duplicate custom session model.\n\n| Record | Essential data and constraints |\n| --- | --- |\n| Auth user/credential/session/rate-limit records | Library schema; application role and valid IANA Account Timezone are server-owned. At least two Participants and one Program Manager in synthetic demo setup |\n| Activity Template | ID, name, description, unit, entry minimum/maximum, archive timestamp, concurrency version. BR-02 constraints. Preserve every referenced template; no destructive deletion UI |\n| Habit | ID, owner ID, template ID, start date, optional archive-effective date, optional reminder local time, concurrency version. Archive date is exclusive: start \u2264 eligible date < archive date |\n| Goal Revision | Habit ID, effective-from date, Daily Target, nonempty weekday set. Unique Habit/effective-from. Initial revision starts on Habit start date; only tomorrow's pending revision may be replaced |\n| Activity Entry | ID, Habit ID, activity date, amount, created/updated instants, concurrency version. Whole-number amount; date stored as the participant's explicit calendar date, not inferred later from a creation timestamp |\n| Mutation receipt | Actor ID, request key, operation, normalized payload fingerprint, outcome reference/status. Unique actor/request key. Retain receipts across deletion so retrying an old create cannot resurrect an entry |\n\nIndexes support owner-scoped Habits, Habit/date entries, template-use lookup, revision resolution by date, and auth/session expiry. Reports derive totals from source entries and revisions; do not introduce independently editable totals or Streak counters that can drift.\n\nAccount Timezones are fixed; record event instants separately in UTC. Use one authoritative date/time calculation per request, including midnight eligibility checks. Local Reminder comparison needs no background scheduler: an elapsed local time on the current date is sufficient, including after a DST clock jump. Test an alternate IANA timezone and DST boundaries despite Bangkok being the default.\n\n### Transactions and conflicts\n\n- All participant tracking mutations serialize through a locked participant row before the affected Habit row. This intentionally modest approach fits course-scale traffic and gives one clear place to protect daily ceilings, revisions, archives, and the one-active-Habit rule. Keep transactions short; avoid external calls inside them.\n- Habit creation also locks the chosen template before participant tracking locks. Manager edits/archive take the template lock, so a template cannot be edited as unused while a concurrent Habit begins using it. Keep this lock order consistent. Once used, unit/bounds remain immutable without a new versioning subsystem.\n- Check overlapping active periods while holding the participant lock; a pending archive tomorrow still occupies today's active slot. Do not rely on a partial unique index whose predicate depends on the moving current date.\n- Authenticate/authorize before looking up or replaying an actor's receipt. A retry with the same key and payload returns the already-applied outcome; reusing a key with a different payload fails as a conflict. Validate and persist the mutation and receipt atomically.\n- Edit requests carry the last-seen entry/Habit version. A stale version returns a conflict and preserves the newer record. For entry date edits, both old and destination dates must remain eligible; subtract the old amount and validate both affected totals in one transaction. Deletes are retry-safe.\n- A deleted entry's receipt remains; a retry reports the operation as previously applied and the entry as subsequently deleted. It must not recreate it.\n- After an applied mutation, return or refetch authoritative totals/history. If a response is lost, offer retry with the same request key. Never present an unconfirmed write as saved.\n\n### Date and history calculations\n\nResolve each date against the latest Goal Revision effective on/before it and the Habit\u2019s start-inclusive/archive-exclusive tracking period. Sum recorded amounts regardless of scheduled status; only selected weekdays inside that period create obligations. Use the business rules above for completion, capped visual progress, missed dates, Streaks, and 7/30-completed-date reports.\n\nCurrent Streak must not survive a missed prior scheduled date; unfinished today alone does not break it. Show archived current Streak as not applicable, retain longest/history, and label lifetime Streaks separately from report-window figures. Archive takes effect tomorrow; pending revisions on/after that date have no applicable days, and further future revisions on a pending-archive Habit are rejected. No Habit/template reactivation; existing Habits still use archived templates. Only eligible pre-archive entry corrections remain writable.\n\n### Screens and application contracts\n\nUse a small responsive application shell with current identity and logout. Participant navigation is Today, History, and Progress; the template picker and Habit settings are contextual flows. Manager navigation is Templates. Avoid exposing backend/infrastructure terminology in these product screens.\n\n| Surface | Operations and expected behavior |\n| --- | --- |\n| Login | Email/password, generic invalid-credential feedback, pending/rate-limited states; role-directed landing |\n| Participant Today | Scheduled Habits, totals/target, add-entry action, separate unscheduled activity section; reminder indicator; empty-state template picker |\n| Create Habit | Browse active templates; choose target/weekdays; display unit/range, start date, account timezone, and an existing active Habit if one prevents creation |\n| Entry form/history | Amount/date inputs, range/window guidance, chronological entries, edit/delete for eligible rows, read-only older rows; reconfirm destructive deletion |\n| Habit settings | Show current and pending target/schedule, explain tomorrow's effect, optional reminder time, archive confirmation and effective date |\n| Progress | Select Habit and 7/30-date period; per-date amounts and completion states, textual equivalents for charts, completion counts/rate, lifetime Streak labels; separate Today |\n| Manager Templates | Create, descriptive edits, unused-template measurement edits, archive confirmation; clearly explain frozen measurement fields and archive effects |\n\nUse typed server functions rather than creating a second public REST API. Operations are `listTemplates`, `createTemplate`, `updateTemplate`, `archiveTemplate`; `listHabits`, `createHabit`, `reviseGoal`, `setReminder`, `archiveHabit`; `listEntries`, `createEntry`, `updateEntry`, `deleteEntry`; and `getToday`, `getHistory`, `getProgress`. Inputs use explicit IDs, dates, amounts, expected versions, and request keys where applicable. Resolve owner from session; never accept it as authority from the browser.\n\nCommon outcomes: unauthenticated (sign in), wrong role (forbidden), missing/not-owned private record (indistinguishable not found), invalid input (field errors), stale/conflicting mutation (refresh/retry guidance), and temporary service failure (safe retry with unchanged request key). Bound and validate query ranges/pagination. Server-side limits and authorization apply even when the UI hides an action.\n\nUI details above, including permanent template retirement, no reporting export, date-edit conflict behavior, and archived-current-Streak presentation, were accepted with the complete baseline in Q25.\n\n### Deployment and release\n\nBuild a production Docker image using the pinned toolchain and official TanStack Start production build conventions; prove the exact entrypoint in the initial deployment spike. Bind the Cloud Run port, keep secrets out of the image, and keep durable records/sessions out of its disposable filesystem. Local integration tests use real PostgreSQL in a disposable database.\n\nUse one Cloud Run service and one ordinary single-zone Cloud SQL PostgreSQL instance in the same supported region. Choose the smallest configuration that passes the agreed checks after comparing current regional pricing. Initial planning limits: zero minimum Cloud Run instances, maximum two instances, and at most five DB connections per application instance, subject to measured headroom for rollout overlap, migration, and administration. Do not treat those limits as a billing cap.\n\nUse a dedicated runtime service account with Cloud SQL connection permission and access only to required Secret Manager secrets. Prefer the supported Cloud SQL connector/socket integration; database credentials and application authorization remain necessary. Use GitHub OIDC/workload identity for deployment rather than committing service-account keys. Region, project, precise instance size, and trial expiry are deployment prerequisites.\n\nRequired CI sequence: install pinned dependencies; generate route/build artifacts as needed; `vp check`; `vp test --run` with unit and real-DB integration suites; selected browser/E2E and accessibility checks; `vp run build`; build the image. Make failed required checks block staging and main merges. Capture one deliberately failed check on a temporary branch for Lab 5. CI tests must fail when no required tests are discovered.\n\nAfter a reviewed release reaches main, publish an immutable image, run migrations once in a controlled job, deploy that image, and verify the critical journey and retrieval of preexisting data. Record commit, tag, CI run, image digest, deployment revision, test counts, and relevant screenshots. Manual pipeline approval is allowed. Never run migrations independently on each starting app instance.\n\nUse backward-compatible additive migrations where possible. Before risky schema changes, verify a backup and a reviewed recovery plan. Roll back application traffic to a compatible previous revision; do not assume database rollback is safe or automatic. Recovery drills restore into an isolated database and never overwrite the assessed data.\n\nKeep the exact assessed release reachable through grading. Do not silently replace its tag or deploy incompatible changes over it. Cost review includes build artifacts, backups, secrets, logs, and networking, not just application traffic. Daily backup retention and credit runway must cover the instructor's access period; confirm that period before promising availability.\n\n## Testing Decisions\n\n- Test externally observable behavior: authenticated inputs, returned results, persisted records, rejected operations, rendered journeys, and measured quality. Do not assert private call order, internal class layout, incidental SQL text, or mocked persistence as proof of correctness.\n- The primary integration seam is the authenticated application-operation boundary with real PostgreSQL and real session/ownership enforcement. Reuse the existing framework\u2019s server-function/handler boundary rather than adding a test-only service abstraction. No parallel public API or single-implementation repository interface is required for testing.\n- Add focused tests of the shared date/progress rule module for midnight, weekday, revision, archive, Streak, ceiling, and report-denominator cases. These supplement the primary seam because the course requires meaningful unit tests for rules; they do not replace integrated persistence/permission checks.\n- Use selected browser/E2E journeys for login, template \u2192 Habit \u2192 Activity Entry \u2192 persisted progress, corrections, lifecycle, reports, and accessibility. Avoid duplicating every internal case through the browser.\n- Test authentication at its real handler boundary, including disabled public signup, session expiry/revocation across instances, cross-origin protection, trusted client-IP handling, and shared throttling. Expand role/ownership checks whenever a new operation is introduced.\n- Exercise actual concurrent requests, transaction outcomes, retries, lost responses, and stale versions. A serial mocked test cannot establish the concurrency guarantees.\n- Run isolated deployment/recovery and independent UAT checks at their actual boundaries. Never restore a test backup over the assessed database.\n- Prior art: the repository has Vite+/Vitest tooling and the TanStack Start framework boundary, but no existing product tests or domain-specific seams to reuse. The latest `vp check` passed; `vp test --run` reported no test files. Those results establish starter/tooling state only.\n- These boundaries and the layered verification below were already reviewed and accepted in Q25. No new test seam needs another interview or approval.\n\n### Measurable quality gates\n\nThese targets are accepted planning requirements, not achieved results or claims of a full compliance audit.\n\n| ID | Target and measurement | When |\n| --- | --- | --- |\n| NFR-01 Security | Every protected operation has anonymous, forbidden-role, and cross-participant checks where applicable; zero unauthorized disclosures or writes. Secure password hashing, server-validated revocable sessions, cookie/CSRF protections, and shared login throttling must be tested | Every sprint |\n| NFR-02 Correctness under concurrency | Replayed creates never duplicate activity; concurrent writes cannot exceed daily ceilings or create overlapping active Habits; stale edits fail visibly rather than silently overwrite | Sprint 1 foundations; all mutations as introduced |\n| NFR-03 Accessibility | Target WCAG 2.2 AA for delivered screens. Critical journeys work by keyboard with visible focus, labeled fields, announced errors, and usable contrast; zero serious/critical automated accessibility findings on those screens. Manual checks remain necessary | From Sprint 1; measured final suite in Sprint 3 |\n| NFR-04 Responsive behavior | Complete core journeys at 360px and 1280px viewport widths without page-level horizontal overflow or inaccessible controls; verify 200% zoom | Every sprint |\n| NFR-05 Performance | With 10 concurrent authenticated test users, 10 Habits per participant and up to 10,000 entries each, warm-instance p95 backend read/write response \u22641 second and 0 unexpected errors during a 5-minute mixed workload. Measure cold first-use separately and report it without hiding scale-to-zero latency | Baseline in Sprint 1; final measurement in Sprint 3 |\n| NFR-06 Durability/recovery | Retrieve the same seeded IDs and amounts after application restart/redeployment. Daily DB backups; demonstrate restoration to an isolated test database within 60 minutes with \u226424-hour recovery-point age. Never overwrite the assessed DB during the exercise | Persistence gate Sprint 1; timed restore evidence Sprint 3 |\n| NFR-07 Reproducibility/delivery | A teammate can use documented clean setup, migrations, seed, build, and tests; PR failures block integration/release; deployed image identifies the submitted commit; final verification uses that commit | Every release |\n| NFR-08 Cost/access continuity | Estimate all selected resources before provisioning; check remaining credit/expiry daily while deployed, use alerts and bounded scaling, retain non-upgraded trial billing, and keep the assessed release accessible through the instructor's grading period | Before provisioning through grading |\n\nNo high-availability SLA is promised for the single-zone course deployment. Credit expiry, billing state, grading-period duration, and provider quotas are operational prerequisites; failure to satisfy them blocks the deployment plan rather than silently authorizing paid upgrades.\n\n### Accepted feature contracts and planned STS\n\nEach row pairs an acceptance criterion (AC) with a software test specification (STS), setup/action, expected outcome, and test level. All 43 are PLANNED, not executed. Use synthetic Participants A/B and Program Manager M, controlled account clocks, and real PostgreSQL for integration checks. A/B ownership below denotes the two contributors; the other student reviews.\n\n### F01\u2014 Accounts and authorization\n\nSprint 1. FR-01\u201302, BR-01/07, NFR-01/07. No feature prerequisites. Deliver secure provisioning, login/logout/current identity, and reusable server-side role/ownership checks. Owner A; teammate B reviews and attempts misuse. The Better Auth compatibility/provisioning spike is an early gate.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F01-1 / STS-F01-1 | Integration + E2E | Provision A, B, M; sign in using valid and invalid passwords | Valid users receive the correct identity/role; invalid credentials disclose no account details; no credential is logged |\n| AC-F01-2 / STS-F01-2 | Integration | Call signup directly, submit a forged role, then call every newly added protected operation anonymously/as wrong role/as B against A's records | Signup/role escalation fail; private records are never disclosed or mutated; manager template privileges never imply participant-history access |\n| AC-F01-3 / STS-F01-3 | Integration | Login on instance 1; logout/revoke, then reuse the cookie on instance 2; advance past expiry | Revoked/expired sessions fail immediately on the next validated request; required cookie attributes are present |\n| AC-F01-4 / STS-F01-4 | Integration | Send cross-origin writes, exceed login limit across replicas, and attempt spoofed forwarding headers | Unsafe writes fail; shared limiter blocks excess attempts; untrusted headers cannot evade the configured identity policy |\n\nExtend STS-F01-2's protected-operation matrix with each feature. F01's first delivery does not prove future endpoints secure.\n\n### F02 \u2014 Template creation and selection\n\nSprint 1. FR-03, BR-02/12, NFR-01. Depends on F01. Owner B; A reviews.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F02-1 / STS-F02-1 | Integration + E2E | M creates a Focused Study template, minutes, bounds 5\u201345; A opens selection after reload | Exact persisted template appears with unit/range guidance |\n| AC-F02-2 / STS-F02-2 | Unit + integration | Submit zero/fractional/inverted bounds, unsupported units, or maximum above unit ceiling | Backend rejects invalid definitions without partial writes |\n| AC-F02-3 / STS-F02-3 | Integration | A attempts template creation directly; unauthenticated caller attempts restricted reads/writes | Forbidden operation fails; no template or private record is changed |\n\nMutable library maintenance is F08; template-use constraints must already be represented safely in the Sprint 1 data model.\n\n### F03 \u2014 Habit setup\n\nSprint 1. FR-04, BR-01\u201305/07\u201308/11\u201312. Depends on F01/F02. Owner A; B reviews.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F03-1 / STS-F03-1 | Integration + E2E | A selects the 5\u201345 minute template, target 60, weekdays Monday\u2013Friday | Habit and initial Goal Revision persist atomically; start date is today's account date; target above entry maximum is accepted |\n| AC-F03-2 / STS-F03-2 | Unit + integration | Submit empty weekdays, fractional/below-minimum/over-ceiling target, or an archived template | Clear field/eligibility failure; no partial Habit/revision |\n| AC-F03-3 / STS-F03-3 | Integration | Concurrently create two Habits for A/template; repeat with a prior Habit archiving tomorrow and then with it already archived | At most one eligible active Habit exists; pending archive still blocks today; an ended prior period permits a new Habit |\n| AC-F03-4 / STS-F03-4 | Integration | Race template edit/archive against Habit creation | Result is serialized: no used template's measurement meaning changes and no new Habit selects an already archived template |\n\n### F04 \u2014 Activity recording and Today\n\nSprint 1. FR-05, BR-01/03\u201309/13, NFR-02/04. Depends on F03. Owner B; A reviews. Today is the first complete participant journey.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F04-1 / STS-F04-1 | Integration + E2E | For target 60, record two deliberate 25-minute entries, reload, then add 25 more | Totals are 50 then 75; actual progress is 125%, fill stops at 100%; entries remain individually visible |\n| AC-F04-2 / STS-F04-2 | Integration | Retry one save concurrently with the same request key/payload; reuse its key with a different amount | Only one entry is created; changed-payload reuse returns conflict; separate deliberate keys still create separate entries |\n| AC-F04-3 / STS-F04-3 | Unit + integration | Around account midnight, test today\u22126, today\u22127, tomorrow, pre-start, off-schedule, and another device timezone | Only eligible account dates are writable; off-schedule activity is retained without completion credit; device timezone has no effect |\n| AC-F04-4 / STS-F04-4 | Integration | Start at 1,430 minutes and race two +10 writes; exercise count ceiling, zero, fractions, and range violations | No total exceeds its unit ceiling; exactly one +10 succeeds; rejected operations leave no partial record/receipt |\n| AC-F04-5 / STS-F04-5 | E2E | Lose a save response and retry; simulate backend failure; inspect empty state and reload | Safe retry cannot duplicate activity; failure is never labeled saved; empty state directs to Habit setup |\n\n### F05 \u2014 Reproducible persistence and delivery\n\nSprint 1 and Lab 5. FR-12, NFR-06\u201308. Infrastructure work begins alongside F01; release acceptance depends on F01\u2013F04. Owner B for deployment, A for migrations/verification; each reviews the other's work.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F05-1 / STS-F05-1 | System | Teammate follows clean README setup, migration, synthetic account seed, build, and tests | Working local critical journey with real PostgreSQL; repeat setup preserves existing records; secrets absent from Git/output |\n| AC-F05-2 / STS-F05-2 | CI/system | Open temporary branch with a deliberate required-check failure; attempt integration | Required check fails and blocks integration/release; preserve actual run evidence before removing the deliberate failure |\n| AC-F05-3 / STS-F05-3 | Deployment/E2E | Release reviewed main image to GCP, record IDs/amounts, restart/redeploy the app, retrieve them | Durable records survive; deployed commit/image matches release evidence; backup configuration is recorded |\n| AC-F05-4 / STS-F05-4 | Operational review | Inspect remaining credit, expiry, regional estimate, limits, secrets/IAM, migration job, and rollback procedure | Supported trial resources with budget runway; least-privilege identities; no paid upgrade; one controlled migration runner and documented recovery path |\n\n### F06 \u2014 History and corrections\n\nSprint 2. FR-06, BR-01/03\u201309/13, NFR-02. Depends on F04. Owner A; B reviews.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F06-1 / STS-F06-1 | Integration + E2E | View mixed scheduled/off-schedule history, edit an eligible amount/date, delete an eligible entry | Dated history and affected totals update correctly; changed dates validate both source/destination; old records display read-only |\n| AC-F06-2 / STS-F06-2 | Integration | Edit yesterday at the window edge, advance account date, retry; attempt correction of a now-ineligible source or destination | Seven-date rule is enforced at mutation time; no partial move or lost record |\n| AC-F06-3 / STS-F06-3 | Integration | Two tabs edit the same version; retry a prior create after its entry was deleted | One stale edit conflicts; deleted entry is not resurrected; privacy checks precede any replay |\n| AC-F06-4 / STS-F06-4 | Unit + integration | Correct a completed date to below target and restore it | Completion and dependent derived results change consistently; later Streak/report tests reuse this scenario |\n\n### F07 \u2014 Goal and schedule revisions\n\nSprint 2. FR-07, BR-03\u201305/10/13. Depends on F03/F06. Owner B; A reviews.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F07-1 / STS-F07-1 | Integration + E2E | Yesterday's target was 60 and actual 40; lower target to 30 today | Yesterday remains incomplete; today retains its original target; new target applies tomorrow |\n| AC-F07-2 / STS-F07-2 | Integration | Change tomorrow's weekdays/target twice today; race stale edits; cross midnight | One coherent pending revision remains; stale edit conflicts; newly effective revision is no longer retroactively replaceable |\n| AC-F07-3 / STS-F07-3 | Unit + integration | Evaluate dates around a schedule change, including a formerly unscheduled weekday | Each date uses its applicable revision; no past obligation or completion is invented |\n\n### F08 \u2014 Template and Habit lifecycle\n\nSprint 2. FR-08, BR-08/11\u201312. Depends on F02/F03/F07. Owner A; B reviews.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F08-1 / STS-F08-1 | Integration + E2E | M edits an unused template, creates a Habit from it, then attempts a unit/bounds edit and a name edit | Unused measurement edit is validated; used measurement edit fails; descriptive edit succeeds without changing historical amounts |\n| AC-F08-2 / STS-F08-2 | Integration | Archive template used by A; try creating a new Habit and logging against A's existing Habit | New selection fails; existing Habit continues normally |\n| AC-F08-3 / STS-F08-3 | Integration + E2E | A archives a Habit today, records today, advances to tomorrow, corrects an eligible earlier entry, and starts anew | Today remains an obligation; post-archive dates reject activity; history/corrections survive; new Habit has separate history and no inherited Streak |\n| AC-F08-4 / STS-F08-4 | Integration | Attempt archive as B, reactivate/delete history, or revise a pending-archive Habit for tomorrow | Unauthorized/unsupported transitions fail; pending goal rules cannot extend the archived tracking period |\n\n### F09 \u2014 Streaks\n\nSprint 2. FR-09, BR-05/09\u201311/14. Depends on F06\u2013F08. Owner B; A reviews.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F09-1 / STS-F09-1 | Unit | Weekday Habit completes Friday and Monday; weekend has activity | Streak reaches two; weekend activity does not increment or interrupt it |\n| AC-F09-2 / STS-F09-2 | Unit + integration | Monday remains incomplete while an earlier Streak exists; cross Monday's account midnight, then correct Monday within its window | Streak survives unfinished today, breaks after it ends, and recalculates after valid correction |\n| AC-F09-3 / STS-F09-3 | Unit + E2E | Change future Schedule, archive, then create a new Habit from the same template | Historic Streak uses historical obligations; archived current Streak is not applicable; longest remains; new Habit begins independently |\n\n### F10 \u2014 In-app Reminders\n\nSprint 2. FR-10, BR-05/07/11/15. Depends on F04/F07/F08. Owner A; B reviews.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F10-1 / STS-F10-1 | Unit + E2E | Set reminder to 18:00; view app before/after 18:00 on a scheduled incomplete date | Due indicator appears only when eligible; local time is explicit; app refreshes/re-evaluates while open and on focus |\n| AC-F10-2 / STS-F10-2 | Unit | Complete target, switch to unscheduled/archived date, disable reminder, or test DST transition | Indicator clears/is absent as appropriate; no duplicate notification or background delivery is claimed |\n\n### F11 \u2014 Progress summaries\n\nSprint 3. FR-11, BR-09\u201310/13\u201314/16\u201317, NFR-03\u201305. Depends on F06\u2013F09. Owner B; A reviews.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F11-1 / STS-F11-1 | Unit + integration + E2E | In a completed seven-date window, five scheduled dates contain three completions and two misses; add off-schedule activity and today's entry | Completion Rate is 3/5 = 60%; activity totals include eligible off-schedule amounts; today is separate; period labels are unambiguous |\n| AC-F11-2 / STS-F11-2 | Unit | Choose 30 dates, a newly created Habit, an archived Habit, zero scheduled dates, and historical goal changes | Only active-period dates/appropriate revisions count; empty denominator shows \u201cNot scheduled\u201d; no combined unrelated activity total |\n| AC-F11-3 / STS-F11-3 | Integration + E2E | Correct an eligible past entry, refresh report, navigate by keyboard and screen-reader-friendly text | Figures update from the same source rules as history; charts have usable textual equivalents and labels |\n\n### F12 \u2014 Final quality and assessed handoff\n\nSprint 3. FR-12, NFR-01\u201308. Depends on all required features plus independent UAT and the separate maintenance exercise. Owner A leads final QA/evidence; B leads release packaging; both present together.\n\n| AC / planned STS | Level | Setup and action | Required outcome |\n| --- | --- | --- | --- |\n| AC-F12-1 / STS-F12-1 | System + accessibility + performance | Run final-commit regression, access matrix, viewport/keyboard/zoom checks, automated accessibility, and the specified load workload | Compare actual counts/measurements to every NFR target; no required skipped test or undisclosed incomplete feature |\n| AC-F12-2 / STS-F12-2 | Recovery/system | Restore a recent backup to isolated storage, time it, verify sample IDs/amounts and auth/account setup | Restore within NFR-06 target; assessed database untouched; recovery point and restoration duration recorded |\n| AC-F12-3 / STS-F12-3 | Independent acceptance | Partner team executes at least normal, boundary, role/ownership, and history/persistence cases; re-test accepted fixes and maintenance impacts | Named independent testers, expected/actual outcomes, defect links, and fixed/re-tested release IDs; developer self-checks do not substitute |\n| AC-F12-4 / STS-F12-4 | Release/evidence review | Review final traceability/DoD, deploy immutable accepted release, inspect PDF and \u22644-minute video access | All baseline features accounted for; final evidence matches deployed commit; both students present together; no credentials exposed; access retained through grading |\n\n## Out of Scope\n\n- Public onboarding, registration, recovery, invitations, account-management screens, consent sharing, social features, wearable integrations, and medical advice.\n- Participant-created templates or an approval workflow; standalone activity journaling; fractional amounts or unit conversion.\n- Weekly pooled quotas, alternating-week schedules, multiple targets within a day, mutable Account Timezones, pause/reactivation, template unarchiving, inherited Streaks on a new Habit, and retroactive goal changes.\n- Email, push, background notification delivery, snoozing, and reporting export.\n- Microservices, a second public REST API, background reminder workers, independently editable derived counters, and speculative generic services/interfaces.\n- A high-availability SLA for the single-zone course deployment; paid-billing upgrades or spending beyond authorized trial resources; using the separate 30-day Cloud SQL promotion as the persistence baseline.\n- Fabricated or backdated approvals, tests, reviews, releases, metrics, independent UAT, or maintenance work. An ordinary unfinished baseline feature is not the approved maintenance exercise.\n- Implementing the product, provisioning cloud resources, creating a feature-issue tree, or submitting coursework as part of this specification-publication task.\n\n## Further Notes\n\n### Acceptance, provenance, and readiness\n\nThis specification synthesizes the accepted product plan, SRS, system design, feature contracts, glossary, three ADRs, and all four course references. Q1\u201324 settled product/domain behavior; Q25 accepted the full baseline including Better Auth, rolling sessions, quality targets, backups/recovery, sprint allocation, and delivery risks. It intentionally stands on its own because the supporting local planning documents have not yet been committed/published; no nonexistent repository URLs are used as required evidence.\n\nThe `ready-for-agent` label means the specification is ready for bounded implementation planning. It is not a claim that cloud access, third-party approvals, tested compatibility, or the November 15 delivery deadline are already satisfied. Respect the original acceptance boundary: implementation and cloud provisioning require a separate instruction.\n\n### Three-sprint delivery and responsibilities\n\nBoth students work full-time and rotate design, implementation, testing, review, and delivery. A/B in the contracts denote the two contributors, not supplied names; each reviews the other's work. Use bounded implementation issues, feature/fix branches, sprint staging, substantive teammate review, and reviewed main release PRs. This publication creates one product specification, not a feature-issue tree.\n\n| Sprint | Working window in 2026 | Complete increment and gates |\n| --- | --- | --- |\n| 1 | November 14\u201315 | F01\u2013F05: real accounts/two roles, templates, Habit setup, accumulated entries/Today, persistence and gated GCP delivery. Prove the full manager \u2192 participant \u2192 saved-progress journey plus invalid/unauthorized operations; preserve contracts, tests, review, release and Deliverable 1/Lab 5 evidence |\n| 2 | November 16\u201322 internally; official submission November 29 | F06\u2013F10: history/corrections, effective-dated goals, lifecycle, Streaks and Reminders. Implement corrections/revisions first, combine lifecycle/derived behavior next, and complete independent UAT/fixes/re-tests by November 22. Preserve an identifiable completed Sprint 2 release before Sprint 3 integration |\n| 3 | November 23\u201329 feature completion; final handoff through December 13 | F11/F12 and separately approved M01. Deliver tested working reports by November 25; finish remaining baseline, change/regression work, measured quality, recovery, and traceability by November 28\u201329. Submit integrated candidate, complete Sprint 2 evidence, Sprint 3 contracts/progress/remaining-work plan, and Lab 7 by November 29 |\n\nUse November 30 for handoff preparation/rehearsal. December 1\u201311 are exam dates: plan no major feature work then. December 12\u201313 are for fresh final-commit checks, assessed deployment/access confirmation, PDF/video completion and submission; re-record affected evidence if the release changes.\n\nCritical dependencies: F01 \u2192 F02 \u2192 F03 \u2192 F04 \u2192 F06/F07 \u2192 F08/F09 \u2192 F11. F05 infrastructure begins beside F01 but needs the Sprint 1 journey to pass; F10 depends on date/goal/lifecycle behavior; F12 depends on every required feature plus independent UAT and approved maintenance. Verify cloud/auth/build compatibility in the first Sprint 1 work block. Contracts precede implementation throughout.\n\nPlanning estimates include contracts, implementation, tests, review, integration and evidence: Sprint 1/Lab 5 **6\u20138 person-days**; Sprint 2/Lab 6 **6\u20138**; Sprint 3/Lab 7/release preparation **6\u20138**; final verification/submission **2\u20133**. A person-day means eight focused hours. Two full-time students supply ten person-days in a normal five-day week; reserve about two for uncertainty and do not assume extra overtime.\n\n**Sprint 1 has a capacity shortfall:** November 14\u201315 provides at most four person-days if both entire days are available, less once the current day has elapsed. Keep November 15 as the stated course target but immediately obtain an approved recovery decision if measured progress or existing work cannot close the gap. Recompute later capacity if the baseline changes; never silently move required Sprint 1/Sprint 2 features or label unfinished work as debt.\n\n### Lab obligations\n\nLab 6 UAT is due November 22, during Sprint 2, even though final re-verification belongs to F12. Arrange a partner team before November 20. At least one accepted defect must be resolved and independently re-tested; if no legitimate defect is found, obtain the TA's isolated exercise rather than inventing or planting a product bug.\n\nLab 7 requires an instructor/TA-approved change to already implemented behavior, not a baseline feature deferred until Sprint 3. Reserve capacity under M01, obtain approval before implementation, and record impact analysis, revised contracts/AC/STS, regression evidence, reviewed deployment, and readiness. The change itself is intentionally unspecified until a real approved request exists. Track five dated, sourced metrics: required-AC verification status, automated test pass/fail/skipped counts, open defects by severity, fix-to-independent-retest elapsed time, and deployment success/failure counts. Include denominators and source links; no invented historical measurements.\n\n### Definition of done and evidence\n\nA feature is done only when its pre-code contract, behavior, meaningful tests, substantive teammate review, sprint integration, relevant documentation, deployed checks, and required independent acceptance agree. Both students contribute across the lifecycle. Capture genuine rule/defect/change TDD red\u2192green versions; never reconstruct or backdate them. Final evidence includes domain/access test excerpts and two reviewed Issue/PR chains from different sprints.\n\nMaintain a verification ledger: requirement ID; feature/AC/STS ID; actual test/measurement; PLANNED/PASS/FAIL/SKIPPED/INCOMPLETE status; commit; CI/evidence reference; tester; date. All 43 STS start PLANNED with empty actual-result fields. Keep failures, incomplete features, and blockers explicit; document known debt separately. Actual issue numbers, reviewer names, deployment URLs and run counts must come from real execution.\n\n### Course deadlines and submission constraints\n\nAll dates are in 2026 and course submission times are 23:59; the deadline timezone still needs confirmation from current course instructions. The user explicitly moved Deliverable 1/Sprint 1 from November 8 to November 15. Lab 5 remains November 15; Lab 6 is November 22; Deliverable 2 and Lab 7 are November 29; final delivery is December 13. Preserve the original source deadlines and record the user\u2019s correction; do not silently shift other dates.\n\nDeliverable 1 needs the whole-product SRS, feature inventory/traceability, system design, three-sprint plan, Sprint 1 contracts/AC/STS/DoD, and a reviewed working local increment. Lab 5 independently requires Docker, gated CI/CD, repeatable GCP deployment, and durable data by the same revised date. Deliverable 2 needs all Sprint 2 features complete, all Sprint 3 contracts and meaningful implemented/tested Sprint 3 progress, an integrated deployed candidate, current baseline/traceability, and bounded remaining work with owners, dependencies, next actions, and dates. Final delivery needs the entire verified baseline on the actual final assessed commit.\n\nPrepare one self-contained PDF per checkpoint, embedding all assessed engineering documents and selected evidence with page navigation, student identification, immutable release references, and deployment/version information where required. Include actual persisted retrieval, rule rejection, backend forbidden-operation evidence, commands/counts/results tied to commits, domain/access test excerpts, honest TDD versions, and substantive reviewed Issue/PR chains. The final two selected chains must come from different sprints. Keep a concise contribution record and AI-use declaration; never include passwords or tokens.\n\nFor final delivery, both students present the actual deployed program together, not separately on a video call. Use a video no longer than four minutes, a link-accessible YouTube URL, and timestamps in the PDF. Include a release summary. This satisfies the stricter compatible instructions while awaiting instructor clarification: the references conflict on four versus ten minutes, video weighting of ten versus eight plus two summary points, and a concise evidence index versus fully embedded assessed documents. These discrepancies are not claimed resolved.\n\n### Remaining operational prerequisites\n\n- Address the Sprint 1 capacity shortfall immediately; retain November 15 as the stated course target, but obtain an instructor-approved recovery decision if actual progress cannot meet the gates. Do not silently defer required Sprint 1 work or imply that full-time availability proves feasibility.\n- Verify the GCP trial project, remaining credit, activation/expiry dates, region, quotas, costs, and permissions before provisioning. The general $300 trial credit expires 90 days after signup; ordinary Cloud SQL has continuing resource charges. Alerts and limited scaling are not an architecture-wide spending cap. Retain non-upgraded billing and do not rely on the separate 30-day database promotion.\n- Prove Better Auth/TanStack Start/PostgreSQL compatibility, secure operator provisioning with public signup disabled, and the Docker production entrypoint early. No installed dependency or passing spike currently proves these integrations.\n- Obtain current Lab 5\u20137 handouts and confirm deadline timezone. Arrange independent UAT before November 20 and a real instructor/TA-approved maintenance request before its Sprint 3 implementation.\n- Confirm the grading access end date and compare it with credit runway; maintain the assessed release and repository through grading without silently replacing the submitted version or upgrading billing.\n- Record actual contributor names, cloud IDs, issue links, approvals, test measurements, release tags, and evidence when they exist. None is fabricated by this specification.\n",
-          "number": 3,
-          "repository": "thrxpt/habitarc",
-          "title": "Spec: Habitarc habit and activity tracking across three sprints",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/3"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhImQSc",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
-        "status": "Backlog",
-        "title": "Spec: Habitarc habit and activity tracking across three sprints"
+        "number": 3,
+        "title": "Spec: Habitarc habit and activity tracking across three sprints",
+        "status": "In progress",
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhImQSc"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nThe reviewed manager \u2192 template \u2192 Participant Habit \u2192 Activity Entry \u2192 persisted progress journey is reproducible locally and on the recorded GCP release, with Deliverable 1 and Lab 5 evidence.\n\nSprint 1. Accepted specification references: AC-F05-1, AC-F05-3.\n\n## Acceptance criteria\n\n- [ ] A teammate reproduces clean setup, migrations, private synthetic provisioning, build, and real-DB tests without erasing existing data or resetting passwords.\n- [ ] Deploy the full tracking journey through the pipeline; record entry IDs/amounts, restart/redeploy the app, and retrieve the identical records. Demonstrate a rule rejection and actual backend forbidden role/ownership operation.\n- [ ] Capture genuine rule-test red/green versions, real command/count/commit results, substantive teammate review, sprint integration, reviewed main release, immutable tag/image/revision and backup configuration.\n- [ ] Package the whole-product baseline, Sprint 1 contracts/AC/STS/DoD, complete assessed documents in a navigable PDF, and Lab 5 CI/Docker/GCP/persistence evidence by November 15.\n- [ ] Keep failed/incomplete gates and the estimated 6\u20138 person-day versus at-most-four-person-day capacity gap explicit; obtain an approved recovery decision rather than silently deferring required scope.\n",
-          "number": 9,
-          "repository": "thrxpt/habitarc",
-          "title": "Release and reproduce the Sprint 1 tracking journey",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/9"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopbk",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
-        "status": "Backlog",
-        "title": "Release and reproduce the Sprint 1 tracking journey"
+        "number": 9,
+        "title": "Release and reproduce the Sprint 1 tracking journey",
+        "status": "In progress",
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopbk"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Participant sees dated history and edits or deletes eligible entries, with both affected dates and all derived progress updated safely.\n\nSprint 2. Accepted specification references: AC-F06-1, AC-F06-2, AC-F06-3, AC-F06-4.\n\n## Acceptance criteria\n\n- [ ] Display scheduled and off-schedule activity, per-date amounts, and read-only older entries. Permit writes only today or today\u22121 through today\u22126 inside the Habit tracking period.\n- [ ] Entry amount/date edits validate source and destination date eligibility and both resulting totals atomically; deletion requires confirmation and is retry-safe.\n- [ ] Reject stale entry versions visibly instead of overwriting newer work. Deleted entries retain mutation receipts so a retry of an earlier create cannot resurrect them.\n- [ ] Recalculate completion from corrected data; retain original data on failed validation. Exercise midnight/window changes, stale two-tab edits, lost-response retry, date moves and ownership with real PostgreSQL and the UI.\n",
-          "number": 10,
-          "repository": "thrxpt/habitarc",
-          "title": "Browse and correct recent Activity Entry history",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/10"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopeg",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 10,
+        "title": "Browse and correct recent Activity Entry history",
         "status": "Backlog",
-        "title": "Browse and correct recent Activity Entry history"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopeg"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Participant changes tomorrow\u2019s target/weekdays while history continues to use the Goal Revision applicable to each earlier date.\n\nSprint 2. Accepted specification references: AC-F07-1, AC-F07-2, AC-F07-3.\n\n## Acceptance criteria\n\n- [ ] Expose current and pending settings. Edits take effect tomorrow in the Account Timezone; repeated edits replace the same pending revision atomically.\n- [ ] Validate target/unit ceilings/template minimum and nonempty weekdays; reject stale versions and retroactive replacement after midnight makes a revision effective.\n- [ ] If yesterday\u2019s target was 60 and amount 40, lowering to 30 today leaves yesterday incomplete and today unchanged; tomorrow uses 30.\n- [ ] Exercise schedule boundaries, formerly unscheduled dates, concurrent edits, midnight and history UI. Preserve original revisions and ensure entry corrections still affect actual results independently.\n",
-          "number": 11,
-          "repository": "thrxpt/habitarc",
-          "title": "Revise Daily Targets and Schedules from tomorrow",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/11"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopgI",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 11,
+        "title": "Revise Daily Targets and Schedules from tomorrow",
         "status": "Backlog",
-        "title": "Revise Daily Targets and Schedules from tomorrow"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopgI"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Program Manager corrects template descriptions or unused measurement definitions and archives templates without invalidating existing Habits or activity.\n\nSprint 2. Accepted specification references: AC-F08-1, AC-F08-2.\n\n## Acceptance criteria\n\n- [ ] Validate measurement edits to unused templates; once any Habit uses a template, freeze its unit and entry bounds permanently while allowing descriptive edits.\n- [ ] Race edits/archive against Habit creation using consistent template locking; a concurrent first use cannot be reinterpreted.\n- [ ] Archive prevents new Habit selection while existing Habits continue logging within the frozen bounds. Offer no unarchive or destructive history-deletion flow.\n- [ ] Demonstrate manager maintenance and participant feedback through UI/persisted reload; test direct Participant/anonymous management attempts and unchanged historical amounts.\n",
-          "number": 12,
-          "repository": "thrxpt/habitarc",
-          "title": "Maintain and retire Activity Templates safely",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/12"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopiI",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 12,
+        "title": "Maintain and retire Activity Templates safely",
         "status": "Backlog",
-        "title": "Maintain and retire Activity Templates safely"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopiI"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Participant ends a Habit from tomorrow, retains today\u2019s obligation and past history, and can start a fresh Habit once the previous one has ended.\n\nSprint 2. Accepted specification references: AC-F08-3, AC-F08-4.\n\n## Acceptance criteria\n\n- [ ] Archive confirmation clearly shows tomorrow as the exclusive end date; today remains writable and scheduled when applicable.\n- [ ] Reject activity on/after the end date while preserving eligible recent corrections before it; retain history and old Goal Revisions.\n- [ ] Prevent future goal edits from extending a pending archive. Revisions effective on/after the end date have no applicable dates. No pause/reactivation or deletion of history.\n- [ ] Enforce ownership and one-active-Habit concurrency. Once ended, a new Habit from the same selectable template has its own history and no inherited Streak; prove UI/date transitions and real-DB rules.\n",
-          "number": 13,
-          "repository": "thrxpt/habitarc",
-          "title": "Archive a Habit without erasing its history",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/13"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopkk",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 13,
+        "title": "Archive a Habit without erasing its history",
         "status": "Backlog",
-        "title": "Archive a Habit without erasing its history"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopkk"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Participant sees consistency measured using consecutive scheduled dates and historical goals, with valid corrections updating the results.\n\nSprint 2. Accepted specification references: AC-F09-1, AC-F09-2, AC-F09-3.\n\n## Acceptance criteria\n\n- [ ] Completed scheduled dates increment Streaks; intervening Unscheduled Days neither increment nor break them. Friday and Monday can be consecutive successes for a weekday Habit.\n- [ ] Unfinished scheduled today cannot break an existing Streak until the account date ends; a missed prior scheduled date does break it.\n- [ ] Recalculate after eligible corrections and apply the Goal Revision for each date. Show archived current Streak as not applicable, retain longest, and never carry a Streak into a new Habit.\n- [ ] Demonstrate the metrics in the Habit/history UI; test normal, empty, missed, off-schedule, changed-Schedule, archived, midnight and corrected cases through shared rule tests and integration checks.\n",
-          "number": 14,
-          "repository": "thrxpt/habitarc",
-          "title": "Show current and longest scheduled-day Streaks",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/14"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopms",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 14,
+        "title": "Show current and longest scheduled-day Streaks",
         "status": "Backlog",
-        "title": "Show current and longest scheduled-day Streaks"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopms"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Participant sets or disables an optional local Reminder time and sees a due indicator for unfinished scheduled activity while the app is open.\n\nSprint 2. Accepted specification references: AC-F10-1, AC-F10-2.\n\n## Acceptance criteria\n\n- [ ] Persist one optional local time per owned Habit and display its Account Timezone clearly.\n- [ ] Show the indicator only on an active scheduled current date once the reminder time has arrived and the target is unmet. Re-evaluate while open and on focus; clear after completion or disable.\n- [ ] Use current applicable goals/lifecycle; unscheduled or archived dates show no indicator. Exercise midnight, DST transition and direct ownership restrictions.\n- [ ] Provide usable settings/Today UI and tests; promise no email, push, background delivery or snooze.\n",
-          "number": 15,
-          "repository": "thrxpt/habitarc",
-          "title": "Configure and display in-app Reminders",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/15"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopn8",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 15,
+        "title": "Configure and display in-app Reminders",
         "status": "Backlog",
-        "title": "Configure and display in-app Reminders"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopn8"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nThe complete Sprint 2 increment is recorded as a reviewed release, independently tested by a partner team, and has at least one accepted defect fixed and independently re-tested.\n\nSprint 2. Accepted specification references: AC-F12-3.\n\n## Acceptance criteria\n\n- [ ] Preserve an identifiable integrated Sprint 2 release with all Sprint 2 contracts/AC passing, plus the original Sprint 1 journey. Deploy/record the candidate rather than testing a moving version.\n- [ ] Arrange the partner before November 20. Hand off safe accounts and at least normal, boundary, role/ownership, and state/history/persistence cases, with goals, preconditions, steps and expected outcomes.\n- [ ] Record independent testers, actual PASS/FAIL, version, reproduction, severity, triage rationale and evidence; also record this team\u2019s testing of its partner application.\n- [ ] Resolve at least one accepted defect through genuine failing regression \u2192 fix \u2192 teammate review \u2192 CI/deployment \u2192 independent re-test. If no legitimate defect exists, obtain the TA-controlled isolated exercise; never fabricate a product bug.\n- [ ] Complete Lab 6 evidence by November 22; retain all Sprint 2 completion/evidence for its official November 29 submission. Report partner/access delays promptly and retain named/versioned results.\n",
-          "number": 16,
-          "repository": "thrxpt/habitarc",
-          "title": "Release Sprint 2 and complete independent UAT",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/16"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIoppY",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 16,
+        "title": "Release Sprint 2 and complete independent UAT",
         "status": "Backlog",
-        "title": "Release Sprint 2 and complete independent UAT"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIoppY"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nA Participant views a selected Habit\u2019s completed-calendar-date report with amounts, completion counts/rate and clearly labeled lifetime Streaks, while today remains separate.\n\nSprint 3. Accepted specification references: AC-F11-1, AC-F11-2, AC-F11-3.\n\n## Acceptance criteria\n\n- [ ] Report the seven or thirty calendar dates ending yesterday, intersected with the Habit tracking period and each date\u2019s applicable Goal Revision.\n- [ ] Compute completed scheduled dates / scheduled dates; show \u201cNot scheduled\u201d for zero obligations. Five scheduled dates with three completions must show 60%.\n- [ ] Include eligible off-schedule activity in amounts but not completion credit/denominators; keep amounts per Habit and never combine unrelated measurements. Present lifetime Streaks separately from window figures.\n- [ ] Eligible corrections update reports consistently with history. Provide keyboard-usable filters and textual equivalents for charts; test new/archived Habits, revisions, empty periods, seven/thirty windows and ownership.\n- [ ] Deliver meaningful implemented, tested report behavior by November 25 for Sprint 3 progress evidence.\n",
-          "number": 17,
-          "repository": "thrxpt/habitarc",
-          "title": "Explain progress with seven- and thirty-date Habit reports",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/17"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopro",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 17,
+        "title": "Explain progress with seven- and thirty-date Habit reports",
         "status": "Backlog",
-        "title": "Explain progress with seven- and thirty-date Habit reports"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopro"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nThe complete product\u2019s actual integrated build is measured against accepted security, concurrency, responsive, accessibility and warm-response targets, with any necessary fixes and regression proof.\n\nSprint 3. Accepted specification references: AC-F12-1.\n\n## Acceptance criteria\n\n- [ ] Run every protected operation anonymously, as wrong role and across Participants where applicable; verify zero unauthorized disclosure/write and retained session/cross-origin/throttle protections.\n- [ ] Run the required regression and concurrency suites with no hidden skipped or missing required tests. Measure the integrated release; product tickets already carry their own safety/accessibility tests.\n- [ ] Complete critical journeys by keyboard at 360px/1280px and 200% zoom with visible focus, labels, announced errors, usable contrast, no page overflow, and textual chart equivalents; target WCAG 2.2 AA and zero serious/critical automated findings with manual checks.\n- [ ] With 10 concurrent authenticated users, 10 Habits per Participant and up to 10,000 entries each, demonstrate warm p95 backend reads/writes \u22641 second and zero unexpected errors over five minutes. Report cold first-use separately.\n- [ ] Record workload, commands, counts, measurements, commit and findings/fixes. These checks certify integrated behavior and do not postpone security or accessibility from earlier slices.\n",
-          "number": 18,
-          "repository": "thrxpt/habitarc",
-          "title": "Verify integrated access, accessibility and performance targets",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/18"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopts",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 18,
+        "title": "Verify integrated access, accessibility and performance targets",
         "status": "Backlog",
-        "title": "Verify integrated access, accessibility and performance targets"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopts"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nThe team restores a recent backup into an isolated database and verifies the tracking journey\u2019s saved records and account setup within the accepted recovery targets.\n\nSprint 3. Accepted specification references: AC-F12-2.\n\n## Acceptance criteria\n\n- [ ] Use the ordinary Cloud SQL backup path with daily backups; record backup timestamp and a recovery point no older than 24 hours.\n- [ ] Restore into isolated storage and verify representative identity, Habit, entry IDs/amounts and a usable persisted journey. Never overwrite or redirect the assessed database during the exercise.\n- [ ] Demonstrate restoration within 60 minutes and record actual timings, commands/process, configuration, release and evidence, including any failure and retry.\n- [ ] Review backup retention, cost/credit impact and the documented safe rollback/recovery procedure. Final-release checks later confirm that recovery evidence still applies to the assessed schema.\n",
-          "number": 19,
-          "repository": "thrxpt/habitarc",
-          "title": "Prove backup recovery without touching assessed data",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/19"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopwU",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 19,
+        "title": "Prove backup recovery without touching assessed data",
         "status": "Backlog",
-        "title": "Prove backup recovery without touching assessed data"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopwU"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nOne small instructor/TA-approved change to already released behavior is delivered through updated contracts, a failing changed-behavior test, reviewed implementation, deployment and re-test.\n\nSprint 3. Accepted specification references: M01.\n\n## Acceptance criteria\n\n- [ ] External execution prerequisite: obtain an actual approved request before choosing or implementing changed behavior. Select a bounded one-context change to an already implemented rule; no unimplemented baseline feature or invented defect qualifies.\n- [ ] Record request/approval and impact on requirements, domain terms/ADRs, contracts, UI/application/data behavior, permissions, tests, deployment and recovery; review the revised contract before code.\n- [ ] Capture the changed-behavior regression failing before implementation, then implement, pass relevant/full regressions, obtain substantive teammate review, deploy a recorded release and re-test affected journeys independently where required.\n- [ ] If approved scope exceeds a bounded slice, document the need for decomposition rather than silently expanding this ticket. If approval is missing, keep the work explicitly blocked; do not fabricate the request.\n- [ ] Retain Lab 7 readiness and metrics source data by November 29. Respect original baseline history and retain the assessed versions.\n",
-          "number": 20,
-          "repository": "thrxpt/habitarc",
-          "title": "Deliver one approved maintenance change with regression evidence",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/20"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopyU",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 20,
+        "title": "Deliver one approved maintenance change with regression evidence",
         "status": "Backlog",
-        "title": "Deliver one approved maintenance change with regression evidence"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIopyU"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nThe team submits a deployed, identified integrated candidate with completed Sprint 2, tested Sprint 3 progress, approved maintenance, current traceability and the Lab 7 metrics/readiness package.\n\nSprint 3. Accepted specification references: D2, Lab7.\n\n## Acceptance criteria\n\n- [ ] Identify completed Sprint 2 separately; include all Sprint 2 and Sprint 3 contracts, actual verification, original Sprint 1 continuity, baseline changes, UAT findings/re-tests and the deployed commit/image/CI revision.\n- [ ] Target all major baseline behavior complete by November 29. Any remaining item has exact feature/AC/defect, owner, dependency, next action and completion date; disclose failed/skipped/incomplete work and never silently move required Sprint 2 scope.\n- [ ] Capture five dated sourced metrics: required-AC verification status; automated pass/fail/skipped counts; open defects by severity; fix-to-independent-retest duration; deployment success/failure counts. Include denominators, time window, a \u2264100-word action interpretation and required short retrospective.\n- [ ] Package Deliverable 2\u2019s complete assessed engineering documents in one navigable self-contained PDF, and Lab 7 approved-change/regression/review/deployment/metrics evidence. Use real records, safe credentials handoff and actual release references.\n- [ ] Confirm setup/migrations/seed and deployment instructions, remaining trial runway and final-readiness plan; reserve December 1\u201311 for exams and final verification/submission for December 12\u201313.\n",
-          "number": 21,
-          "repository": "thrxpt/habitarc",
-          "title": "Publish the November 29 integrated candidate and evidence",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/21"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIop0Q",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 21,
+        "title": "Publish the November 29 integrated candidate and evidence",
         "status": "Backlog",
-        "title": "Publish the November 29 integrated candidate and evidence"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIop0Q"
       },
       {
-        "content": {
-          "body": "## Parent\n\nhttps://github.com/thrxpt/habitarc/issues/3\n\n## What to build\n\nThe entire accepted product is freshly verified on its immutable assessed release, deployed and kept accessible through grading, with a complete PDF and joint demonstration submitted by December 13.\n\nSprint 3. Accepted specification references: AC-F12-4.\n\n## Acceptance criteria\n\n- [ ] Run the final-commit build, meaningful regressions, operation access checks, NFR comparisons and affected independent UAT re-tests; all baseline FR/BR and important NFR statuses are explicit. No unresolved release-blocking defect or required unfinished feature is hidden as debt.\n- [ ] Confirm persistence/redeployment, migration/setup reproduction, applicable backup/restore evidence, final release/tag/image/CI identity, documented limitations/debt and safe configuration. Later commits cannot silently replace the assessed release.\n- [ ] Produce one self-contained PDF with page navigation, student identification, full final SRS/inventory/system design/contracts/AC/STS, actual traceability/results, evidence, two reviewed Issue/PR chains from different sprints, contribution table, AI-use declaration, DoD and release summary.\n- [ ] Provide a \u22644-minute actual deployed-program demo with both students presenting together, version identification, major journeys, business rule and rejected case; supply a link-accessible YouTube URL and PDF timestamps. Keep credentials/tokens out of the package.\n- [ ] Confirm current instructor instructions and grading access end date; verify trial runway and maintain assessed repository/deployment access without paid upgrade. Record unresolved rubric/video/report discrepancies and apply the stricter compatible package unless authoritatively changed.\n",
-          "number": 22,
-          "repository": "thrxpt/habitarc",
-          "title": "Release the final assessed product with PDF and joint demo",
-          "type": "Issue",
-          "url": "https://github.com/thrxpt/habitarc/issues/22"
-        },
-        "id": "PVTI_lAHOBcLgBc4Brg6CzhIop20",
-        "labels": ["ready-for-agent"],
-        "repository": "https://github.com/thrxpt/habitarc",
+        "number": 22,
+        "title": "Release the final assessed product with PDF and joint demo",
         "status": "Backlog",
-        "title": "Release the final assessed product with PDF and joint demo"
+        "id": "PVTI_lAHOBcLgBc4Brg6CzhIop20"
       }
-    ],
-    "totalCount": 20
+    ]
   },
   "main": {
-    "date": "2026-11-13T11:22:12Z",
-    "message": "feat: init",
-    "sha": "7993d06519211ce19d66a744689e0ef67cb09283"
+    "date": "2026-11-15T16:27:42Z",
+    "message": "Merge pull request #32 from thrxpt/sprint-1\n\nrelease: prepare Sprint 1 tracking journey for Deliverable 1",
+    "sha": "9be6a80041c732cac97e20b87c83dfe8153f42ce"
   },
   "sprint1": {
-    "date": "2026-11-15T13:47:43Z",
-    "message": "Merge pull request #28 from thrxpt/feat/activity-entries\n\nfeat(entries): record activity entries and show trustworthy Today progress",
-    "sha": "0f24d8fec1f26676ce510f7aafa4fc4468ee43f1"
+    "date": "2026-11-15T16:12:05Z",
+    "message": "Merge pull request #31 from thrxpt/docs/complete-deliverable-one\n\ndocs(deliverable): prepare Project Deliverable 1 assessment package",
+    "sha": "2a41472787e08c57b1f294c0c1e4c5175de549b2"
+  },
+  "mainCI": {
+    "conclusion": "success",
+    "databaseId": 43735599569,
+    "headSha": "9be6a80041c732cac97e20b87c83dfe8153f42ce",
+    "status": "completed",
+    "url": "https://github.com/thrxpt/habitarc/actions/runs/43735599569"
   }
 }
