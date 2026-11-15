@@ -1,6 +1,6 @@
 # Habitarc product and three-sprint plan
 
-Status: accepted planning baseline. The user confirmed Q1–25, including the complete product scope, security/quality details, estimates, and three-sprint allocation. The planning interview is complete. Implementation and cloud provisioning require a separate instruction; no product implementation or deployment has been performed by this planning task.
+Status: accepted planning baseline. The user confirmed Q1–25, including the complete product scope, security/quality details, estimates, and three-sprint allocation. The planning interview is complete. The original plan preceded implementation. F01–F04 are now integrated into `sprint-1`; current verification and the remaining main-release gates are recorded in the [Deliverable 1 ledger](../deliverables/deliverable-1/part-f.md). Cloud delivery remains separately tracked in issue #8.
 
 This is a course-complete two-role product: define a template, establish a personal Habit, record real activity, and understand consistent progress without rewriting history. The plan covers the complete release and the engineering evidence required across three sprints.
 
@@ -16,7 +16,7 @@ This is a course-complete two-role product: define a template, establish a perso
 - [Glossary](../../GLOSSARY.md): canonical domain vocabulary.
 - [ADR 0001](../adr/0001-preserve-used-template-measurement-rules.md), [ADR 0002](../adr/0002-cloud-run-and-cloud-sql.md), and [ADR 0003](../adr/0003-effective-dated-habit-goals.md): stable template rules, trial-budget deployment, and historical goal revisions.
 
-All implementation and verification statuses are PLANNED. Documentation checks are not evidence that the product works.
+Original allocations remain the product baseline. Actual Sprint 1 implementation/results are recorded separately; documentation checks alone are not product verification.
 
 ## Product direction
 
@@ -85,7 +85,7 @@ The separate [30-day Cloud SQL trial instance](https://docs.cloud.google.com/sql
 
 Use GitHub Issues and the project board, feature/fix branches, sprint staging, substantive teammate PR reviews, integration checks, and reviewed releases to main. Capture evidence as work happens. Authentication, authorization, persistence, and a complete domain workflow belong in Sprint 1. CI/CD and GCP delivery must meet the revised November 22 Lab 5 checkpoint.
 
-The existing [Habitarc project board](https://github.com/users/thrxpt/projects/13) is available. GitHub currently reports no Actions workflows, configured environments, or deployment records. Docker CLI is installed locally; daemon readiness has not been checked. The GCP CLI is not on the local PATH, so no current GCP project or account has been established from this environment. These observations do not rule out resources or completed work elsewhere.
+The [Habitarc project board](https://github.com/users/thrxpt/projects/13) is available. The original November 14 planning inspection reported no Actions workflows or deployment records and had not established Docker/GCP readiness. Those were historical observations, not current release results: Sprint 1 now has implemented features and passing CI, while the unmerged PR #30 prepares Docker and a manually triggered release pipeline. The [Deliverable 1 ledger](../deliverables/deliverable-1/part-f.md) records actual current evidence; live GCP acceptance remains separate work under issue #8.
 
 Course-required engineering artifacts include a whole-product SRS, feature inventory and requirement-to-sprint traceability, system SDS, feature contracts, acceptance criteria, STS, and definition-of-done evidence. Contracts precede their implementations. Verification must include domain rules, real persistence, backend role/ownership restrictions, and selected end-to-end journeys. Lab 6 needs an independent partner team; Lab 7 needs an approved change to already implemented behavior, not an ordinary unimplemented baseline feature.
 

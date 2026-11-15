@@ -2,6 +2,10 @@
 
 Private study and movement workspaces for pre-provisioned Participants and Program Managers. Built with TanStack Start, Better Auth, Drizzle, and PostgreSQL.
 
+## Project Deliverable 1
+
+The [submission package](docs/deliverables/deliverable-1/README.md) assembles the complete A–F engineering documents, actual local verification, screenshots, reviews, contributions, and a generated PDF with page navigation. It explicitly tracks the remaining teammate acceptance and reviewed main-release gates. Later product features and Lab 5 cloud delivery are allocated separately.
+
 ## Local setup
 
 Use the repository’s pinned Vite+ toolchain and Docker Compose. Compose runs PostgreSQL 17 on `127.0.0.1:55432` and creates the development database `habitarc` and test database `habitarc_auth_test`.
@@ -91,7 +95,7 @@ vp run test:e2e
 
 The runner starts its own application on `http://127.0.0.1:4173`, creates a uniquely named disposable database, applies migrations, and provisions two Participants and a Program Manager with a generated test password. Teardown stops the server and removes only that database. Port 4173 must be free; an existing application is never reused. No private credential file or development accounts are needed.
 
-The three Chromium tests cover sign-in readiness before hydration; a manager-to-participant Habit setup journey with validation, account dates, persistence, existing-Habit feedback, and private account switching; and keyboard weekday selection at a 390px viewport. The browser uses `America/Los_Angeles` while accounts use `Asia/Bangkok`. Playwright and Vitest run separately. Failure screenshots and traces are written under ignored `test-results/`; inspect a trace with `vp exec playwright show-trace <trace.zip>`.
+The four Chromium tests cover sign-in readiness before hydration; a manager-to-participant Habit setup journey with validation, account dates, persistence, existing-Habit feedback, and private account switching; keyboard weekday selection at a 390px viewport; and Activity Entry persistence, overachievement, lost-response/failed-save retries, and 360px layout. Selected successful surfaces are captured for assessment under `test-results/` alongside failure screenshots/traces; the submission package retains its selected evidence. The browser uses `America/Los_Angeles` while accounts use `Asia/Bangkok`. Playwright and Vitest run separately; inspect a failure trace with `vp exec playwright show-trace <trace.zip>`.
 
 ## Continuous integration
 

@@ -1,0 +1,33 @@
+$ vp build ⊘ cache disabled
+transforming...
+✓ 2410 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/client/assets/styles-DtnrLYl0.css        56.98 kB │ gzip:  10.32 kB
+dist/client/assets/routes-U01mOtM8.js          0.39 kB │ gzip:   0.29 kB
+dist/client/assets/page-heading-BdSZWDhK.js   25.98 kB │ gzip:  10.84 kB
+dist/client/assets/routes-BcAKiNRM.js         98.18 kB │ gzip:  32.10 kB
+dist/client/assets/index-DvZm4oiR.js         346.69 kB │ gzip: 111.80 kB
+
+✓ built in 819ms
+transforming...
+✓ 183 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/server/assets/kysely-adapter-Cj_QZw5p.js                0.05 kB │ gzip:  0.07 kB
+dist/server/assets/empty-plugin-adapters-CeyhLWeJ.js         0.20 kB │ gzip:  0.14 kB
+dist/server/assets/page-heading-CAhBv89S.js                  0.37 kB │ gzip:  0.28 kB
+dist/server/assets/auth-error-C2SRjANn.js                    0.56 kB │ gzip:  0.29 kB
+dist/server/assets/routes-oga3l2aI.js                        0.59 kB │ gzip:  0.37 kB
+dist/server/assets/_tanstack-start-manifest_v-Cq8CO9AU.js    0.65 kB │ gzip:  0.37 kB
+dist/server/assets/rolldown-runtime-782esTHO.js              1.09 kB │ gzip:  0.52 kB
+dist/server/assets/start-BRWiDVVR.js                         1.82 kB │ gzip:  0.81 kB
+dist/server/assets/router-oPcwOF8R.js                        6.09 kB │ gzip:  2.36 kB
+dist/server/assets/functions-C58GpWEd.js                     6.88 kB │ gzip:  1.81 kB
+dist/server/assets/runtime--bW87uGF.js                      26.71 kB │ gzip:  6.79 kB
+dist/server/assets/url-E1EBBEOQ.js                          29.03 kB │ gzip:  8.10 kB
+dist/server/assets/routes-C7iMH_OT.js                       85.24 kB │ gzip: 19.71 kB
+dist/server/server.js                                      103.79 kB │ gzip: 26.43 kB
+dist/server/assets/auth-BIPPNeFE.js                        354.34 kB │ gzip: 84.47 kB
+
+✓ built in 336ms

@@ -1,6 +1,6 @@
 # Habitarc System-Level SDS
 
-Status: accepted implementation design following user confirmation of Q25. F01 authentication is implemented locally with Better Auth, Drizzle, and PostgreSQL; see [authentication and verification instructions](auth.md). Other feature components and cloud deployment remain planned until their own implementation and verification.
+Status: accepted implementation design following user confirmation of Q25. F01–F04 are implemented and integrated into `sprint-1`; later product features remain planned. The [Deliverable 1 ledger](deliverables/deliverable-1/part-f.md) records current execution and release gaps. Cloud deployment is separately tracked in issue #8; no deployment is established by this document.
 
 Read the [SRS](srs.md), [feature inventory](features.md), [traceability matrix](traceability.md), and [sprint contracts](sprints/README.md) alongside this system-level design.
 
@@ -17,6 +17,24 @@ Suggested responsibilities, to place within the existing source tree as features
 - Routes/components: accessible forms, pending/error/empty states, and rendering server-authoritative results.
 
 Browser input never determines role, owner, trusted current date, or derived totals. Route navigation guards improve usability; every server operation independently authenticates and authorizes access.
+
+Implemented flow: React forms → typed TanStack server functions → authenticated domain services → Drizzle transactions/constraints in PostgreSQL. `src/entries.ts` owns deterministic date/progress rules; `src/server/entries.ts` owns recording transactions; `src/server/habits.ts` owns Habit creation/locks; `src/server/templates.ts` owns template creation/reads. Server-only modules never enter the client bundle.
+
+## Role and record-access matrix
+
+| Operation | Anonymous | Participant | Program Manager |
+| --- | --- | --- | --- |
+| Sign in / current identity | Sign in; identity null | Own identity | Own identity |
+| Sign out | No authenticated session to revoke | Own session | Own session |
+| Browse active templates | 401 | Shared active library | Shared active library |
+| Create template | 401 | 403 | Allowed |
+| Create/list Habits | 401 | Own records only | 403 |
+| Today / create Activity Entry | 401 | Own Habits only; other/missing Habit 404 | 403 |
+| Future history/corrections/reports | 401 | Own records only; F06–F11 planned | 403 |
+| Future template edit/archive | 401 | 403 | Allowed under F08 rules; planned |
+| Provision credentials/roles | No public endpoint | No public endpoint | No public endpoint |
+
+Provisioning is a private operator command, outside application roles. Shared templates contain no private participant history. Authorization runs at the server-function boundary and domain service; ownership checks precede receipt replay. Database FKs/constraints preserve storage invariants but do not replace session authorization.
 
 ## Authentication design
 
@@ -36,6 +54,8 @@ Official references: [TanStack integration](https://better-auth.com/docs/integra
 ## Data model
 
 Names describe responsibilities, not a frozen SQL migration. Use foreign keys, integer/check constraints, indexes, and versioned migrations. Auth-owned tables follow the pinned library schema rather than a duplicate custom session model.
+
+The table is the whole-product design. Sprint 1 has auth/timezone, templates, Habits/initial revisions, and entries/receipts in migrations 0000–0004. Habit reminder/concurrency-version fields and later mutation operations require later-sprint migrations; they are not claimed present in the current Habit table.
 
 | Record | Essential data and constraints |
 | --- | --- |
@@ -93,6 +113,14 @@ Common outcomes: unauthenticated (sign in), wrong role (forbidden), missing/not-
 UI details above, including permanent template retirement, no reporting export, date-edit conflict behavior, and archived-current-Streak presentation, were accepted with the complete baseline in Q25.
 
 ## Deployment and release
+
+### Configuration and reproducible local storage
+
+`DATABASE_URL` is the server-only PostgreSQL connection; `BETTER_AUTH_URL` is the exact canonical origin; `BETTER_AUTH_SECRET` is a private random secret of at least 32 characters; `TEST_DATABASE_URL` points to disposable test storage with database-creation permission. Operator commands/app load ignored `.env.local`; exported values take precedence. Vitest requires exported `TEST_DATABASE_URL`; Playwright may load that one variable from `.env.local`. Never expose these credentials through client-prefixed variables or commit a real environment file. `.env.example` documents loopback-only synthetic setup without an auth secret.
+
+Compose runs PostgreSQL 17 on loopback port 55432 with a named volume. `vp run db:migrate` applies versioned SQL in order under an advisory lock; `vp run accounts:local` creates two Participants and a Program Manager with generated passwords in a private 0600 file outside the repository. Repeated migrations/provisioning preserve working identities and records. Templates/Habits/entries are created through the demonstrated UI, rather than a hidden fixture-only product journey. Migrations 0000–0004 establish auth, timezone, template, Habit/revision, and entry/receipt storage respectively. `btree_gist` installation permission is required for the Habit exclusion constraint. Compose's trust authentication is strictly local; cloud storage uses private credentials.
+
+Deliverable 1 assesses the reviewed local increment, not completed GCP or Docker delivery. The following design remains relevant for Lab 5 and the final product; its completion needs separate evidence.
 
 Build a production Docker image using the pinned toolchain and official TanStack Start production build conventions; prove the exact entrypoint in the initial deployment spike. Bind the Cloud Run port, keep secrets out of the image, and keep durable records/sessions out of its disposable filesystem. Local integration tests use real PostgreSQL in a disposable database.
 

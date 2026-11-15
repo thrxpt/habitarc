@@ -1,6 +1,6 @@
 # Sprint engineering contracts and verification
 
-Status: accepted contract baseline following user confirmation of Q25. These contracts, acceptance criteria (AC), and software test specifications (STS) describe planned work, not test results. No product code, test implementation, issue, release, or execution evidence is implied. Preserve this baseline's real version history before feature implementation.
+Status: accepted contract baseline following user confirmation of Q25. These contracts, acceptance criteria (AC), and software test specifications (STS) retain the accepted baseline. F01–F04 now have implementations; actual execution and release gaps are recorded in the [Deliverable 1 ledger](../deliverables/deliverable-1/part-f.md). Contract tables themselves are not test results. Preserve this baseline's real version history before feature implementation.
 
 Read alongside [requirements](../srs.md), [system design](../system-sds.md), and [sprint allocation](plan.md). All private operations inherit BR-01 and NFR-01; all entry writes inherit BR-02–09. Test fixtures are synthetic and include Participant A, Participant B, and Program Manager M, fixed account clocks, and real PostgreSQL for integration tests. Never use real private histories for evidence.
 
@@ -39,7 +39,7 @@ Lab 7 requires an instructor/TA-approved change to already implemented behavior,
 
 Every feature requires its contract before code, a GitHub issue linked to requirement/AC/STS IDs, bounded branch, meaningful rule/negative tests, a substantive teammate review, integration into sprint staging, and verification on the integrated release. Both students must participate across design, code, tests, review, and delivery. Ownership here identifies the primary driver, not exclusive specialization.
 
-Capture rule/defect/change TDD red→green versions honestly; do not reconstruct or backdate evidence. Retain UI→application→DB demonstrations, actual backend forbidden-operation evidence, build/test commands and counts, and the release version. Final evidence includes actual domain-rule and access-test excerpts and two reviewed Issue/PR chains from different sprints.
+Capture rule/defect/change TDD red→green versions honestly; do not reconstruct or backdate evidence. Retain UI→application→DB demonstrations, actual backend forbidden-operation evidence, build/test commands and counts, and the release version. Deliverable 1 evidence includes actual domain-rule and access-test excerpts and two reviewed Sprint 1 Issue/PR chains. The final delivery additionally requires sampled chains from different sprints.
 
 Use a verification ledger with columns: requirement ID, feature/AC/STS ID, actual test file/name or measurement, execution status (PLANNED/PASS/FAIL/SKIPPED/INCOMPLETE), commit, CI/run or evidence reference, tester, and date. Initially every STS is PLANNED and actual-result fields are empty. Expand and execute it during implementation; this document must never be used as proof of passing tests.
 
