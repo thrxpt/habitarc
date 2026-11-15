@@ -4,11 +4,19 @@ import { useState } from "react";
 import { Alert, AlertDescription } from "#components/ui/alert.tsx";
 import { Button } from "#components/ui/button.tsx";
 
+import type {
+  HabitCreationResponse,
+  HabitDraft,
+  HabitWorkspace,
+} from "../habits";
 import type { Role } from "../identity";
 import { formatTemplateRange } from "../templates";
 import type { ActivityTemplate } from "../templates";
+import { HabitCreateForm } from "./habit-create-form";
 
 interface TemplateLibraryProps {
+  habitWorkspace?: HabitWorkspace;
+  onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
   role: Role;
   templates: ActivityTemplate[];
   hasMore?: boolean;
@@ -44,6 +52,8 @@ const TemplateSummary = ({
 );
 
 export const TemplateLibrary = ({
+  habitWorkspace,
+  onCreateHabit,
   role,
   templates,
   hasMore = false,
@@ -150,6 +160,21 @@ export const TemplateLibrary = ({
           Selected Activity Template: {selectedTemplate.name} (
           {formatTemplateRange(selectedTemplate)}).
         </p>
+      )}
+      {role === "participant" && selectedTemplate && habitWorkspace && (
+        <HabitCreateForm
+          key={selectedTemplate.id}
+          template={selectedTemplate}
+          accountDate={habitWorkspace.accountDate}
+          timezone={habitWorkspace.timezone}
+          existingHabit={habitWorkspace.items.find(
+            (item) =>
+              item.template.id === selectedTemplate.id &&
+              (item.archivedFrom === null ||
+                item.archivedFrom > habitWorkspace.accountDate)
+          )}
+          onCreateHabit={onCreateHabit}
+        />
       )}
     </section>
   );

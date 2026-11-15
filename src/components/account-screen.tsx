@@ -4,6 +4,11 @@ import { useState } from "react";
 import { Button } from "#components/ui/button.tsx";
 
 import { authClient } from "../auth-client";
+import type {
+  HabitCreationResponse,
+  HabitDraft,
+  HabitWorkspace,
+} from "../habits";
 import type { Identity } from "../identity";
 import type { ActivityTemplate, ActivityTemplateDraft } from "../templates";
 import { PageHeading } from "./page-heading";
@@ -11,6 +16,8 @@ import { SignInPanel } from "./sign-in-panel";
 import { WorkspacePanel } from "./workspace-panel";
 
 interface AccountScreenProps {
+  habitWorkspace?: HabitWorkspace;
+  onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
   identity: Identity | null;
   templates?: ActivityTemplate[];
   hasMoreTemplates?: boolean;
@@ -26,6 +33,8 @@ interface AccountScreenProps {
 const EMPTY_TEMPLATES: ActivityTemplate[] = [];
 
 export const AccountScreen = ({
+  habitWorkspace,
+  onCreateHabit,
   identity,
   templates = EMPTY_TEMPLATES,
   hasMoreTemplates = false,
@@ -94,6 +103,9 @@ export const AccountScreen = ({
       >
         {identity ? (
           <WorkspacePanel
+            key={identity.id}
+            habitWorkspace={habitWorkspace}
+            onCreateHabit={onCreateHabit}
             identity={identity}
             templates={templates}
             hasMoreTemplates={hasMoreTemplates}

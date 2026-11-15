@@ -1,7 +1,13 @@
 import { Alert, AlertDescription } from "#components/ui/alert.tsx";
 
+import type {
+  HabitCreationResponse,
+  HabitDraft,
+  HabitWorkspace,
+} from "../habits";
 import type { Identity } from "../identity";
 import type { ActivityTemplate, ActivityTemplateDraft } from "../templates";
+import { HabitList } from "./habit-list";
 import { PageHeading } from "./page-heading";
 import { TemplateCreateForm } from "./template-create-form";
 import { TemplateLibrary } from "./template-library";
@@ -9,6 +15,8 @@ import { TemplateLibrary } from "./template-library";
 const EMPTY_TEMPLATES: ActivityTemplate[] = [];
 
 export const WorkspacePanel = ({
+  habitWorkspace,
+  onCreateHabit,
   identity,
   templates = EMPTY_TEMPLATES,
   hasMoreTemplates = false,
@@ -18,6 +26,8 @@ export const WorkspacePanel = ({
   onCreateTemplate,
   onLoadMoreTemplates,
 }: {
+  habitWorkspace?: HabitWorkspace;
+  onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
   identity: Identity;
   templates?: ActivityTemplate[];
   hasMoreTemplates?: boolean;
@@ -72,14 +82,21 @@ export const WorkspacePanel = ({
       </h2>
       <p className="text-muted-foreground mb-6 max-w-prose leading-[1.65]">
         {identity.role === "participant"
-          ? "Your workspace is private. Your study and movement routines will live here."
+          ? "Your workspace is private. Choose an activity and make room for a routine that works for you."
           : "Your workspace is for maintaining Activity Templates. Participants’ personal tracking histories stay private."}
       </p>
     </section>
     {identity.role === "program-manager" && (
       <TemplateCreateForm onCreateTemplate={onCreateTemplate} />
     )}
+    {identity.role === "participant" && habitWorkspace && (
+      <HabitList workspace={habitWorkspace} />
+    )}
     <TemplateLibrary
+      habitWorkspace={
+        identity.role === "participant" ? habitWorkspace : undefined
+      }
+      onCreateHabit={onCreateHabit}
       role={identity.role}
       templates={templates}
       hasMore={hasMoreTemplates}

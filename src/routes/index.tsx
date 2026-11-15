@@ -6,8 +6,10 @@ import { AccountScreen } from "../components/account-screen";
 import { PageHeading } from "../components/page-heading";
 import {
   createTemplate,
+  createHabit,
   getIdentity,
   listTemplates,
+  listHabits,
 } from "../server/functions";
 import type {
   ActivityTemplate,
@@ -21,7 +23,7 @@ const EMPTY_TEMPLATE_PAGE: ActivityTemplatePage = {
 };
 
 const Home = () => {
-  const { identity, templatePage } = Route.useLoaderData();
+  const { identity, templatePage, habitWorkspace } = Route.useLoaderData();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [extraState, setExtraState] = useState<{
@@ -82,6 +84,14 @@ const Home = () => {
 
   return (
     <AccountScreen
+      habitWorkspace={habitWorkspace ?? undefined}
+      onCreateHabit={async (draft) => {
+        const result = await createHabit({ data: draft });
+        if (result.kind !== "invalid") {
+          await router.invalidate();
+        }
+        return result;
+      }}
       identity={identity}
       templates={templates}
       hasMoreTemplates={nextCursor !== null}
@@ -104,10 +114,16 @@ export const Route = createFileRoute("/")({
   loader: async () => {
     const identity = await getIdentity();
     if (!identity) {
-      return { identity: null, templatePage: EMPTY_TEMPLATE_PAGE };
+      return {
+        identity: null,
+        templatePage: EMPTY_TEMPLATE_PAGE,
+        habitWorkspace: null,
+      };
     }
     const templatePage = await listTemplates();
-    return { identity, templatePage };
+    const habitWorkspace =
+      identity.role === "participant" ? await listHabits() : null;
+    return { identity, templatePage, habitWorkspace };
   },
   component: Home,
   errorComponent: () => (

@@ -9,6 +9,8 @@ import {
   boolean,
   integer,
   index,
+  date,
+  unique,
 } from "drizzle-orm/pg-core";
 
 import {
@@ -170,6 +172,61 @@ export const activityTemplate = pgTable(
     ),
     check("activity_template_version_positive", sql`${table.version} >= 1`),
     index("activity_template_active_name_idx").on(table.archivedAt, table.name),
+  ]
+);
+
+export const habit = pgTable(
+  "habit",
+  {
+    id: text("id").primaryKey(),
+    participantId: text("participant_id")
+      .notNull()
+      .references(() => user.id),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => activityTemplate.id),
+    startDate: date("start_date").notNull(),
+    // Exclusive end: an archive beginning tomorrow still leaves today's Habit active.
+    archivedFrom: date("archived_from"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "habit_tracking_period_check",
+      sql`${table.archivedFrom} is null or ${table.archivedFrom} > ${table.startDate}`
+    ),
+    index("habit_participant_idx").on(table.participantId),
+    index("habit_template_idx").on(table.templateId),
+  ]
+);
+
+export const goalRevision = pgTable(
+  "goal_revision",
+  {
+    id: text("id").primaryKey(),
+    habitId: text("habit_id")
+      .notNull()
+      .references(() => habit.id, { onDelete: "cascade" }),
+    effectiveFrom: date("effective_from").notNull(),
+    dailyTarget: integer("daily_target").notNull(),
+    // Seven bits, Monday first; 127 represents every day.
+    weekdayMask: integer("weekday_mask").notNull(),
+  },
+  (table) => [
+    unique("goal_revision_habit_date_unique").on(
+      table.habitId,
+      table.effectiveFrom
+    ),
+    check(
+      "goal_revision_target_check",
+      sql`${table.dailyTarget} between 1 and 1000000`
+    ),
+    check(
+      "goal_revision_weekdays_check",
+      sql`${table.weekdayMask} between 1 and 127`
+    ),
   ]
 );
 

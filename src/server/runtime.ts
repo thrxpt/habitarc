@@ -6,6 +6,7 @@ import { createAuthentication } from "./auth";
 import type { AuthConfig } from "./auth";
 import { createDatabase } from "./database";
 import type { Database } from "./database";
+import { createHabitService } from "./habits";
 import { isLoopbackHost } from "./loopback";
 import { createTemplateService } from "./templates";
 
@@ -78,4 +79,10 @@ let templateService: ReturnType<typeof createTemplateService> | undefined;
 export const getTemplateService = () => {
   templateService ??= createTemplateService(getDatabase());
   return templateService;
+};
+
+let habitService: ReturnType<typeof createHabitService> | undefined;
+export const getHabitService = () => {
+  habitService ??= createHabitService(getDatabase());
+  return habitService;
 };

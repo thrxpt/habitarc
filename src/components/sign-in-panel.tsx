@@ -1,3 +1,4 @@
+import { useHydrated } from "@tanstack/react-router";
 import { useState } from "react";
 import type { ChangeEvent, SubmitEvent, SyntheticEvent } from "react";
 
@@ -13,7 +14,9 @@ export const SignInPanel = ({
 }: {
   onSessionChanged: () => Promise<void>;
 }) => {
+  const hydrated = useHydrated();
   const [pending, setPending] = useState(false);
+  const disabled = !hydrated || pending;
   const [error, setError] = useState("");
   const [invalidFields, setInvalidFields] = useState({
     email: false,
@@ -76,7 +79,7 @@ export const SignInPanel = ({
     id: name,
     name,
     required: true,
-    disabled: pending,
+    disabled,
     "aria-invalid": invalidFields[name],
     "aria-describedby":
       invalidFields[name] && error ? "sign-in-error" : undefined,
@@ -104,13 +107,14 @@ export const SignInPanel = ({
         Use the account provided by your program.
       </p>
       <form
+        method="post"
         onSubmit={(event) => {
           void signIn(event);
         }}
         aria-busy={pending}
       >
         <FieldGroup className="mt-6">
-          <Field data-disabled={pending} data-invalid={invalidFields.email}>
+          <Field data-disabled={disabled} data-invalid={invalidFields.email}>
             <FieldLabel htmlFor="email">Email</FieldLabel>
             <Input
               autoComplete="username"
@@ -118,7 +122,7 @@ export const SignInPanel = ({
               {...fieldProps("email")}
             />
           </Field>
-          <Field data-disabled={pending} data-invalid={invalidFields.password}>
+          <Field data-disabled={disabled} data-invalid={invalidFields.password}>
             <FieldLabel htmlFor="password">Password</FieldLabel>
             <Input
               autoComplete="current-password"
@@ -131,7 +135,7 @@ export const SignInPanel = ({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <Button size="lg" disabled={pending} type="submit">
+          <Button size="lg" disabled={disabled} type="submit">
             {pending ? "Signing in…" : "Sign in"}
           </Button>
         </FieldGroup>
