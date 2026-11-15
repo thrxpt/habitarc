@@ -1,100 +1,100 @@
 
  RUN  v5.1.0 /Users/thrxpt/.t3/worktrees/habitarc/t3-b1e2232b-af9c2957e0670e2c
 
- ✓ tests/entries.unit.test.ts > calendar date utilities handle leap years, month boundaries, and ISO weekdays 4ms
+ ✓ tests/templates.unit.test.ts > accepts valid minutes and counts Activity Template bounds including ceilings 3ms
+ ✓ tests/templates.unit.test.ts > rejects unsupported units, non-integer bounds, zero/negative bounds, inverted ranges, and ceiling overflows 16ms
+ ✓ tests/templates.unit.test.ts > validates and bounds template pagination queries 4ms
+ ✓ tests/templates.unit.test.ts > template cursors reject normalized impossible UTC dates while preserving valid microseconds 1ms
+ ✓ tests/entries.unit.test.ts > calendar date utilities handle leap years, month boundaries, and ISO weekdays 3ms
  ✓ tests/entries.unit.test.ts > calculateDayProgress handles partial, exact, overachievement, unscheduled, and out-of-period dates 1ms
  ✓ tests/entries.unit.test.ts > entry date eligibility enforces today, 6-day lookback, startDate, and exclusive archivedFrom 0ms
  ✓ tests/entries.unit.test.ts > resolveGoalForDate selects the latest Goal Revision on or before the requested date 0ms
- ✓ tests/entries.unit.test.ts > validateEntryInput enforces positive whole numbers within template bounds and valid request keys 17ms
- ✓ tests/templates.unit.test.ts > accepts valid minutes and counts Activity Template bounds including ceilings 4ms
- ✓ tests/templates.unit.test.ts > rejects unsupported units, non-integer bounds, zero/negative bounds, inverted ranges, and ceiling overflows 20ms
- ✓ tests/templates.unit.test.ts > validates and bounds template pagination queries 3ms
- ✓ tests/templates.unit.test.ts > template cursors reject normalized impossible UTC dates while preserving valid microseconds 1ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings 4 undefined undefined leave no partial Habit 71ms
+ ✓ tests/entries.unit.test.ts > validateEntryInput enforces positive whole numbers within template bounds and valid request keys 13ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings 4 undefined undefined leave no partial Habit 55ms
  ✓ tests/habits.integration.test.ts > invalid Habit settings 1.5 undefined undefined leave no partial Habit 25ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings 1441 undefined undefined leave no partial Habit 31ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings 60 undefined undefined leave no partial Habit 17ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings NaN undefined undefined leave no partial Habit 48ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings Infinity undefined undefined leave no partial Habit 27ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [] undefined leave no partial Habit 32ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ 0 ] undefined leave no partial Habit 19ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ 8 ] undefined leave no partial Habit 18ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ 1, 1 ] undefined leave no partial Habit 19ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ '1' ] undefined leave no partial Habit 17ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ 1.5 ] undefined leave no partial Habit 14ms
- ✓ tests/habits.integration.test.ts > invalid Habit settings undefined undefined missing leave no partial Habit 30ms
- ✓ tests/habits.integration.test.ts > minutes ceiling 1440 is inclusive and independent of the per-entry maximum 56ms
- ✓ tests/habits.integration.test.ts > counts ceiling 1000000 is inclusive and independent of the per-entry maximum 16ms
- ✓ tests/habits.integration.test.ts > Account Timezones determine start dates across the date line and caller timezone fields are ignored 47ms
- ✓ tests/habits.integration.test.ts > only the owner reads a Habit and Program Managers cannot read or create private Habits directly 56ms
- ✓ tests/habits.integration.test.ts > tomorrow's pending archive blocks today, and an ended Habit permits a fresh history 80ms
- ✓ tests/habits.integration.test.ts > a failed initial Goal Revision rolls back the Habit and permits a clean retry 62ms
- ✓ tests/habits.integration.test.ts > Habit creation waits for the participant tracking lock after locking its template 78ms
- ✓ tests/habits.integration.test.ts > a archive committed before a blocked create is rechecked after the template lock 62ms
- ✓ tests/workspace-today.test.tsx > empty Today state directs the Participant to Habit setup and Program Managers never see Today 185ms
- ✓ tests/workspace-today.test.tsx > scheduled Today shows accumulated entries, overachievement percentage with bar capped at 100%, and unscheduled Today omits target percentages 55ms
- ✓ tests/habits.integration.test.ts > a measurement committed before a blocked create is rechecked after the template lock 115ms
- ✓ tests/account-screen.test.tsx > invalid sign in gives generic feedback and clears the password for a retry 364ms
- ✓ tests/habits.integration.test.ts > a measurement edit waiting behind Habit creation cannot change the newly used template 153ms
- ✓ tests/habits.integration.test.ts > Participant starts a persisted scheduled Habit with target 60 on a 5–45 minute template 22ms
- ✓ tests/habits.integration.test.ts > concurrent creates return one active Habit and direct overlapping periods are rejected 22ms
- ✓ tests/workspace-habits.test.tsx > Participant selects a template, starts a weekday Habit above the entry maximum, and sees persisted settings 496ms
- ✓ tests/account-screen.test.tsx > fields show native validation after interaction and clear it when corrected 158ms
- ✓ tests/account-screen.test.tsx > submitting an empty form marks both required fields without sending a request 17ms
- ✓ tests/habits.integration.test.ts > using a template freezes its measurement meaning but permits descriptive edits and archive 32ms
- ✓ tests/workspace-templates.test.tsx > Program Manager can create a valid Activity Template with labeled keyboard-accessible fields 616ms
- ✓ tests/workspace-habits.test.tsx > invalid Daily Target 4 and empty weekdays show associated errors without saving 143ms
- ✓ tests/workspace-today.test.tsx > pending, lost-response failure, safe retry with unchanged requestKey, and payload change regeneration 401ms
- ✓ tests/workspace-habits.test.tsx > invalid Daily Target 1.5 and empty weekdays show associated errors without saving 97ms
- ✓ tests/workspace-habits.test.tsx > invalid Daily Target 1441 and empty weekdays show associated errors without saving 97ms
- ✓ tests/account-screen.test.tsx > a valid sign in refreshes the server-validated workspace 233ms
- ✓ tests/account-screen.test.tsx > a Program Manager sees their own identity and can sign out 65ms
- ✓ tests/workspace-today.test.tsx > switching Habits preserves an uncertain entry and its retry key 132ms
- ✓ tests/workspace-today.test.tsx > invalid entry amounts and ineligible dates show accessible field errors without submitting 116ms
- ✓ tests/workspace-templates.test.tsx > invalid template inputs show accessible field errors without submitting 218ms
- ✓ tests/workspace-habits.test.tsx > invalid Daily Target 1e2 and empty weekdays show associated errors without saving 105ms
- ✓ tests/account-screen.test.tsx > throttled sign in explains how to retry 127ms
- ✓ tests/workspace-templates.test.tsx > server rejection displays an error alert while preserving manager inputs 134ms
- ✓ tests/workspace-templates.test.tsx > Participant sees persisted templates in a selectable library without manager creation controls 22ms
- ✓ tests/account-screen.test.tsx > a new sign in clears an earlier sign-out error 129ms
- ✓ tests/workspace-habits.test.tsx > Habit field descriptions reference existing elements before, during, and after validation errors 84ms
- ✓ tests/workspace-habits.test.tsx > a save failure preserves inputs for retry and a concurrent existing Habit shows its actual settings 88ms
- ✓ tests/templates.integration.test.ts > Program Manager creates an Activity Template and Participant sees persisted details across independent pools 18ms
- ✓ tests/templates.integration.test.ts > invalid template definitions are rejected without partial writes and database constraints enforce bounds 23ms
- ✓ tests/templates.integration.test.ts > Participants cannot create templates directly through the template service 7ms
- ✓ tests/templates.integration.test.ts > bounded keyset pagination returns every created template beyond 200 without skips or duplicates 19ms
- ✓ tests/auth.integration.test.ts > two pre-provisioned Participants and a Program Manager sign in with server-owned identity 440ms
- ✓ tests/workspace-templates.test.tsx > switching Measurement Unit clears stale bound errors and keyboard navigation works end to end 308ms
- ✓ tests/workspace-templates.test.tsx > Participant can load additional template pages while preserving selection and error feedback 30ms
- ✓ tests/workspace-habits.test.tsx > all seven selected weekdays are saved and displayed as every day 153ms
- ✓ tests/workspace-habits.test.tsx > Program Managers never render private Habits or Habit creation controls 11ms
- ✓ tests/workspace-habits.test.tsx > a template changed after selection returns the server's new Daily Target bounds as an associated field error 69ms
- ✓ tests/entries.integration.test.ts > AC-F04-1: multiple deliberate entries accumulate and show overachievement with fill capped at 100% 80ms
- ✓ tests/auth.integration.test.ts > repeat provisioning and migration preserve existing passwords, identities, and sessions 253ms
- ✓ tests/entries.integration.test.ts > AC-F04-2: concurrent idempotent retry counts once, payload mismatch conflicts, and distinct keys create distinct entries 57ms
- ✓ tests/entries.integration.test.ts > AC-F04-2: receipt and entry persist atomically, and auth/ownership run before receipt lookup 62ms
- ✓ tests/auth.integration.test.ts > invalid provisioning is rejected before creating any accounts 8ms
- ✓ tests/entries.integration.test.ts > AC-F04-3: account midnight, 7-day window, pre-start, post-archive, off-schedule, and DST/timezone independence 97ms
- ✓ tests/auth.integration.test.ts > invalid credentials are generic for existing and unknown accounts 240ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings 1441 undefined undefined leave no partial Habit 272ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings 60 undefined undefined leave no partial Habit 15ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings NaN undefined undefined leave no partial Habit 13ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings Infinity undefined undefined leave no partial Habit 13ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [] undefined leave no partial Habit 10ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ 0 ] undefined leave no partial Habit 11ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ 8 ] undefined leave no partial Habit 11ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ 1, 1 ] undefined leave no partial Habit 27ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ '1' ] undefined leave no partial Habit 30ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings undefined [ 1.5 ] undefined leave no partial Habit 40ms
+ ✓ tests/habits.integration.test.ts > invalid Habit settings undefined undefined missing leave no partial Habit 32ms
+ ✓ tests/habits.integration.test.ts > minutes ceiling 1440 is inclusive and independent of the per-entry maximum 63ms
+ ✓ tests/habits.integration.test.ts > counts ceiling 1000000 is inclusive and independent of the per-entry maximum 41ms
+ ✓ tests/habits.integration.test.ts > Account Timezones determine start dates across the date line and caller timezone fields are ignored 79ms
+ ✓ tests/habits.integration.test.ts > only the owner reads a Habit and Program Managers cannot read or create private Habits directly 74ms
+ ✓ tests/habits.integration.test.ts > tomorrow's pending archive blocks today, and an ended Habit permits a fresh history 94ms
+ ✓ tests/habits.integration.test.ts > a failed initial Goal Revision rolls back the Habit and permits a clean retry 91ms
+ ✓ tests/workspace-today.test.tsx > empty Today state directs the Participant to Habit setup and Program Managers never see Today 205ms
+ ✓ tests/workspace-today.test.tsx > scheduled Today shows accumulated entries, overachievement percentage with bar capped at 100%, and unscheduled Today omits target percentages 34ms
+ ✓ tests/habits.integration.test.ts > Habit creation waits for the participant tracking lock after locking its template 55ms
+ ✓ tests/habits.integration.test.ts > a archive committed before a blocked create is rechecked after the template lock 55ms
+ ✓ tests/account-screen.test.tsx > invalid sign in gives generic feedback and clears the password for a retry 337ms
+ ✓ tests/habits.integration.test.ts > a measurement committed before a blocked create is rechecked after the template lock 51ms
+ ✓ tests/workspace-habits.test.tsx > Participant selects a template, starts a weekday Habit above the entry maximum, and sees persisted settings 450ms
+ ✓ tests/workspace-habits.test.tsx > invalid Daily Target 4 and empty weekdays show associated errors without saving 69ms
+ ✓ tests/account-screen.test.tsx > fields show native validation after interaction and clear it when corrected 170ms
+ ✓ tests/account-screen.test.tsx > submitting an empty form marks both required fields without sending a request 16ms
+ ✓ tests/workspace-today.test.tsx > pending, lost-response failure, safe retry with unchanged requestKey, and payload change regeneration 297ms
+ ✓ tests/workspace-today.test.tsx > switching Habits preserves an uncertain entry and its retry key 95ms
+ ✓ tests/habits.integration.test.ts > a measurement edit waiting behind Habit creation cannot change the newly used template 92ms
+ ✓ tests/habits.integration.test.ts > Participant starts a persisted scheduled Habit with target 60 on a 5–45 minute template 21ms
+ ✓ tests/habits.integration.test.ts > concurrent creates return one active Habit and direct overlapping periods are rejected 26ms
+ ✓ tests/habits.integration.test.ts > using a template freezes its measurement meaning but permits descriptive edits and archive 52ms
+ ✓ tests/workspace-habits.test.tsx > invalid Daily Target 1.5 and empty weekdays show associated errors without saving 85ms
+ ✓ tests/workspace-templates.test.tsx > Program Manager can create a valid Activity Template with labeled keyboard-accessible fields 606ms
+ ✓ tests/workspace-today.test.tsx > invalid entry amounts and ineligible dates show accessible field errors without submitting 92ms
+ ✓ tests/account-screen.test.tsx > a valid sign in refreshes the server-validated workspace 111ms
+ ✓ tests/account-screen.test.tsx > a Program Manager sees their own identity and can sign out 56ms
+ ✓ tests/workspace-habits.test.tsx > invalid Daily Target 1441 and empty weekdays show associated errors without saving 75ms
+ ✓ tests/workspace-habits.test.tsx > invalid Daily Target 1e2 and empty weekdays show associated errors without saving 70ms
+ ✓ tests/workspace-templates.test.tsx > invalid template inputs show accessible field errors without submitting 172ms
+ ✓ tests/account-screen.test.tsx > throttled sign in explains how to retry 101ms
+ ✓ tests/workspace-habits.test.tsx > Habit field descriptions reference existing elements before, during, and after validation errors 63ms
+ ✓ tests/account-screen.test.tsx > a new sign in clears an earlier sign-out error 119ms
+ ✓ tests/workspace-templates.test.tsx > server rejection displays an error alert while preserving manager inputs 100ms
+ ✓ tests/workspace-templates.test.tsx > Participant sees persisted templates in a selectable library without manager creation controls 19ms
+ ✓ tests/workspace-habits.test.tsx > a save failure preserves inputs for retry and a concurrent existing Habit shows its actual settings 86ms
+ ✓ tests/workspace-habits.test.tsx > all seven selected weekdays are saved and displayed as every day 140ms
+ ✓ tests/workspace-habits.test.tsx > Program Managers never render private Habits or Habit creation controls 9ms
+ ✓ tests/workspace-habits.test.tsx > a template changed after selection returns the server's new Daily Target bounds as an associated field error 57ms
+ ✓ tests/workspace-templates.test.tsx > switching Measurement Unit clears stale bound errors and keyboard navigation works end to end 193ms
+ ✓ tests/workspace-templates.test.tsx > Participant can load additional template pages while preserving selection and error feedback 25ms
+ ✓ tests/auth.integration.test.ts > two pre-provisioned Participants and a Program Manager sign in with server-owned identity 296ms
+ ✓ tests/templates.integration.test.ts > Program Manager creates an Activity Template and Participant sees persisted details across independent pools 10ms
+ ✓ tests/templates.integration.test.ts > invalid template definitions are rejected without partial writes and database constraints enforce bounds 13ms
+ ✓ tests/templates.integration.test.ts > Participants cannot create templates directly through the template service 4ms
+ ✓ tests/templates.integration.test.ts > bounded keyset pagination returns every created template beyond 200 without skips or duplicates 11ms
+ ✓ tests/entries.integration.test.ts > AC-F04-1: multiple deliberate entries accumulate and show overachievement with fill capped at 100% 75ms
+ ✓ tests/entries.integration.test.ts > AC-F04-2: concurrent idempotent retry counts once, payload mismatch conflicts, and distinct keys create distinct entries 32ms
+ ✓ tests/entries.integration.test.ts > AC-F04-2: receipt and entry persist atomically, and auth/ownership run before receipt lookup 39ms
+ ✓ tests/entries.integration.test.ts > AC-F04-3: account midnight, 7-day window, pre-start, post-archive, off-schedule, and DST/timezone independence 52ms
+ ✓ tests/auth.integration.test.ts > repeat provisioning and migration preserve existing passwords, identities, and sessions 178ms
+ ✓ tests/auth.integration.test.ts > invalid provisioning is rejected before creating any accounts 7ms
+ ✓ tests/entries.integration.test.ts > AC-F04-4: concurrent ceiling writes cannot exceed 1,440 minutes or 1,000,000 counts, and rejected writes leave no receipt 154ms
+ ✓ tests/entries.integration.test.ts > Program Managers cannot read Today or record Activity Entries 15ms
+ ✓ tests/auth.integration.test.ts > invalid credentials are generic for existing and unknown accounts 176ms
  ✓ tests/auth.integration.test.ts > only login, current session, and logout are mounted; signup, recovery, and role changes cannot bypass this 2ms
- ✓ tests/entries.integration.test.ts > AC-F04-4: concurrent ceiling writes cannot exceed 1,440 minutes or 1,000,000 counts, and rejected writes leave no receipt 201ms
- ✓ tests/entries.integration.test.ts > Program Managers cannot read Today or record Activity Entries 18ms
- ✓ tests/auth.integration.test.ts > workspace authorization rejects anonymous and wrong-role calls and returns only the signed-in identity 606ms
- ✓ tests/auth.integration.test.ts > production cookies expire in seven days and logout revokes the session on both instances 186ms
- ✓ tests/auth.integration.test.ts > session reads stay read-only, trusted POST renews at most daily, and expiry is shared 165ms
- ✓ tests/auth.integration.test.ts > cross-origin and missing-origin writes fail before credentials or logout are processed 131ms
- ✓ tests/auth.integration.test.ts > the eleventh login in a minute is throttled across replicas and forged forwarding prefixes cannot evade it 1399ms
- ✓ tests/auth.integration.test.ts > concurrent login requests cannot exceed ten admissions across independent pools 451ms
- ✓ tests/templates.integration.test.ts > TanStack Start enforces template authorization, validation, and persisted reload visibility over HTTP 4172ms
- ✓ tests/entries.integration.test.ts > TanStack Start enforces Today and entry recording authorization, idempotency, conflict serialization, and reload persistence over HTTP 3861ms
- ✓ tests/auth.integration.test.ts > operator commands accept private stdin, support twelve-character passwords, and never print credentials 3380ms
- ✓ tests/auth.integration.test.ts > local account generation is private, concurrent-safe, and preserves working credentials on reruns 3946ms
- ✓ tests/auth.integration.test.ts > local account generation rejects production, remote databases, and repository credential paths 3046ms
- ✓ tests/auth.integration.test.ts > local requests cannot choose their own IP and malformed production forwarding fails closed 367ms
- ✓ tests/auth.integration.test.ts > TanStack Start serves sign in, server-validated role workspaces, logout, and global write protection 3334ms
- ✓ tests/auth.integration.test.ts > a rejected credential in a provisioning batch leaves no partially created accounts 330ms
+ ✓ tests/auth.integration.test.ts > workspace authorization rejects anonymous and wrong-role calls and returns only the signed-in identity 332ms
+ ✓ tests/auth.integration.test.ts > production cookies expire in seven days and logout revokes the session on both instances 198ms
+ ✓ tests/auth.integration.test.ts > session reads stay read-only, trusted POST renews at most daily, and expiry is shared 139ms
+ ✓ tests/auth.integration.test.ts > cross-origin and missing-origin writes fail before credentials or logout are processed 98ms
+ ✓ tests/auth.integration.test.ts > the eleventh login in a minute is throttled across replicas and forged forwarding prefixes cannot evade it 1462ms
+ ✓ tests/auth.integration.test.ts > concurrent login requests cannot exceed ten admissions across independent pools 382ms
+ ✓ tests/templates.integration.test.ts > TanStack Start enforces template authorization, validation, and persisted reload visibility over HTTP 3503ms
+ ✓ tests/entries.integration.test.ts > TanStack Start enforces Today and entry recording authorization, idempotency, conflict serialization, and reload persistence over HTTP 3342ms
+ ✓ tests/auth.integration.test.ts > operator commands accept private stdin, support twelve-character passwords, and never print credentials 3009ms
+ ✓ tests/auth.integration.test.ts > local account generation is private, concurrent-safe, and preserves working credentials on reruns 3193ms
+ ✓ tests/auth.integration.test.ts > local account generation rejects production, remote databases, and repository credential paths 2325ms
+ ✓ tests/auth.integration.test.ts > local requests cannot choose their own IP and malformed production forwarding fails closed 284ms
+ ✓ tests/auth.integration.test.ts > TanStack Start serves sign in, server-validated role workspaces, logout, and global write protection 2803ms
+ ✓ tests/auth.integration.test.ts > a rejected credential in a provisioning batch leaves no partially created accounts 208ms
 
  Test Files  10 passed (10)
       Tests  92 passed (92)
-   Start at  22:21:02
-   Duration  21.28s (tests 72%, import 17%, environment 7%, transform 4%)
+   Start at  23:38:43
+   Duration  17.90s (tests 72%, import 14%, transform 9%, environment 4%)

@@ -4,7 +4,7 @@ Private study and movement workspaces for pre-provisioned Participants and Progr
 
 ## Project Deliverable 1
 
-The [submission package](docs/deliverables/deliverable-1/README.md) assembles the complete A–F engineering documents, actual local verification, screenshots, reviews, contributions, and a generated PDF with page navigation. It explicitly tracks the remaining teammate acceptance and reviewed main-release gates. Later product features and Lab 5 cloud delivery are allocated separately.
+The [submission package](docs/deliverables/deliverable-1/README.md) assembles the complete A–F engineering documents, actual local verification, screenshots, reviews, contributions, and a generated PDF with page navigation. It identifies the reviewed main release and explicitly discloses remaining teammate clean-setup evidence and later lab work. Later product features and Lab 5 cloud delivery are allocated separately.
 
 ## Local setup
 

@@ -1,7 +1,7 @@
 {
-  "testedApplicationCommit": "87ad604157c6d17f0a78b9b0c9b1c675e3b032b7",
+  "testedApplicationCommit": "9be6a80041c732cac97e20b87c83dfe8153f42ce",
   "capturedAt": "2026-11-15",
-  "note": "Runtime and rule tests match candidate; e2e screenshot capture is identified by these exact hashes.",
+  "note": "Exact runtime/test/migration/config source of the reviewed main release; freshly verified for this submission. Documentation-only packaging does not change assessed runtime.",
   "sha256": {
     ".node-version": "5c293036fc0a61ad76e15d85f454c3c7cec157e181e035b69f95058a2c239144",
     "bun.lock": "1501e1ae8cc0501a1556827a391b58b560d04e6015adf8e1aa194023cc6e0c65",

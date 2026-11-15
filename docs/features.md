@@ -1,6 +1,6 @@
 # Habitarc feature inventory
 
-Status: accepted whole-product planning baseline. F01–F04 are implemented and integrated into sprint staging; F05 is partial and F06–F12 remain planned. See the [current execution ledger](deliverables/deliverable-1/part-f.md) for test results and remaining release gates. A published issue/contract alone is not proof of completion.
+Status: accepted whole-product planning baseline. F01–F04 are released on main through reviewed PR #32; F05 is partial and F06–F12 remain planned. See the [current execution ledger](deliverables/deliverable-1/part-f.md) for test results and remaining release gates. A published issue/contract alone is not proof of completion.
 
 Read the [SRS](srs.md) for requirement definitions, [traceability](traceability.md) for complete FR/BR/NFR coverage, [System-Level SDS](system-sds.md) for system responsibilities, and [three-sprint plan](sprints/plan.md) for goals and release gates.
 
@@ -8,10 +8,10 @@ Read the [SRS](srs.md) for requirement definitions, [traceability](traceability.
 
 | ID | Feature and contract/STS | Related requirements | Dependencies | Sprint | Implementation tickets | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| F01 | [Accounts and authorization](sprints/sprint-1/f01-accounts-and-authorization.md) | FR-01–02, BR-01/07, NFR-01/07 | None | 1 | [#4](https://github.com/thrxpt/habitarc/issues/4) | Implemented; staging integrated |
-| F02 | [Template creation and selection](sprints/sprint-1/f02-template-creation-and-selection.md) | FR-03, BR-02/12, NFR-01 | F01 | 1 | [#5](https://github.com/thrxpt/habitarc/issues/5) | Implemented; staging integrated |
-| F03 | [Habit setup](sprints/sprint-1/f03-habit-setup.md) | FR-04, BR-01–05/07–08/11–12 | F01, F02 | 1 | [#6](https://github.com/thrxpt/habitarc/issues/6) | Implemented; staging integrated |
-| F04 | [Activity recording and Today](sprints/sprint-1/f04-activity-recording-and-today.md) | FR-05, BR-01/03–09/13, NFR-02/04 | F03 | 1 | [#7](https://github.com/thrxpt/habitarc/issues/7) | Implemented; staging integrated |
+| F01 | [Accounts and authorization](sprints/sprint-1/f01-accounts-and-authorization.md) | FR-01–02, BR-01/07, NFR-01/07 | None | 1 | [#4](https://github.com/thrxpt/habitarc/issues/4) | Released on main (#32) |
+| F02 | [Template creation and selection](sprints/sprint-1/f02-template-creation-and-selection.md) | FR-03, BR-02/12, NFR-01 | F01 | 1 | [#5](https://github.com/thrxpt/habitarc/issues/5) | Released on main (#32) |
+| F03 | [Habit setup](sprints/sprint-1/f03-habit-setup.md) | FR-04, BR-01–05/07–08/11–12 | F01, F02 | 1 | [#6](https://github.com/thrxpt/habitarc/issues/6) | Released on main (#32) |
+| F04 | [Activity recording and Today](sprints/sprint-1/f04-activity-recording-and-today.md) | FR-05, BR-01/03–09/13, NFR-02/04 | F03 | 1 | [#7](https://github.com/thrxpt/habitarc/issues/7) | Released on main (#32) |
 | F05 | [Reproducible persistence and delivery](sprints/sprint-1/f05-reproducible-persistence-and-delivery.md) | FR-12, NFR-06–08 | Infrastructure starts alongside F01; release needs F01–F04 | 1 | [#8](https://github.com/thrxpt/habitarc/issues/8), [#9](https://github.com/thrxpt/habitarc/issues/9) | Partial; release/human gates open |
 | F06 | [History and corrections](sprints/sprint-2/f06-history-and-corrections.md) | FR-06, BR-01/03–09/13, NFR-02 | F04 | 2 | [#10](https://github.com/thrxpt/habitarc/issues/10) | PLANNED |
 | F07 | [Goal and schedule revisions](sprints/sprint-2/f07-goal-and-schedule-revisions.md) | FR-07, BR-03–05/10/13 | F03, F06 | 2 | [#11](https://github.com/thrxpt/habitarc/issues/11) | PLANNED |
