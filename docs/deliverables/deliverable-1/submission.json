@@ -1,0 +1,19 @@
+{
+  "students": [
+    {
+      "id": "67070501063",
+      "name": "Theeraphat Jaingam"
+    },
+    {
+      "id": "67070501058",
+      "name": "Chanya Poolketkij"
+    }
+  ],
+  "repository": "https://github.com/thrxpt/habitarc",
+  "testedApplicationCommit": "87ad604157c6d17f0a78b9b0c9b1c675e3b032b7",
+  "acceptedReleaseCommit": null,
+  "releaseTag": null,
+  "status": "REVIEW COPY - main release and teammate acceptance pending",
+  "date": "2026-11-15",
+  "timezone": "Asia/Bangkok"
+}

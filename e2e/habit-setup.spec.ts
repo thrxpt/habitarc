@@ -58,7 +58,7 @@ test("sign-in cannot submit before hydration and its fallback uses POST", async 
 
 test("a Participant starts a private weekday Habit and retrieves it after reload and a new sign-in", async ({
   page,
-}) => {
+}, testInfo) => {
   const templateName = "Focused Study E2E";
   await page.goto("/");
   await publishTemplate(page, templateName);
@@ -68,6 +68,11 @@ test("a Participant starts a private weekday Habit and retrieves it after reload
   await expect(page.getByRole("alert")).toContainText(
     "Email or password is incorrect"
   );
+  await page.getByLabel("Password", { exact: true }).clear();
+  await page.locator("form").screenshot({
+    path: testInfo.outputPath("invalid-login.png"),
+    caret: "initial",
+  });
   await signIn(page, "a@example.test");
   await page
     .getByRole("button", { name: new RegExp(templateName, "u") })
@@ -121,7 +126,15 @@ test("a Participant starts a private weekday Habit and retrieves it after reload
     page.getByRole("button", { name: "Start Habit", exact: true })
   ).toHaveCount(0);
   await expect(habits.getByRole("listitem")).toHaveCount(1);
+  await habits.screenshot({
+    path: testInfo.outputPath("persisted-habit.png"),
+    caret: "initial",
+  });
   await signOut(page);
+  await page.locator("form").screenshot({
+    path: testInfo.outputPath("signed-out.png"),
+    caret: "initial",
+  });
   await signIn(page, "b@example.test");
   const otherHabits = page.getByRole("region", {
     name: "Your Habits",
@@ -143,7 +156,7 @@ test("a Participant starts a private weekday Habit and retrieves it after reload
 
 test("a narrow-screen Participant corrects invalid settings and starts an every-day Habit", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const templateName = "Daily Reading E2E";
   await page.goto("/");
@@ -162,6 +175,12 @@ test("a narrow-screen Participant corrects invalid settings and starts an every-
   await expect(
     page.getByRole("checkbox", { name: "Monday", exact: true })
   ).toHaveAccessibleDescription(/Choose at least one weekday/u);
+  await page
+    .getByRole("form", { name: `Start ${templateName} Habit` })
+    .screenshot({
+      path: testInfo.outputPath("rejected-habit-settings.png"),
+      caret: "initial",
+    });
   await expect(
     page
       .getByRole("region", { name: "Your Habits", exact: true })

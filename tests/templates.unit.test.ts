@@ -164,3 +164,26 @@ test("validates and bounds template pagination queries", () => {
     expect(validateTemplateListQuery(badQuery).ok).toBe(false);
   }
 });
+
+test("template cursors reject normalized impossible UTC dates while preserving valid microseconds", () => {
+  const cursor = { name: "Focused Study", id: "template-1" };
+  for (const createdAt of [
+    "2026-02-30T00:00:00.123456Z",
+    "2026-02-29T00:00:00Z",
+    "2026-04-31T12:00:00Z",
+    "2026-11-15T24:00:00Z",
+  ]) {
+    expect(
+      validateTemplateListQuery({ cursor: { ...cursor, createdAt } }).ok
+    ).toBe(false);
+  }
+  for (const createdAt of [
+    "2024-02-29T23:59:59.123456Z",
+    "2026-11-15T00:00:00Z",
+    "2026-11-15T00:00:00.1Z",
+  ]) {
+    expect(
+      validateTemplateListQuery({ cursor: { ...cursor, createdAt } })
+    ).toMatchObject({ ok: true, value: { cursor: { ...cursor, createdAt } } });
+  }
+});
