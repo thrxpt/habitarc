@@ -390,14 +390,14 @@ const TodayHabitCard = ({
         </Button>
       </div>
 
-      {isFormOpen && (
+      <div hidden={!isFormOpen}>
         <EntryRecordForm
           key={habit.id}
           item={item}
           accountDate={accountDate}
           onRecordEntry={onRecordEntry}
         />
-      )}
+      </div>
     </li>
   );
 };

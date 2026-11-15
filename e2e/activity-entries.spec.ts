@@ -41,8 +41,9 @@ const publishTemplate = async (page: Page, name: string) => {
   await signOut(page);
 };
 
-test("Participant records multiple entries, reloads, exceeds target with bar capped at 100%, retries a lost response, and fits 360px width", async ({
+test("Participant records durable progress and safely retries lost responses and failed saves", async ({
   page,
+  browser,
 }) => {
   const templateName = "Today Study E2E";
   await page.goto("/");
@@ -128,6 +129,9 @@ test("Participant records multiple entries, reloads, exceeds target with bar cap
   await expect(reloadedToday.getByRole("status")).toHaveCount(0);
   await expect(retryAmountInput).toHaveValue("25");
 
+  await reloadedToday.getByRole("button", { name: "Close entry form" }).click();
+  await reloadedToday.getByRole("button", { name: "Add entry" }).click();
+  await expect(retryAmountInput).toHaveValue("25");
   await page.unroute("**/_serverFn/*");
   await reloadedToday.getByRole("button", { name: "Retry save" }).click();
   await expect(reloadedToday.getByRole("status")).toContainText(
@@ -167,4 +171,78 @@ test("Participant records multiple entries, reloads, exceeds target with bar cap
       document.documentElement.clientWidth
   );
   expect(hasOverflow).toBe(false);
+
+  // A failed backend save must leave no entry and retain the request for retry.
+  await finalToday.getByLabel("Amount (minutes)", { exact: true }).fill("10");
+  let failedRequestBody: string | null = null;
+  await page.route("**/_serverFn/*", async (route) => {
+    if (route.request().method() === "POST") {
+      failedRequestBody = route.request().postData();
+      await route.fulfill({ status: 503, body: "Service unavailable" });
+      return;
+    }
+    await route.continue();
+  });
+  await finalToday.getByRole("button", { name: "Save entry" }).click();
+  await expect(finalToday.getByRole("alert")).toContainText(
+    "We couldn’t confirm whether your entry was saved."
+  );
+  await expect(finalToday.getByRole("status")).toHaveCount(0);
+  await expect(finalToday).toContainText("75 / 60 minutes");
+
+  // Reload the same account in a second tab while preserving the original retry.
+  const persistedPage = await page.context().newPage();
+  try {
+    await persistedPage.goto("/");
+    const persistedToday = persistedPage.getByRole("region", {
+      name: "Today",
+      exact: true,
+    });
+    await expect(persistedToday).toContainText("75 / 60 minutes");
+    await expect(
+      persistedToday
+        .getByRole("list", { name: `${templateName} entries today` })
+        .getByRole("listitem")
+    ).toHaveCount(3);
+  } finally {
+    await persistedPage.close();
+  }
+
+  await page.unroute("**/_serverFn/*");
+  let retryRequestBody: string | null = null;
+  await page.route("**/_serverFn/*", async (route) => {
+    if (route.request().method() === "POST") {
+      retryRequestBody = route.request().postData();
+    }
+    await route.continue();
+  });
+  await finalToday.getByRole("button", { name: "Retry save" }).click();
+  await expect(finalToday.getByRole("status")).toContainText(
+    "Saved 10 minutes. Today’s total: 85 minutes."
+  );
+  expect(failedRequestBody).not.toBeNull();
+  expect(retryRequestBody).toBe(failedRequestBody);
+  await page.unroute("**/_serverFn/*");
+  await page.reload();
+  await expect(finalToday).toContainText("85 / 60 minutes");
+  await expect(
+    finalToday
+      .getByRole("list", { name: `${templateName} entries today` })
+      .getByRole("listitem")
+  ).toHaveCount(4);
+
+  // The reloaded entry action must wait for hydration before accepting clicks.
+  const staticContext = await browser.newContext({
+    javaScriptEnabled: false,
+    storageState: await page.context().storageState(),
+  });
+  try {
+    const staticPage = await staticContext.newPage();
+    await staticPage.goto("/");
+    await expect(
+      staticPage.getByRole("button", { name: "Add entry", exact: true })
+    ).toBeDisabled();
+  } finally {
+    await staticContext.close();
+  }
 });

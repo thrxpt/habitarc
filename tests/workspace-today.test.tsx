@@ -8,6 +8,7 @@ import { AccountScreen } from "../src/components/account-screen";
 import type {
   ActivityEntryDraft,
   RecordEntryResponse,
+  TodayHabitItem,
   TodayWorkspace,
 } from "../src/entries";
 import type { Identity } from "../src/identity";
@@ -326,6 +327,12 @@ test("pending, lost-response failure, safe retry with unchanged requestKey, and 
   expect(amountInput).toBeDisabled();
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
+  // Hiding an in-flight form must not discard its pending submission.
+  await user.click(screen.getByRole("button", { name: "Close entry form" }));
+  await user.click(screen.getByRole("button", { name: "Add entry" }));
+  expect(screen.getByLabelText("Amount (minutes)")).toHaveValue("25");
+  expect(screen.getByRole("button", { name: "Saving entry…" })).toBeDisabled();
+
   resolveDeferred?.({
     kind: "created",
     entry: {
@@ -352,6 +359,10 @@ test("pending, lost-response failure, safe retry with unchanged requestKey, and 
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
   expect(amountInput).toHaveValue("25");
 
+  // A lost response remains retryable after closing and reopening the form.
+  await user.click(screen.getByRole("button", { name: "Close entry form" }));
+  await user.click(screen.getByRole("button", { name: "Add entry" }));
+  expect(screen.getByLabelText("Amount (minutes)")).toHaveValue("25");
   await user.click(screen.getByRole("button", { name: "Retry save" }));
   const secondKey = record.mock.calls[1]?.[0].requestKey;
   const retryKey = record.mock.calls[2]?.[0].requestKey;
@@ -375,6 +386,73 @@ test("pending, lost-response failure, safe retry with unchanged requestKey, and 
   expect(await screen.findByRole("status")).toHaveTextContent(
     "Saved 30 minutes. Today’s total: 55 minutes."
   );
+});
+
+test("switching Habits preserves an uncertain entry and its retry key", async () => {
+  const record = vi
+    .fn<(draft: ActivityEntryDraft) => Promise<RecordEntryResponse>>()
+    .mockRejectedValue(new Error("Lost response"));
+  const studyItem: TodayHabitItem = {
+    habit: scheduledHabit,
+    progress: {
+      scheduled: true,
+      dailyTarget: 60,
+      dailyTotal: 0,
+      percentage: 0,
+      visualFillPercent: 0,
+      completed: false,
+    },
+    entries: [],
+    writableMinDate: "2026-11-09",
+    writableMaxDate: "2026-11-15",
+  };
+  render(
+    <AccountScreen
+      identity={participant}
+      todayWorkspace={{
+        ...emptyToday,
+        scheduled: [studyItem],
+        unscheduled: [
+          {
+            ...studyItem,
+            habit: unscheduledHabit,
+            progress: {
+              ...studyItem.progress,
+              scheduled: false,
+              dailyTarget: null,
+              percentage: null,
+              visualFillPercent: null,
+            },
+          },
+        ],
+      }}
+      onRecordEntry={record}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  const user = userEvent.setup();
+  const [studyAddButton] = screen.getAllByRole("button", { name: "Add entry" });
+  if (studyAddButton === undefined) {
+    throw new Error("Expected the study Habit entry action.");
+  }
+  await user.click(studyAddButton);
+  const studyForm = within(
+    screen.getByRole("form", { name: "Record Focused Study entry" })
+  );
+  await user.type(studyForm.getByLabelText("Amount (minutes)"), "25");
+  await user.click(studyForm.getByRole("button", { name: "Save entry" }));
+  expect(await studyForm.findByRole("alert")).toBeVisible();
+
+  // Only the other Habit's closed form has an Add entry action at each step.
+  await user.click(screen.getByRole("button", { name: "Add entry" }));
+  expect(
+    screen.getByRole("form", { name: "Record Evening Stretch entry" })
+  ).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Add entry" }));
+  expect(studyForm.getByLabelText("Amount (minutes)")).toHaveValue("25");
+  await user.click(studyForm.getByRole("button", { name: "Retry save" }));
+  expect(record).toHaveBeenCalledTimes(2);
+  expect(record.mock.calls[1]?.[0]).toEqual(record.mock.calls[0]?.[0]);
 });
 
 test("invalid entry amounts and ineligible dates show accessible field errors without submitting", async () => {
