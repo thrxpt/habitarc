@@ -4,13 +4,16 @@ import {
   setResponseStatus,
 } from "@tanstack/react-start/server";
 
+import type { RecordEntryResponse } from "../entries";
 import type { HabitCreationResponse } from "../habits";
 import { isRole } from "../identity";
 import { validateTemplateListQuery } from "../templates";
 import { AuthError, authenticationError } from "./auth-error";
+import { EntryError } from "./entries";
 import { HabitError } from "./habits";
 import {
   getAuthentication,
+  getEntryService,
   getHabitService,
   getTemplateService,
 } from "./runtime";
@@ -24,7 +27,8 @@ const serverErrors = (mapUnexpected: (error: unknown) => AuthError) =>
       if (
         error instanceof AuthError ||
         error instanceof TemplateError ||
-        error instanceof HabitError
+        error instanceof HabitError ||
+        error instanceof EntryError
       ) {
         setResponseStatus(error.status);
         throw error;
@@ -111,6 +115,43 @@ export const createHabit = createServerFn({ method: "POST" })
         setResponseStatus(error.status);
         return {
           kind: "invalid",
+          message: error.message,
+          fieldErrors: error.fieldErrors,
+        };
+      }
+      throw error;
+    }
+  });
+
+export const getToday = createServerFn({ method: "GET" })
+  .middleware([applicationErrors])
+  .handler(async () => {
+    const actor = await getAuthentication().authorizeWorkspace(
+      getRequestHeaders(),
+      "participant"
+    );
+    return await getEntryService().getToday(actor);
+  });
+
+export const createEntry = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(async ({ data }): Promise<RecordEntryResponse> => {
+    const actor = await getAuthentication().authorizeWorkspace(
+      getRequestHeaders(),
+      "participant"
+    );
+    try {
+      return await getEntryService().createEntry(actor, data);
+    } catch (error) {
+      if (
+        error instanceof EntryError &&
+        (error.status === 400 || error.status === 409)
+      ) {
+        // Expected validation and conflict data must survive TanStack's Error serialization.
+        setResponseStatus(error.status);
+        return {
+          kind: error.status === 400 ? "invalid" : "conflict",
           message: error.message,
           fieldErrors: error.fieldErrors,
         };

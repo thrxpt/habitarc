@@ -5,9 +5,11 @@ import { authClient } from "../auth-client";
 import { AccountScreen } from "../components/account-screen";
 import { PageHeading } from "../components/page-heading";
 import {
+  createEntry,
   createTemplate,
   createHabit,
   getIdentity,
+  getToday,
   listTemplates,
   listHabits,
 } from "../server/functions";
@@ -23,7 +25,8 @@ const EMPTY_TEMPLATE_PAGE: ActivityTemplatePage = {
 };
 
 const Home = () => {
-  const { identity, templatePage, habitWorkspace } = Route.useLoaderData();
+  const { identity, templatePage, habitWorkspace, todayWorkspace } =
+    Route.useLoaderData();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [extraState, setExtraState] = useState<{
@@ -84,6 +87,14 @@ const Home = () => {
 
   return (
     <AccountScreen
+      todayWorkspace={todayWorkspace ?? undefined}
+      onRecordEntry={async (draft) => {
+        const result = await createEntry({ data: draft });
+        if (result.kind === "created" || result.kind === "replayed") {
+          await router.invalidate();
+        }
+        return result;
+      }}
       habitWorkspace={habitWorkspace ?? undefined}
       onCreateHabit={async (draft) => {
         const result = await createHabit({ data: draft });
@@ -118,12 +129,23 @@ export const Route = createFileRoute("/")({
         identity: null,
         templatePage: EMPTY_TEMPLATE_PAGE,
         habitWorkspace: null,
+        todayWorkspace: null,
       };
     }
     const templatePage = await listTemplates();
-    const habitWorkspace =
-      identity.role === "participant" ? await listHabits() : null;
-    return { identity, templatePage, habitWorkspace };
+    if (identity.role !== "participant") {
+      return {
+        identity,
+        templatePage,
+        habitWorkspace: null,
+        todayWorkspace: null,
+      };
+    }
+    const [habitWorkspace, todayWorkspace] = await Promise.all([
+      listHabits(),
+      getToday(),
+    ]);
+    return { identity, templatePage, habitWorkspace, todayWorkspace };
   },
   component: Home,
   errorComponent: () => (

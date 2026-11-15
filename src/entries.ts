@@ -1,0 +1,354 @@
+import { MEASUREMENT_CEILINGS } from "./templates";
+import type { ActivityTemplate } from "./templates";
+
+export const ENTRY_WINDOW_DAYS = 6;
+export const REQUEST_KEY_MAX_LENGTH = 128;
+
+export interface GoalSnapshot {
+  effectiveFrom: string;
+  dailyTarget: number;
+  weekdays: number[];
+}
+
+export interface ActivityEntry {
+  id: string;
+  habitId: string;
+  activityDate: string;
+  amount: number;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActivityEntryDraft {
+  habitId: string;
+  activityDate: string;
+  amount: number;
+  requestKey: string;
+}
+
+export type EntryField = keyof ActivityEntryDraft;
+
+export type EntryFieldErrors = Partial<Record<EntryField, string>>;
+
+export interface RecordEntrySuccess {
+  kind: "created" | "replayed";
+  entry: ActivityEntry;
+  dailyTotal: number;
+}
+
+export type RecordEntryResponse =
+  | RecordEntrySuccess
+  | {
+      kind: "invalid";
+      message: string;
+      fieldErrors: EntryFieldErrors;
+    }
+  | {
+      kind: "conflict";
+      message: string;
+      fieldErrors: EntryFieldErrors;
+    };
+
+export interface DayProgress {
+  scheduled: boolean;
+  dailyTarget: number | null;
+  dailyTotal: number;
+  percentage: number | null;
+  visualFillPercent: number | null;
+  completed: boolean;
+}
+
+export interface TodayHabitItem {
+  habit: {
+    id: string;
+    template: ActivityTemplate;
+    startDate: string;
+    archivedFrom: string | null;
+    goal: GoalSnapshot;
+  };
+  progress: DayProgress;
+  entries: ActivityEntry[];
+  writableMinDate: string | null;
+  writableMaxDate: string | null;
+}
+
+export interface TodayWorkspace {
+  accountDate: string;
+  timezone: string;
+  scheduled: TodayHabitItem[];
+  unscheduled: TodayHabitItem[];
+}
+
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
+
+const parseIsoDateParts = (
+  date: string
+): { year: number; month: number; day: number } | undefined => {
+  if (!ISO_DATE_PATTERN.test(date)) {
+    return undefined;
+  }
+  const [yearPart, monthPart, dayPart] = date.split("-");
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+  const day = Number(dayPart);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  if (
+    utc.getUTCFullYear() !== year ||
+    utc.getUTCMonth() + 1 !== month ||
+    utc.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+  return { year, month, day };
+};
+
+export const isValidIsoDate = (value: unknown): value is string =>
+  typeof value === "string" && parseIsoDateParts(value) !== undefined;
+
+export const addCalendarDays = (date: string, deltaDays: number): string => {
+  const parts = parseIsoDateParts(date);
+  if (parts === undefined) {
+    throw new Error(`Invalid calendar date: ${date}`);
+  }
+  const utc = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day + deltaDays)
+  );
+  const year = String(utc.getUTCFullYear()).padStart(4, "0");
+  const month = String(utc.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(utc.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// Returns ISO weekday: 1 = Monday through 7 = Sunday.
+export const getIsoWeekday = (date: string): number => {
+  const parts = parseIsoDateParts(date);
+  if (parts === undefined) {
+    throw new Error(`Invalid calendar date: ${date}`);
+  }
+  const utcDay = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day)
+  ).getUTCDay();
+  return utcDay === 0 ? 7 : utcDay;
+};
+
+export const getWritableDateBounds = ({
+  accountDate,
+  startDate,
+  archivedFrom,
+}: {
+  accountDate: string;
+  startDate: string;
+  archivedFrom: string | null;
+}): { minDate: string; maxDate: string; writable: boolean } => {
+  const windowStart = addCalendarDays(accountDate, -ENTRY_WINDOW_DAYS);
+  const minDate = windowStart > startDate ? windowStart : startDate;
+  const periodEnd =
+    archivedFrom === null ? accountDate : addCalendarDays(archivedFrom, -1);
+  const maxDate = periodEnd < accountDate ? periodEnd : accountDate;
+  return {
+    minDate,
+    maxDate,
+    writable: minDate <= maxDate,
+  };
+};
+
+export const checkEntryDateEligibility = ({
+  activityDate,
+  accountDate,
+  startDate,
+  archivedFrom,
+}: {
+  activityDate: string;
+  accountDate: string;
+  startDate: string;
+  archivedFrom: string | null;
+}): { ok: true } | { ok: false; message: string } => {
+  if (activityDate > accountDate) {
+    return {
+      ok: false,
+      message: "Future dates cannot be recorded.",
+    };
+  }
+  const windowStart = addCalendarDays(accountDate, -ENTRY_WINDOW_DAYS);
+  if (activityDate < windowStart) {
+    return {
+      ok: false,
+      message: `Entries can only be recorded for today (${accountDate}) or the previous ${ENTRY_WINDOW_DAYS} days.`,
+    };
+  }
+  if (activityDate < startDate) {
+    return {
+      ok: false,
+      message: `Entries cannot be recorded before this Habit started (${startDate}).`,
+    };
+  }
+  if (archivedFrom !== null && activityDate >= archivedFrom) {
+    return {
+      ok: false,
+      message: `Entries cannot be recorded on or after this Habit’s archive date (${archivedFrom}).`,
+    };
+  }
+  return { ok: true };
+};
+
+export const resolveGoalForDate = (
+  revisions: readonly GoalSnapshot[],
+  date: string
+): GoalSnapshot | undefined => {
+  let applicable: GoalSnapshot | undefined;
+  for (const revision of revisions) {
+    if (
+      revision.effectiveFrom <= date &&
+      (applicable === undefined ||
+        revision.effectiveFrom > applicable.effectiveFrom)
+    ) {
+      applicable = revision;
+    }
+  }
+  return applicable;
+};
+
+export const calculateDayProgress = ({
+  date,
+  dailyTotal,
+  goal,
+  startDate,
+  archivedFrom,
+}: {
+  date: string;
+  dailyTotal: number;
+  goal: GoalSnapshot | undefined;
+  startDate: string;
+  archivedFrom: string | null;
+}): DayProgress => {
+  const insidePeriod =
+    date >= startDate && (archivedFrom === null || date < archivedFrom);
+  const isScheduled =
+    insidePeriod &&
+    goal !== undefined &&
+    goal.weekdays.includes(getIsoWeekday(date));
+  if (!isScheduled || goal === undefined) {
+    return {
+      scheduled: false,
+      dailyTarget: null,
+      dailyTotal,
+      percentage: null,
+      visualFillPercent: null,
+      completed: false,
+    };
+  }
+  const percentage = Math.floor((dailyTotal * 100) / goal.dailyTarget);
+  return {
+    scheduled: true,
+    dailyTarget: goal.dailyTarget,
+    dailyTotal,
+    percentage,
+    visualFillPercent: Math.min(100, percentage),
+    completed: dailyTotal >= goal.dailyTarget,
+  };
+};
+
+const isWholePositiveAmount = (
+  value: unknown,
+  minimum: number,
+  maximum: number
+): value is number =>
+  typeof value === "number" &&
+  Number.isSafeInteger(value) &&
+  value >= minimum &&
+  value <= maximum;
+
+const readField = (input: unknown, key: string): unknown => {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return undefined;
+  }
+  return Object.getOwnPropertyDescriptor(input, key)?.value;
+};
+
+const validateHabitIdField = (
+  value: unknown
+): { ok: true; value: string } | { ok: false; error: string } => {
+  if (typeof value !== "string" || value.length === 0 || value.length > 200) {
+    return { ok: false, error: "Select a Habit." };
+  }
+  return { ok: true, value };
+};
+
+const validateAmountField = (
+  value: unknown,
+  template?: ActivityTemplate
+): { ok: true; value: number } | { ok: false; error: string } => {
+  const minimum = template?.entryMinimum ?? 1;
+  const maximum = template?.entryMaximum ?? MEASUREMENT_CEILINGS.counts;
+  if (isWholePositiveAmount(value, minimum, maximum)) {
+    return { ok: true, value };
+  }
+  return {
+    ok: false,
+    error: template
+      ? `Amount must be a whole number from ${minimum.toLocaleString("en-US")} to ${maximum.toLocaleString("en-US")} ${template.unit}.`
+      : "Amount must be a positive whole number.",
+  };
+};
+
+const validateRequestKeyField = (
+  value: unknown
+): { ok: true; value: string } | { ok: false; error: string } => {
+  const requestKey = typeof value === "string" ? value.trim() : "";
+  if (requestKey.length === 0 || requestKey.length > REQUEST_KEY_MAX_LENGTH) {
+    return { ok: false, error: "A valid request key is required." };
+  }
+  return { ok: true, value: requestKey };
+};
+
+export const validateEntryInput = (
+  input: unknown,
+  template?: ActivityTemplate
+):
+  | { ok: true; value: ActivityEntryDraft }
+  | { ok: false; fieldErrors: EntryFieldErrors } => {
+  const rawHabitId = readField(input, "habitId");
+  const rawActivityDate = readField(input, "activityDate");
+  const rawAmount = readField(input, "amount");
+  const rawRequestKey = readField(input, "requestKey");
+
+  const fieldErrors: EntryFieldErrors = {};
+  const habitResult = validateHabitIdField(rawHabitId);
+  if (!habitResult.ok) {
+    fieldErrors.habitId = habitResult.error;
+  }
+
+  if (!isValidIsoDate(rawActivityDate)) {
+    fieldErrors.activityDate = "Enter a valid calendar date (YYYY-MM-DD).";
+  }
+
+  const amountResult = validateAmountField(rawAmount, template);
+  if (!amountResult.ok) {
+    fieldErrors.amount = amountResult.error;
+  }
+
+  const keyResult = validateRequestKeyField(rawRequestKey);
+  if (!keyResult.ok) {
+    fieldErrors.requestKey = keyResult.error;
+  }
+
+  if (
+    !habitResult.ok ||
+    !isValidIsoDate(rawActivityDate) ||
+    !amountResult.ok ||
+    !keyResult.ok
+  ) {
+    return { ok: false, fieldErrors };
+  }
+
+  return {
+    ok: true,
+    value: {
+      habitId: habitResult.value,
+      activityDate: rawActivityDate,
+      amount: amountResult.value,
+      requestKey: keyResult.value,
+    },
+  };
+};

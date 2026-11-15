@@ -29,6 +29,13 @@
       "when": 1794694629239,
       "tag": "0003_habits",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794740477442,
+      "tag": "0004_activity-entries",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,11 @@
 import { Alert, AlertDescription } from "#components/ui/alert.tsx";
 
 import type {
+  ActivityEntryDraft,
+  RecordEntryResponse,
+  TodayWorkspace,
+} from "../entries";
+import type {
   HabitCreationResponse,
   HabitDraft,
   HabitWorkspace,
@@ -11,10 +16,13 @@ import { HabitList } from "./habit-list";
 import { PageHeading } from "./page-heading";
 import { TemplateCreateForm } from "./template-create-form";
 import { TemplateLibrary } from "./template-library";
+import { TodayPanel } from "./today-panel";
 
 const EMPTY_TEMPLATES: ActivityTemplate[] = [];
 
 export const WorkspacePanel = ({
+  todayWorkspace,
+  onRecordEntry,
   habitWorkspace,
   onCreateHabit,
   identity,
@@ -26,6 +34,8 @@ export const WorkspacePanel = ({
   onCreateTemplate,
   onLoadMoreTemplates,
 }: {
+  todayWorkspace?: TodayWorkspace;
+  onRecordEntry?: (draft: ActivityEntryDraft) => Promise<RecordEntryResponse>;
   habitWorkspace?: HabitWorkspace;
   onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
   identity: Identity;
@@ -88,6 +98,9 @@ export const WorkspacePanel = ({
     </section>
     {identity.role === "program-manager" && (
       <TemplateCreateForm onCreateTemplate={onCreateTemplate} />
+    )}
+    {identity.role === "participant" && todayWorkspace && (
+      <TodayPanel workspace={todayWorkspace} onRecordEntry={onRecordEntry} />
     )}
     {identity.role === "participant" && habitWorkspace && (
       <HabitList workspace={habitWorkspace} />
