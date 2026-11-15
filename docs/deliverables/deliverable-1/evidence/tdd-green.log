@@ -1,0 +1,13 @@
+
+ RUN  v5.1.0 /Users/thrxpt/.t3/worktrees/habitarc/t3-b1e2232b-af9c2957e0670e2c
+
+ ✓ tests/templates.unit.test.ts > accepts valid minutes and counts Activity Template bounds including ceilings 2ms
+ ✓ tests/templates.unit.test.ts > rejects unsupported units, non-integer bounds, zero/negative bounds, inverted ranges, and ceiling overflows 12ms
+ ✓ tests/templates.unit.test.ts > validates and bounds template pagination queries 1ms
+ ✓ tests/templates.unit.test.ts > template cursors reject normalized impossible UTC dates while preserving valid microseconds 0ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  22:19:52
+   Duration  150ms (transform 53%, tests 28%, import 14%, worker 5%)
+

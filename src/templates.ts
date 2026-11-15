@@ -266,6 +266,13 @@ const parseTemplateCursor = (raw: unknown): TemplateCursor | undefined => {
   ) {
     return undefined;
   }
+  // Date.parse normalizes impossible calendar dates; compare the UTC components
+  // without discarding the original cursor's PostgreSQL microsecond precision.
+  if (
+    new Date(createdAt).toISOString().slice(0, 19) !== createdAt.slice(0, 19)
+  ) {
+    return undefined;
+  }
   return { name, createdAt, id };
 };
 
