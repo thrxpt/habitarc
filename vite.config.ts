@@ -8,6 +8,7 @@ import fmt from "./oxfmt.config";
 import lint from "./oxlint.config";
 
 const config = defineConfig({
+  test: { include: ["tests/**/*.{test,spec}.{ts,tsx}"] },
   staged: {
     "*": "vp check --fix",
   },
@@ -20,7 +21,8 @@ const config = defineConfig({
   plugins: lazyPlugins(() => [
     devtools(),
     tailwindcss(),
-    tanstackStart(),
+    // src/start.ts checks the canonical origin for every mutation.
+    tanstackStart({ serverFns: { disableCsrfMiddlewareWarning: true } }),
     viteReact(),
   ]),
 });

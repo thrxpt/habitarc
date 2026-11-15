@@ -53,6 +53,12 @@ jobs:
       - name: Run all tests
         run: vp test --run --passWithNoTests=false
 
+      - name: Install Chromium for browser tests
+        run: vp exec playwright install --with-deps chromium
+
+      - name: Run Playwright browser tests
+        run: vp run test:e2e
+
       - name: Build application
         run: vp run build
 

@@ -32,6 +32,14 @@ TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test vp te
 
 Integration tests create and remove uniquely named disposable databases. Template mutation SQL and test-only barrier/failure triggers simulate later lifecycle operations and storage failures without adding product APIs. Tests observe actual lock waits before releasing barriers.
 
-These checks establish local implementation behavior. jsdom and HTTP server rendering do not establish real-browser end-to-end, viewport/zoom, deployed Cloud Run, independent acceptance, or substantive human teammate-review evidence. Those release gates remain open.
+The Vitest checks establish service, HTTP, and rendered-component behavior. The Playwright suite below adds local Chromium E2E coverage. Deployed Cloud Run, independent acceptance, substantive human teammate review, other browser engines, full accessibility, and zoom measurements remain outside this evidence.
 
 Local verification on 2026-11-15: `vp check`, `vp run typecheck`, `vp exec drizzle-kit check`, and `vp run build` passed. The complete suite (`vp test --run --passWithNoTests=false` with disposable PostgreSQL) passed **73 tests in 7 files**, with none skipped. Separate standards and specification reviews each found one issue: missing Participant tracking-lock acquisition and discarded server field errors. Both were corrected with failing-then-passing regression tests; HTTP validation results additionally verify that field details survive serialization.
+
+## Playwright browser coverage
+
+Run `vp exec playwright install chromium`, then `vp run test:e2e` with `TEST_DATABASE_URL` exported. Playwright owns a separate server on loopback port 4173 and a newly migrated disposable database with generated synthetic credentials. It never reuses a running application. Teardown stops its processes and drops only its generated database.
+
+Three local Chromium tests pass: sign-in remains disabled before hydration with a POST fallback; a Program Manager publishes a 5–45 minute template and Participant A starts target 60 on Monday–Friday, reloads, sees duplicate prevention, switches accounts to check privacy, and signs back in to retrieve the Habit; a Participant corrects invalid target/weekday settings and uses the keyboard to choose every day on a 390px viewport. Account date/start-date assertions use `Asia/Bangkok` despite the browser's `America/Los_Angeles` timezone. These journeys supply local browser evidence for AC-F03-1 and supplementary validation/privacy presentation checks.
+
+The first browser run exposed an enabled server-rendered sign-in form submitting a native GET before hydration. A JavaScript-disabled regression test reproduced it; the sign-in controls now wait for TanStack's hydration signal, and the form explicitly uses POST. The browser test waits for confirmed Habit persistence before reloading. CI installs Chromium and executes these tests after Vitest.
