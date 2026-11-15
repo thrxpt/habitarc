@@ -1,7 +1,6 @@
 # CPE 334 Project Deliverable 2
 
-Sprint 2 completion and Sprint 3 progress
-Due 29 November 2026 | 70 points | Semester 1/2026
+Sprint 2 completion and Sprint 3 progress Due 29 November 2026 | 70 points | Semester 1/2026
 
 ## 1 Purpose and assessment
 
@@ -9,14 +8,14 @@ This deliverable proves that your team continued the engineering discipline thro
 
 Use the same two students, repository and assigned theme as Deliverable 1 and Labs 5–7. Follow the product scope in the Group Work Specifications document and retain approved scope changes. This assessment is worth 70 points and 7% of the course grade, within the project total of 250 points and 25%.
 
-| Part                                         | Points | What you must demonstrate                                   |
-| -------------------------------------------- | ------ | ----------------------------------------------------------- |
-| A Sprint 1 continuity and change status      | 5      | Original slice still works; findings and changes tracked    |
-| B Sprint 2 contracts and working increment   | 25     | Completed new workflows with contracts and verification     |
-| C Sprint 3 contracts and working progress    | 15     | Specified remaining features and genuine tested progress    |
-| D Updated requirements and test traceability | 10     | Current baseline mapped to actual tests and honest status   |
-| E Integrated release candidate               | 15     | Coherent deployed candidate with regression and finish plan |
-| Total                                        | 70     |                                                             |
+| Part | Points | What you must demonstrate |
+| --- | --- | --- |
+| A Sprint 1 continuity and change status | 5 | Original slice still works; findings and changes tracked |
+| B Sprint 2 contracts and working increment | 25 | Completed new workflows with contracts and verification |
+| C Sprint 3 contracts and working progress | 15 | Specified remaining features and genuine tested progress |
+| D Updated requirements and test traceability | 10 | Current baseline mapped to actual tests and honest status |
+| E Integrated release candidate | 15 | Coherent deployed candidate with regression and finish plan |
+| Total | 70 |  |
 
 ## 2 Required checkpoint outcome
 
@@ -56,8 +55,8 @@ Map AC to actual tests and results. Cover important business rules, negative/bou
 
 Define contracts, AC and STS for all remaining Sprint 3 features with enough UI/API/data detail to control implementation. Implement and test at least one meaningful domain workflow or rule. Distinguish planned, in progress, implemented, tested and accepted work. Record revisions without rewriting the history.
 
-| Feature or defect  | Current status                      | Remaining action                      | Owner and target                           |
-| ------------------ | ----------------------------------- | ------------------------------------- | ------------------------------------------ |
+| Feature or defect | Current status | Remaining action | Owner and target |
+| --- | --- | --- | --- |
 | Use your actual ID | State achieved AC and tested commit | State missing AC, verification or fix | Student name; date before final submission |
 
 Plan around the final examination period of 1–11 December. By 29 November, the product should be substantially complete. Use the remaining period for bounded completion, integration, defects and final verification; do not reserve the main product workflows for the last two days.
@@ -90,13 +89,13 @@ At the beginning, identify both students and IDs, the theme/context, one reposit
 
 ### 4.1 PDF contents
 
-| Part | Include directly in the PDF                                                                                                                                                 |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A    | Sprint 1 release/continuity evidence, baseline change log and the current status of relevant Lab 5–7 findings.                                                              |
-| B    | All Sprint 2 contracts/AC/STS/DoD, complete Sprint 2 feature completion table and selected program, test and reviewed integration evidence.                                 |
-| C    | All Sprint 3 contracts/AC/STS, implemented progress with tests, and the explicit remaining-work plan.                                                                       |
-| D    | Complete current SRS, feature inventory, System-Level SDS and requirements-to-feature-to-sprint-to-verification results matrix. Include baseline changes and coverage gaps. |
-| E    | Integrated candidate demonstrations, build/regression/CI/deployment output, release readiness, setup summary and completion plan for 13 December.                           |
+| Part | Include directly in the PDF |
+| --- | --- |
+| A | Sprint 1 release/continuity evidence, baseline change log and the current status of relevant Lab 5–7 findings. |
+| B | All Sprint 2 contracts/AC/STS/DoD, complete Sprint 2 feature completion table and selected program, test and reviewed integration evidence. |
+| C | All Sprint 3 contracts/AC/STS, implemented progress with tests, and the explicit remaining-work plan. |
+| D | Complete current SRS, feature inventory, System-Level SDS and requirements-to-feature-to-sprint-to-verification results matrix. Include baseline changes and coverage gaps. |
+| E | Integrated candidate demonstrations, build/regression/CI/deployment output, release readiness, setup summary and completion plan for 13 December. |
 
 Appendices are part of the same PDF. There is no fixed PDF page limit. Keep diagrams, tables, logs and screenshots readable at normal viewing size; a document link does not replace the required document.
 

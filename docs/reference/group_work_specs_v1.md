@@ -1,7 +1,6 @@
 # CPE 334 Group Work Specification
 
-Introduction to Software Engineering in the Age of AI Agents
-Semester 1/2026 | Draft for instructor review | Issued: 6 October 2026
+Introduction to Software Engineering in the Age of AI Agents Semester 1/2026 | Draft for instructor review | Issued: 6 October 2026
 
 ## 1. Purpose
 
@@ -9,14 +8,14 @@ Work in a team of two to plan, engineer, build, test, deploy, maintain, and rele
 
 The project is one continuous development effort with three project submissions and three group labs performed on the same application.
 
-| Assessment            | What it demonstrates                                                                                                       |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Project Deliverable 1 | You can plan the product and engineer/build Sprint 1.                                                                      |
-| Project Deliverable 2 | You continued the engineering discipline through Sprint 2 and into Sprint 3.                                               |
-| Final Delivery        | You can finish, integrate, verify, and release the complete product.                                                       |
-| Lab 5                 | Can you ship it? Containerize the application, establish CI/CD, and deploy it.                                             |
-| Lab 6                 | Can somebody else verify it? Obtain independent UAT and manage defects.                                                    |
-| Lab 7                 | Can you change it without breaking it? Analyze and implement a change, run regression tests, and assess release readiness. |
+| Assessment | What it demonstrates |
+| --- | --- |
+| Project Deliverable 1 | You can plan the product and engineer/build Sprint 1. |
+| Project Deliverable 2 | You continued the engineering discipline through Sprint 2 and into Sprint 3. |
+| Final Delivery | You can finish, integrate, verify, and release the complete product. |
+| Lab 5 | Can you ship it? Containerize the application, establish CI/CD, and deploy it. |
+| Lab 6 | Can somebody else verify it? Obtain independent UAT and manage defects. |
+| Lab 7 | Can you change it without breaking it? Analyze and implement a change, run regression tests, and assess release readiness. |
 
 Each stage adds a new engineering responsibility. The later labs begin with your Sprint 1 release and use the evolving application as development continues.
 
@@ -34,38 +33,38 @@ The default assessment is a shared team score. Suspected non-participation is re
 
 The course allocates 35% to labs/assignments and 25% to the group project. These categories have separate scoring pools.
 
-| Category / assessment                                    | Raw points | Course Grade % |
-| -------------------------------------------------------- | ---------- | -------------- |
-| Individual Labs 1–4, existing aggregate                  | 400        | 20%            |
-| Group Lab 5: CI/CD, Docker, and GCP deployment           | 100        | 5%             |
-| Group Lab 6: Cross-team UAT and defect management        | 100        | 5%             |
-| Group Lab 7: Maintenance, metrics, and release readiness | 100        | 5%             |
-| All labs combined                                        | 700        | 35%            |
-| Project Deliverable 1                                    | 80         | 8%             |
-| Project Deliverable 2                                    | 70         | 7%             |
-| Final Project Delivery                                   | 100        | 10%            |
-| Group project subtotal                                   | 250        | 25%            |
+| Category / assessment | Raw points | Course Grade % |
+| --- | --- | --- |
+| Individual Labs 1–4, existing aggregate | 400 | 20% |
+| Group Lab 5: CI/CD, Docker, and GCP deployment | 100 | 5% |
+| Group Lab 6: Cross-team UAT and defect management | 100 | 5% |
+| Group Lab 7: Maintenance, metrics, and release readiness | 100 | 5% |
+| All labs combined | 700 | 35% |
+| Project Deliverable 1 | 80 | 8% |
+| Project Deliverable 2 | 70 | 7% |
+| Final Project Delivery | 100 | 10% |
+| Group project subtotal | 250 | 25% |
 
 ## 4. Schedule
 
 Submission deadlines are 23:59 on the given date.
 
-| Date           | Activity / milestone                                                                                    | Points      |
-| -------------- | ------------------------------------------------------------------------------------------------------- | ----------- |
-| 6, 8 Oct       | Miterm Exam Review; Project launch: topics, scope, team workflow, engineering baseline                  |             |
-| 12 - 25 Oct    | Exam period; plan around your examination commitments                                                   |             |
-| 26 Oct - 1 Nov | Midterm break; independent project work                                                                 |             |
-| 3, 5 Nov       | Workshop: SRS, system SDS, Sprint 1 contract, tests, integration; Lab 5: CI/CD, Docker, GCP deployment. |             |
-| 8 Nov Sunday   | Project Deliverable 1 due: baseline + working Sprint 1                                                  | 80 project  |
-| 10, 12 Nov     | Lab 6: cross-team UAT and defect management                                                             |             |
-| 15 Nov Sunday  | Lab 5 due: deployed Sprint 1 and repeatable delivery                                                    | 100 lab     |
-| 17, 19 Nov     | Lab 7: maintenance, metrics, release readiness                                                          |             |
-| 22 Nov Sunday  | Lab 6 due                                                                                               | 100 lab     |
-| 24, 26 Nov     | Final Exam Review. Project Deliverable 2 Discussion.                                                    |             |
-| 29 Nov Sunday  | Deliverable 2 due                                                                                       | 70 project  |
-|                | Lab 7 due                                                                                               | 100 lab     |
-| 1 - 11 Dec     | Final examination period                                                                                |             |
-| 13 Dec Sunday  | Final product, report, and demo video due                                                               | 100 project |
+| Date | Activity / milestone | Points |
+| --- | --- | --- |
+| 6, 8 Oct | Miterm Exam Review; Project launch: topics, scope, team workflow, engineering baseline |  |
+| 12 - 25 Oct | Exam period; plan around your examination commitments |  |
+| 26 Oct - 1 Nov | Midterm break; independent project work |  |
+| 3, 5 Nov | Workshop: SRS, system SDS, Sprint 1 contract, tests, integration; Lab 5: CI/CD, Docker, GCP deployment. |  |
+| 8 Nov Sunday | Project Deliverable 1 due: baseline + working Sprint 1 | 80 project |
+| 10, 12 Nov | Lab 6: cross-team UAT and defect management |  |
+| 15 Nov Sunday | Lab 5 due: deployed Sprint 1 and repeatable delivery | 100 lab |
+| 17, 19 Nov | Lab 7: maintenance, metrics, release readiness |  |
+| 22 Nov Sunday | Lab 6 due | 100 lab |
+| 24, 26 Nov | Final Exam Review. Project Deliverable 2 Discussion. |  |
+| 29 Nov Sunday | Deliverable 2 due | 70 project |
+|  | Lab 7 due | 100 lab |
+| 1 - 11 Dec | Final examination period |  |
+| 13 Dec Sunday | Final product, report, and demo video due | 100 project |
 
 By 29 November your product should be substantially complete; use the period after your examinations for final fixes, verification, and submission preparation.
 
@@ -290,15 +289,15 @@ Detailed assessment instructions will use these categories and points. The maste
 
 Due 8 November | 80 project points | Proves you can plan the product and engineer/build Sprint 1.
 
-| Part                               | Points | Required evidence                                                                                                    |
-| ---------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------- |
-| SRS and product scope              | 10     | Actors, FR/BR/NFR, scope, exclusions, assumptions, resolved decisions.                                               |
-| Feature inventory and traceability | 10     | Requirement → feature → planned sprint; coverage of the baseline.                                                    |
-| System-Level SDS                   | 15     | Architecture/stack, data model, UI/API structure, role matrix, configuration/deployment plan.                        |
-| Three-sprint plan                  | 5      | Goals, feature allocation, dependencies, feasible Sprint 1 and remaining work.                                       |
-| Sprint 1 engineering contracts     | 20     | Feature SDS, applicable UI/API/data specs, AC, STS, DoD, pre-implementation history.                                 |
-| Working Sprint 1 and verification  | 20     | Domain journey, persistence, authentication/access tests, business-rule tests, Issue/PR/review/integration evidence. |
-| Total                              | 80     |                                                                                                                      |
+| Part | Points | Required evidence |
+| --- | --- | --- |
+| SRS and product scope | 10 | Actors, FR/BR/NFR, scope, exclusions, assumptions, resolved decisions. |
+| Feature inventory and traceability | 10 | Requirement → feature → planned sprint; coverage of the baseline. |
+| System-Level SDS | 15 | Architecture/stack, data model, UI/API structure, role matrix, configuration/deployment plan. |
+| Three-sprint plan | 5 | Goals, feature allocation, dependencies, feasible Sprint 1 and remaining work. |
+| Sprint 1 engineering contracts | 20 | Feature SDS, applicable UI/API/data specs, AC, STS, DoD, pre-implementation history. |
+| Working Sprint 1 and verification | 20 | Domain journey, persistence, authentication/access tests, business-rule tests, Issue/PR/review/integration evidence. |
+| Total | 80 |  |
 
 Provide a runnable release on main, its tag/commit, setup instructions, test command/results, and a brief reproducible demo sequence. Cloud deployment is not required yet.
 
@@ -306,14 +305,14 @@ Provide a runnable release on main, its tag/commit, setup instructions, test com
 
 Due 29 November | 70 project points | Proves you continued the discipline of Sprint 2 → Sprint 3.
 
-| Part                                     | Points | Required evidence                                                                                                    |
-| ---------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------- |
-| Sprint 1 continuity and change status    | 5      | Released baseline, change/defect status, resolved and remaining work.                                                |
-| Sprint 2 contracts and working increment | 25     | Pre-implementation contracts, AC/tests, working new workflows, reviewed Issues/PRs, increment release.               |
-| Sprint 3 contracts and working progress  | 15     | Specified remaining features, tests, demonstrated implemented progress, explicit remaining-work list.                |
-| Updated requirements/test traceability   | 10     | FR/BR/NFR → feature → sprint → AC/verification → actual test/result, with honest completion status.                  |
-| Integrated release candidate             | 15     | Sprint 1 + 2 + implemented Sprint 3, CI/deployment tied to commit, regression evidence, exam-period completion plan. |
-| Total                                    | 70     |                                                                                                                      |
+| Part | Points | Required evidence |
+| --- | --- | --- |
+| Sprint 1 continuity and change status | 5 | Released baseline, change/defect status, resolved and remaining work. |
+| Sprint 2 contracts and working increment | 25 | Pre-implementation contracts, AC/tests, working new workflows, reviewed Issues/PRs, increment release. |
+| Sprint 3 contracts and working progress | 15 | Specified remaining features, tests, demonstrated implemented progress, explicit remaining-work list. |
+| Updated requirements/test traceability | 10 | FR/BR/NFR → feature → sprint → AC/verification → actual test/result, with honest completion status. |
+| Integrated release candidate | 15 | Sprint 1 + 2 + implemented Sprint 3, CI/deployment tied to commit, regression evidence, exam-period completion plan. |
+| Total | 70 |  |
 
 Submit a deployed integrated release candidate. All Sprint 2 features must be complete. Sprint 3 may have bounded unfinished work, clearly identified; placeholders do not count as implemented progress.
 
@@ -321,15 +320,15 @@ Submit a deployed integrated release candidate. All Sprint 2 features must be co
 
 Due 13 Dec. | 100 project points | Proves you can integrate, verify, and release the complete product.
 
-| Part                                             | Points | Required evidence                                                                                                                             |
-| ------------------------------------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Final working product                            | 35     | Completed major workflows and domain rules across all three sprints; failure handling, persistence, permissions.                              |
-| Engineering process and team evidence            | 15     | Traceable Issues/PRs/reviews/integration/releases and both students' participation.                                                           |
-| Final requirements and verification traceability | 20     | Complete baseline coverage; requirement → feature → AC/verification → test → final result.                                                    |
-| Final QA and Product Definition of Done          | 20     | Passing automated/regression tests, UAT/re-tests, critical defect status, deployed release, reproducible setup, known debt.                   |
-| Demonstration video                              | 8      | Maximum 10 minutes; both students participate; live product workflows, a rejected case, brief architecture, test/CI and traceability example. |
-| Final release summary                            | 2      | Maximum one page: scope, version/commit, links, completion, limitations, team.                                                                |
-| Total                                            | 100    |                                                                                                                                               |
+| Part | Points | Required evidence |
+| --- | --- | --- |
+| Final working product | 35 | Completed major workflows and domain rules across all three sprints; failure handling, persistence, permissions. |
+| Engineering process and team evidence | 15 | Traceable Issues/PRs/reviews/integration/releases and both students' participation. |
+| Final requirements and verification traceability | 20 | Complete baseline coverage; requirement → feature → AC/verification → test → final result. |
+| Final QA and Product Definition of Done | 20 | Passing automated/regression tests, UAT/re-tests, critical defect status, deployed release, reproducible setup, known debt. |
+| Demonstration video | 8 | Maximum 10 minutes; both students participate; live product workflows, a rejected case, brief architecture, test/CI and traceability example. |
+| Final release summary | 2 | Maximum one page: scope, version/commit, links, completion, limitations, team. |
+| Total | 100 |  |
 
 Submit one concise final PDF report, repository/release reference, deployed application URL, and demonstration video. The PDF serves as an evidence index and includes the release summary. Show the running product in the video, with one important business rule, one failure/access case, and one requirement-to-test chain.
 
@@ -341,13 +340,13 @@ Due 15 November | 100 lab points | Can you ship it?
 
 Containerize the accepted Sprint 1 release, establish CI/CD, and deploy it on GCP. Demonstrate a successful release and a controlled failing check that blocks the normal merge/release path. Use a temporary branch for the failure demonstration; do not deliberately break the released application.
 
-| Part                                  | Points | Evidence                                                                                           |
-| ------------------------------------- | ------ | -------------------------------------------------------------------------------------------------- |
-| CI and quality gate                   | 30     | PR build/tests, meaningful test results, failed required check, enforced gate.                     |
-| Docker and reproducible configuration | 20     | Build/run configuration, fresh build, working container, externalized configuration.               |
-| GCP deployment and persistence        | 35     | URL, deployed domain workflow, UI/API/DB connectivity, data survives restart/redeployment.         |
-| Repeatable release pipeline           | 15     | Reviewed change → CI → merge → deployment; release commit identification and repeatable procedure. |
-| Total                                 | 100    |                                                                                                    |
+| Part | Points | Evidence |
+| --- | --- | --- |
+| CI and quality gate | 30 | PR build/tests, meaningful test results, failed required check, enforced gate. |
+| Docker and reproducible configuration | 20 | Build/run configuration, fresh build, working container, externalized configuration. |
+| GCP deployment and persistence | 35 | URL, deployed domain workflow, UI/API/DB connectivity, data survives restart/redeployment. |
+| Repeatable release pipeline | 15 | Reviewed change → CI → merge → deployment; release commit identification and repeatable procedure. |
+| Total | 100 |  |
 
 ### Lab 6: Cross-team UAT and defect management
 
@@ -357,13 +356,13 @@ Find another project team to pair with. Each team prepares UAT cases for its own
 
 Provide at least four user-facing cases: a normal journey, a domain-rule/boundary case, a role/ownership restriction, and a state/history/persistence check. Record UAT ID, user goal, preconditions, steps, expected/actual results, PASS/FAIL, tester, version, and defect link when applicable.
 
-| Part                               | Points | Evidence                                                                                           |
-| ---------------------------------- | ------ | -------------------------------------------------------------------------------------------------- |
-| UAT preparation and handoff        | 20     | Executable cases, safe accounts/data, release/version, access handoff.                             |
-| Independent execution              | 25     | Partner application results, identified testers/version, evidence for findings.                    |
-| Defect reporting and triage        | 20     | Reproduction, expected/actual, severity; accepted/duplicate/not-defect/enhancement with rationale. |
-| Resolution and independent re-test | 35     | Accepted defect → regression test → fix → reviewed PR/CI/deployment → partner re-test.             |
-| Total                              | 100    |                                                                                                    |
+| Part | Points | Evidence |
+| --- | --- | --- |
+| UAT preparation and handoff | 20 | Executable cases, safe accounts/data, release/version, access handoff. |
+| Independent execution | 25 | Partner application results, identified testers/version, evidence for findings. |
+| Defect reporting and triage | 20 | Reproduction, expected/actual, severity; accepted/duplicate/not-defect/enhancement with rationale. |
+| Resolution and independent re-test | 35 | Accepted defect → regression test → fix → reviewed PR/CI/deployment → partner re-test. |
+| Total | 100 |  |
 
 Resolve and independently re-test at least one accepted defect. If no legitimate defect is found, the TA provides a controlled defect exercise with a known failing behavior on an isolated version/branch. Do not fabricate findings or substitute a new feature for a defect fix. Partner delays or access problems should be reported promptly for reassignment/assistance.
 
@@ -373,13 +372,13 @@ Due 29 November | 100 lab points | Can you change it without breaking it?
 
 Apply one instructor/TA-approved change to an already implemented behavior or business rule. A feature already in the baseline backlog does not by itself constitute this maintenance exercise. Trace the impact, update the contract, demonstrate the changed test failing before implementation, implement the change, run regression tests, review, and redeploy.
 
-| Part                                        | Points | Evidence                                                                                         |
-| ------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------ |
-| Change impact analysis and updated contract | 25     | Change request → affected requirement/feature/SDS/AC/tests/code; reviewed contract revision.     |
-| Implementation and regression-safe delivery | 50     | Failing changed-behavior test, implementation, passing/regression results, review/CI/deployment. |
-| Objective engineering metrics               | 15     | Five dated metrics with sources and one action-oriented interpretation, maximum 100 words.       |
-| Release readiness and short retrospective   | 10     | Defect/test/debt/configuration/doc/release checks plus three short retrospective answers.        |
-| Total                                       | 100    |                                                                                                  |
+| Part | Points | Evidence |
+| --- | --- | --- |
+| Change impact analysis and updated contract | 25 | Change request → affected requirement/feature/SDS/AC/tests/code; reviewed contract revision. |
+| Implementation and regression-safe delivery | 50 | Failing changed-behavior test, implementation, passing/regression results, review/CI/deployment. |
+| Objective engineering metrics | 15 | Five dated metrics with sources and one action-oriented interpretation, maximum 100 words. |
+| Release readiness and short retrospective | 10 | Defect/test/debt/configuration/doc/release checks plus three short retrospective answers. |
+| Total | 100 |  |
 
 Use metrics such as completed Issues, merged PRs, passing tests, UAT defects opened/resolved, and successful/failed CI runs. Counts do not earn points for being large. State the time window and source. Retrospective: what helped, what hurt, and what will change, one or two sentences each.
 
@@ -389,9 +388,9 @@ Use LEB2 with one submission per team for each assessment. Identify the team, bo
 
 Every assessment must have a short evidence index:
 
-| Rubric part              | Artifact / direct link | IDs / selected version                 | Verification result or status          |
-| ------------------------ | ---------------------- | -------------------------------------- | -------------------------------------- |
-| Example: Sprint contract | Repository document    | F-03, AC-07, TEST-12, submitted commit | Planned then implemented; test passing |
+| Rubric part | Artifact / direct link | IDs / selected version | Verification result or status |
+| --- | --- | --- | --- |
+| Example: Sprint contract | Repository document | F-03, AC-07, TEST-12, submitted commit | Planned then implemented; test passing |
 
 For tests, identify the file/test name, command or CI run, result, and tested commit. Screenshots supplement direct evidence. Keep links accessible to graders and partner testers. Keep the final deployment available through grading; the instructor will announce the end of the access period.
 

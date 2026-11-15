@@ -1,7 +1,6 @@
 # CPE 334 Final Project Delivery
 
-Complete integrated and verified product release
-Due 13 December 2026 | 100 points | Semester 1/2026
+Complete integrated and verified product release Due 13 December 2026 | 100 points | Semester 1/2026
 
 ## 1 Purpose and assessment
 
@@ -9,14 +8,14 @@ Final Delivery proves that your team can finish, integrate, verify and release t
 
 Use the same two students, assigned theme and repository. The product scope is established by the Group Work Specifications document and recorded approved changes. This assessment is worth 100 points and 10% of the course grade, completing the 250 project points and 25% course weight. Labs 5–7 retain their separate 100-point assessments.
 
-| Part                                               | Points | What you must demonstrate                                      |
-| -------------------------------------------------- | ------ | -------------------------------------------------------------- |
-| A Final working product                            | 35     | Complete major workflows and correct integrated behavior       |
-| B Engineering process and team evidence            | 15     | Credible history and meaningful participation by both students |
-| C Final requirements and verification traceability | 20     | Entire baseline mapped to final verification results           |
-| D Final QA and Product Definition of Done          | 20     | Final tests, UAT, defect status and reproducible deployment    |
-| E Demonstration video                              | 10     | Actual running product explained by both students              |
-| Total                                              | 100    |                                                                |
+| Part | Points | What you must demonstrate |
+| --- | --- | --- |
+| A Final working product | 35 | Complete major workflows and correct integrated behavior |
+| B Engineering process and team evidence | 15 | Credible history and meaningful participation by both students |
+| C Final requirements and verification traceability | 20 | Entire baseline mapped to final verification results |
+| D Final QA and Product Definition of Done | 20 | Final tests, UAT, defect status and reproducible deployment |
+| E Demonstration video | 10 | Actual running product explained by both students |
+| Total | 100 |  |
 
 ## 2 Required final outcome
 
@@ -56,9 +55,9 @@ Include the complete final SRS, feature inventory, System-Level SDS and feature 
 
 Account for every baseline FR/BR and important NFR through feature/responsibility, sprint, AC or verification target, planned test, actual file/test or measurement, execution result and final version. Compare NFR results with the specified measurable targets. Where appropriate, include an actual access check rather than inventing a performance measurement that your SRS never required.
 
-| Requirement and feature | AC or target                          | Actual verification                      | Final result and version             |
-| ----------------------- | ------------------------------------- | ---------------------------------------- | ------------------------------------ |
-| Use stable IDs          | Observable outcome or measured target | Test ID; file/name or measurement method | PASS/FAIL/SKIPPED/INCOMPLETE; commit |
+| Requirement and feature | AC or target | Actual verification | Final result and version |
+| --- | --- | --- | --- |
+| Use stable IDs | Observable outcome or measured target | Test ID; file/name or measurement method | PASS/FAIL/SKIPPED/INCOMPLETE; commit |
 
 Do not silently delete requirements, conceal coverage gaps or label a planned check as passing. Record approved changes and all failed, skipped or incomplete work explicitly. Honest disclosure helps assess readiness but does not establish missing functionality.
 
@@ -100,13 +99,13 @@ At the beginning, identify both students and IDs, the theme/context, one reposit
 
 ### 4.1 PDF contents
 
-| Part | Include directly in the PDF                                                                                                                                                                                    |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A    | Complete product completion table and selected final program demonstrations, including persistence, a rule rejection and access restrictions.                                                                  |
-| B    | Selected workflow/history evidence across all three sprints, two reviewed Issue/PR chains, both students’ contributions and brief AI-use declaration.                                                          |
-| C    | Complete final SRS, feature inventory, System-Level SDS, all feature contracts/AC/STS, and final requirement-to-verification results matrix. Use appendices and internal page references to avoid duplication. |
-| D    | Final build/test/CI output, selected test excerpts, UAT and re-test records, defect/debt register, DoD review, deployment evidence and reproducible setup summary.                                             |
-| E    | Video title, access reference, assessed release and a short timestamp index. The actual video is submitted separately as a YouTube link. Make sure to allow viewing for those with a link.                     |
+| Part | Include directly in the PDF |
+| --- | --- |
+| A | Complete product completion table and selected final program demonstrations, including persistence, a rule rejection and access restrictions. |
+| B | Selected workflow/history evidence across all three sprints, two reviewed Issue/PR chains, both students’ contributions and brief AI-use declaration. |
+| C | Complete final SRS, feature inventory, System-Level SDS, all feature contracts/AC/STS, and final requirement-to-verification results matrix. Use appendices and internal page references to avoid duplication. |
+| D | Final build/test/CI output, selected test excerpts, UAT and re-test records, defect/debt register, DoD review, deployment evidence and reproducible setup summary. |
+| E | Video title, access reference, assessed release and a short timestamp index. The actual video is submitted separately as a YouTube link. Make sure to allow viewing for those with a link. |
 
 Appendices are part of the same PDF. There is no fixed PDF page limit. Keep diagrams, tables, logs and screenshots readable at normal viewing size; a document link does not replace the required document. Include a short contribution table, AI-use declaration and known limitations once, then refer to their pages.
 

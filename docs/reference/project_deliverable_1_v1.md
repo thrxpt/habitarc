@@ -1,7 +1,6 @@
 # CPE 334 Project Deliverable 1
 
-Engineering baseline and working Sprint 1
-Due 8 November 2026 at 23:59 | 80 points (8% of Grade) | Semester 1/2026
+Engineering baseline and working Sprint 1 Due 8 November 2026 at 23:59 | 80 points (8% of Grade) | Semester 1/2026
 
 ## 1. Purpose and assessment
 
@@ -9,15 +8,15 @@ This deliverable proves that your team can plan the product and engineer/build S
 
 Work with the same two students and repository used for the group project. Use group_work_specs.docx as the master specification, including its theme assignment and Sprint 1 examples.
 
-| Part                                  | Points | What you must demonstrate                               |
-| ------------------------------------- | ------ | ------------------------------------------------------- |
-| A. SRS and product scope              | 10     | Actors, scope, FR/BR/NFR and decisions                  |
-| B. Feature inventory and traceability | 10     | Requirements mapped to features and sprints             |
-| C. System-Level SDS                   | 15     | Architecture, data, UI/API, access and deployment plan  |
-| D. Three-sprint plan                  | 5      | Goals, allocation, dependencies and feasible scope      |
-| E. Sprint 1 engineering contracts     | 20     | Feature design, AC, STS, DoD and version history        |
-| F. Working Sprint 1 and verification  | 20     | Domain workflow, tests, access and reviewed integration |
-| Total                                 | 80     |                                                         |
+| Part | Points | What you must demonstrate |
+| --- | --- | --- |
+| A. SRS and product scope | 10 | Actors, scope, FR/BR/NFR and decisions |
+| B. Feature inventory and traceability | 10 | Requirements mapped to features and sprints |
+| C. System-Level SDS | 15 | Architecture, data, UI/API, access and deployment plan |
+| D. Three-sprint plan | 5 | Goals, allocation, dependencies and feasible scope |
+| E. Sprint 1 engineering contracts | 20 | Feature design, AC, STS, DoD and version history |
+| F. Working Sprint 1 and verification | 20 | Domain workflow, tests, access and reviewed integration |
+| Total | 80 |  |
 
 ## 2. Required Sprint 1 outcome
 
@@ -87,11 +86,11 @@ Explain environment variables, secret handling, database configuration and the p
 
 For each sprint, state its goal, included feature IDs, dependencies and completion outcome. Collectively, the three sprints must cover the product baseline.
 
-| Sprint | Required outcome                                                            | Checkpoint                             |
-| ------ | --------------------------------------------------------------------------- | -------------------------------------- |
-| 1      | Small working domain slice with authentication, permissions and persistence | Deliverable 1; 8 Nov                   |
-| 2      | Completed core expansion under engineering contracts                        | Deliverable 2; 29 Nov                  |
-| 3      | Remaining features, integration and product hardening                       | Progress at 29 Nov; complete by 13 Dec |
+| Sprint | Required outcome | Checkpoint |
+| --- | --- | --- |
+| 1 | Small working domain slice with authentication, permissions and persistence | Deliverable 1; 8 Nov |
+| 2 | Completed core expansion under engineering contracts | Deliverable 2; 29 Nov |
+| 3 | Remaining features, integration and product hardening | Progress at 29 Nov; complete by 13 Dec |
 
 ### 3.5. Part E Sprint 1 engineering contracts
 
@@ -109,10 +108,10 @@ Prepare and version the engineering contract for each Sprint 1 feature before im
 
 For each planned test, record its ID, linked AC, test level, preconditions/input, action and expected result. Map all Sprint 1 AC to suitable verification. Unit tests should cover important logic; API/database integration tests should cover persistence and permissions; selected UI/end-to-end tests should cover critical user journeys.
 
-| Test and AC     | Input or precondition                                                | Expected result                                         |
-| --------------- | -------------------------------------------------------------------- | ------------------------------------------------------- |
+| Test and AC | Input or precondition | Expected result |
+| --- | --- | --- |
 | TEST-02 / AC-02 | Exclusive slot already has an active booking; submit another booking | Reject the request; no second active booking is stored. |
-| TEST-03 / AC-03 | User A requests User B’s private booking through the API             | Reject access without returning private booking data.   |
+| TEST-03 / AC-03 | User A requests User B’s private booking through the API | Reject access without returning private booking data. |
 
 Define the Product Definition of Done: required behavior implemented; planned verification executed; meaningful tests passing; review and integration complete; setup/documents current; and incomplete work disclosed. Completion must be supported by evidence, not an AI agent’s claim.
 
@@ -149,15 +148,15 @@ Keep the engineering documents, source code and tests in the GitHub repository a
 
 Use the headings below in the same order as shown here. Include a table of contents with page numbers and keep text, diagrams, tables and screenshots readable at normal viewing size. There is no fixed page limit; include complete engineering content without duplicating it unnecessarily.
 
-| Part  | Points | Include directly in the PDF                                                                                                                                       |
-| ----- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A     | 10     | Complete SRS: stakeholder/context, actors, scope/exclusions, numbered FR/BR/NFR, assumptions and decisions.                                                       |
-| B     | 10     | Complete feature inventory and requirements-to-feature-to-sprint traceability table. Show coverage gaps and approved changes.                                     |
-| C     | 15     | Complete System-Level SDS: architecture/stack, major data model/diagrams, UI/API conventions, roles/ownership, authentication, configuration and deployment plan. |
-| D     | 5      | Three-sprint plan: goals, feature IDs, dependencies and completion outcomes. Explain the scope of Sprint 1.                                                       |
-| E     | 20     | All Sprint 1 feature engineering contracts: feature SDS, applicable UI/API/data specifications, AC, STS and Product Definition of Done.                           |
-| F     | 20     | Selected program demonstrations, build/test results, test coverage/results table, Git workflow/history evidence, contribution table, and known limitations.       |
-| Total | 80     |                                                                                                                                                                   |
+| Part | Points | Include directly in the PDF |
+| --- | --- | --- |
+| A | 10 | Complete SRS: stakeholder/context, actors, scope/exclusions, numbered FR/BR/NFR, assumptions and decisions. |
+| B | 10 | Complete feature inventory and requirements-to-feature-to-sprint traceability table. Show coverage gaps and approved changes. |
+| C | 15 | Complete System-Level SDS: architecture/stack, major data model/diagrams, UI/API conventions, roles/ownership, authentication, configuration and deployment plan. |
+| D | 5 | Three-sprint plan: goals, feature IDs, dependencies and completion outcomes. Explain the scope of Sprint 1. |
+| E | 20 | All Sprint 1 feature engineering contracts: feature SDS, applicable UI/API/data specifications, AC, STS and Product Definition of Done. |
+| F | 20 | Selected program demonstrations, build/test results, test coverage/results table, Git workflow/history evidence, contribution table, and known limitations. |
+| Total | 80 |  |
 
 ### 4.2. Show selected execution evidence in Part F
 

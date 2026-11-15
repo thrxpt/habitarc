@@ -1,0 +1,195 @@
+// @vitest-environment jsdom
+import "@testing-library/jest-dom/vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, expect, test, vi } from "vite-plus/test";
+
+import { AccountScreen } from "../src/components/account-screen";
+import type { Identity } from "../src/identity";
+
+const { fetchMock } = vi.hoisted(() => {
+  const network = vi.fn<typeof fetch>();
+  vi.stubGlobal("fetch", network);
+  return { fetchMock: network };
+});
+
+const participant: Identity = {
+  id: "participant-a",
+  name: "Participant A",
+  email: "a@example.test",
+  role: "participant",
+  timezone: "Asia/Bangkok",
+};
+const noChange = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+afterEach(() => {
+  cleanup();
+  fetchMock.mockReset();
+});
+
+test("invalid sign in gives generic feedback and clears the password for a retry", async () => {
+  fetchMock.mockResolvedValue(
+    Response.json(
+      {
+        code: "INVALID_EMAIL_OR_PASSWORD",
+        message: "Invalid email or password",
+      },
+      { status: 401 }
+    )
+  );
+  render(<AccountScreen identity={null} onSessionChanged={noChange} />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Email"), "a@example.test");
+  await user.type(screen.getByLabelText("Password"), "invalid-test-input");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Email or password is incorrect"
+  );
+  expect(screen.getByLabelText("Password")).toHaveValue("");
+  expect(screen.getByLabelText("Email")).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(screen.getByLabelText("Password")).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(screen.getByLabelText("Password")).toHaveAccessibleDescription(
+    "Email or password is incorrect. Please try again."
+  );
+  expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+});
+
+test("fields show native validation after interaction and clear it when corrected", async () => {
+  render(<AccountScreen identity={null} onSessionChanged={noChange} />);
+  const user = userEvent.setup();
+  const email = screen.getByLabelText("Email");
+  const password = screen.getByLabelText("Password");
+  expect(email).toHaveAttribute("aria-invalid", "false");
+  expect(password).toHaveAttribute("aria-invalid", "false");
+  await user.type(email, "invalid-email");
+  await user.tab();
+  expect(email).toHaveAttribute("aria-invalid", "true");
+  expect(email.closest("fieldset")).toHaveAttribute("data-invalid", "true");
+  expect(password).toHaveAttribute("aria-invalid", "false");
+  await user.tab();
+  expect(password).toHaveAttribute("aria-invalid", "true");
+  await user.clear(email);
+  await user.type(email, "a@example.test");
+  await user.type(password, "synthetic-test-input");
+  expect(email).toHaveAttribute("aria-invalid", "false");
+  expect(password).toHaveAttribute("aria-invalid", "false");
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("submitting an empty form marks both required fields without sending a request", async () => {
+  render(<AccountScreen identity={null} onSessionChanged={noChange} />);
+  await userEvent
+    .setup()
+    .click(screen.getByRole("button", { name: "Sign in" }));
+  expect(screen.getByLabelText("Email")).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(screen.getByLabelText("Password")).toHaveAttribute(
+    "aria-invalid",
+    "true"
+  );
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("a valid sign in refreshes the server-validated workspace", async () => {
+  fetchMock.mockResolvedValue(
+    Response.json({ user: participant, token: "test-token" })
+  );
+  const changed = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  const { rerender } = render(
+    <AccountScreen identity={null} onSessionChanged={changed} />
+  );
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Email"), participant.email);
+  await user.type(screen.getByLabelText("Password"), "synthetic-test-input");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(changed).toHaveBeenCalledOnce();
+  rerender(<AccountScreen identity={participant} onSessionChanged={changed} />);
+  expect(screen.getByRole("heading", { name: "Your workspace" })).toBeVisible();
+  expect(screen.getByText(participant.email)).toBeVisible();
+  expect(screen.getByText("Participant", { exact: true })).toBeVisible();
+  expect(screen.getByText("Asia/Bangkok")).toBeVisible();
+});
+
+test("a Program Manager sees their own identity and can sign out", async () => {
+  fetchMock.mockResolvedValue(Response.json({ success: true }));
+  const changed = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  const manager: Identity = {
+    ...participant,
+    id: "manager",
+    name: "Manager",
+    email: "m@example.test",
+    role: "program-manager",
+  };
+  const { rerender } = render(
+    <AccountScreen identity={manager} onSessionChanged={changed} />
+  );
+  expect(
+    screen.getByRole("heading", { name: "Activity Templates" })
+  ).toBeVisible();
+  expect(screen.getByText("Program Manager", { exact: true })).toBeVisible();
+  expect(screen.queryByText(participant.email)).not.toBeInTheDocument();
+  await userEvent
+    .setup()
+    .click(screen.getByRole("button", { name: "Sign out" }));
+  expect(changed).toHaveBeenCalledOnce();
+  rerender(<AccountScreen identity={null} onSessionChanged={changed} />);
+  expect(screen.getByRole("button", { name: "Sign in" })).toBeVisible();
+});
+
+test("throttled sign in explains how to retry", async () => {
+  fetchMock.mockResolvedValue(
+    Response.json({ message: "Too many requests" }, { status: 429 })
+  );
+  render(<AccountScreen identity={null} onSessionChanged={noChange} />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Email"), participant.email);
+  await user.type(screen.getByLabelText("Password"), "synthetic-test-input");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Too many sign-in attempts. Wait a minute"
+  );
+  expect(screen.getByLabelText("Email")).toHaveAttribute(
+    "aria-invalid",
+    "false"
+  );
+  expect(screen.getByLabelText("Password")).toHaveAttribute(
+    "aria-invalid",
+    "false"
+  );
+});
+
+test("a new sign in clears an earlier sign-out error", async () => {
+  fetchMock.mockResolvedValueOnce(
+    Response.json({ message: "Unavailable" }, { status: 503 })
+  );
+  const changed = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  const { rerender } = render(
+    <AccountScreen identity={participant} onSessionChanged={changed} />
+  );
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Sign out" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "We couldn’t sign you out"
+  );
+  expect(changed).not.toHaveBeenCalled();
+
+  // The server can expire a session after a failed logout request.
+  rerender(<AccountScreen identity={null} onSessionChanged={changed} />);
+  fetchMock.mockResolvedValueOnce(
+    Response.json({ user: participant, token: "test-token" })
+  );
+  await user.type(screen.getByLabelText("Email"), participant.email);
+  await user.type(screen.getByLabelText("Password"), "synthetic-test-input");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(changed).toHaveBeenCalledOnce();
+  rerender(<AccountScreen identity={participant} onSessionChanged={changed} />);
+  expect(screen.getByRole("heading", { name: "Your workspace" })).toBeVisible();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
