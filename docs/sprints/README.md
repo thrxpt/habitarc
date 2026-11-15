@@ -29,6 +29,8 @@ Whole-product coverage is maintained in the [feature inventory](../features.md) 
 
 ## Separate lab obligations
 
+Lab 5 is due **November 22, 2026**, following the user-confirmed extension from November 15. Complete Docker, gated CI/CD, GCP deployment and durable-data verification by that date. Deliverable 1 remains November 15; see the [calendar and dated correction](plan.md#confirmed-calendar).
+
 Lab 6 UAT is due November 22, during Sprint 2, even though final re-verification belongs to F12. Arrange a partner team before November 20. At least one accepted defect must be resolved and independently re-tested; if no legitimate defect is found, obtain the TA's isolated exercise rather than inventing or planting a product bug.
 
 Lab 7 requires an instructor/TA-approved change to already implemented behavior, not a baseline feature deferred until Sprint 3. Reserve capacity under M01, obtain approval before implementation, and record impact analysis, revised contracts/AC/STS, regression evidence, reviewed deployment, and readiness. The change itself is intentionally unspecified until a real approved request exists. Track five dated, sourced metrics: required-AC verification status, automated test pass/fail/skipped counts, open defects by severity, fix-to-independent-retest elapsed time, and deployment success/failure counts. Include denominators and source links; no invented historical measurements.

@@ -2,6 +2,8 @@
 
 Issue [#8](https://github.com/thrxpt/habitarc/issues/8), [F05](sprints/sprint-1/f05-reproducible-persistence-and-delivery.md), and [ADR 0002](adr/0002-cloud-run-and-cloud-sql.md) govern this release. The repository supplies a production image, an isolated image test, and a manually approved GitHub OIDC pipeline. **Live GCP acceptance remains INCOMPLETE.** No project, region, credit balance/expiry, regional estimate, quota, IAM configuration, backup, or deployed journey has been verified in this implementation session. The machine has no `gcloud` installation. No cloud resources were provisioned.
 
+Lab 5 is due **November 22, 2026**, following the user-confirmed extension from November 15. Review and integrate the repository preparation first, then complete GCP deployment and live acceptance by the revised deadline. Deliverable 1 remains due November 15. The extension does not mark #8 complete or change its acceptance criteria.
+
 ## Pre-provisioning review
 
 Before authorizing resource creation, record these facts with dates and source links in the release evidence:
