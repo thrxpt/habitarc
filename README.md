@@ -74,12 +74,15 @@ Export `TEST_DATABASE_URL` in the test shell; the test runner intentionally does
 
 ### Playwright browser tests
 
-With PostgreSQL running and `TEST_DATABASE_URL` exported, install Chromium once and run:
+With PostgreSQL running, export `TEST_DATABASE_URL` in the same terminal, install Chromium once, and run:
 
 ```sh
+export TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test
 vp exec playwright install chromium
 vp run test:e2e
 ```
+
+With that variable exported, `bun test:e2e` also runs the browser suite. The Playwright setup does not load `.env.local` itself. A missing `TEST_DATABASE_URL` fails before server startup with an explicit configuration error.
 
 The runner starts its own application on `http://127.0.0.1:4173`, creates a uniquely named disposable database, applies migrations, and provisions two Participants and a Program Manager with a generated test password. Teardown stops the server and removes only that database. Port 4173 must be free; an existing application is never reused. No private credential file or development accounts are needed.
 

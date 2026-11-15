@@ -10,13 +10,7 @@ import { migrate } from "../src/server/migrate";
 import { provisionAccounts } from "../src/server/provision";
 import { E2E_ACCOUNTS, E2E_ORIGIN, e2ePassword } from "./accounts";
 
-const serve = async () => {
-  const databaseURL = process.env.TEST_DATABASE_URL;
-  if (databaseURL === undefined || databaseURL.length === 0) {
-    throw new Error(
-      "TEST_DATABASE_URL must name a disposable PostgreSQL database."
-    );
-  }
+const serve = async (databaseURL: string) => {
   const databaseName = `e2e_${randomUUID().replaceAll("-", "")}`;
   const isolatedURL = new URL(databaseURL);
   isolatedURL.pathname = `/${databaseName}`;
@@ -109,8 +103,15 @@ const serve = async () => {
   }
 };
 
+const databaseURL = process.env.TEST_DATABASE_URL;
+if (databaseURL === undefined || databaseURL.length === 0) {
+  throw new Error(
+    "TEST_DATABASE_URL is not set. Export a disposable PostgreSQL connection string in this terminal before running test:e2e (see README.md)."
+  );
+}
+
 try {
-  await serve();
+  await serve(databaseURL);
 } catch {
   process.stderr.write(
     "Browser test setup/server failed. Check PostgreSQL and port 4173.\n"
