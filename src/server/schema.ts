@@ -230,6 +230,72 @@ export const goalRevision = pgTable(
   ]
 );
 
+export const activityEntry = pgTable(
+  "activity_entry",
+  {
+    id: text("id").primaryKey(),
+    habitId: text("habit_id")
+      .notNull()
+      .references(() => habit.id, { onDelete: "cascade" }),
+    activityDate: date("activity_date").notNull(),
+    amount: integer("amount").notNull(),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "activity_entry_amount_check",
+      sql`${table.amount} between 1 and ${sql.raw(String(MEASUREMENT_CEILINGS.counts))}`
+    ),
+    check("activity_entry_version_positive", sql`${table.version} >= 1`),
+    index("activity_entry_habit_date_idx").on(
+      table.habitId,
+      table.activityDate,
+      table.createdAt,
+      table.id
+    ),
+  ]
+);
+
+export const mutationReceipt = pgTable(
+  "mutation_receipt",
+  {
+    id: text("id").primaryKey(),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    requestKey: text("request_key").notNull(),
+    operation: text("operation").notNull(),
+    payloadFingerprint: text("payload_fingerprint").notNull(),
+    // Retain receipts if the referenced entry is later deleted in history corrections.
+    resourceId: text("resource_id").notNull(),
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("mutation_receipt_actor_key_unique").on(
+      table.actorId,
+      table.requestKey
+    ),
+    check(
+      "mutation_receipt_request_key_nonempty",
+      sql`char_length(btrim(${table.requestKey})) between 1 and 128`
+    ),
+    check(
+      "mutation_receipt_operation_nonempty",
+      sql`char_length(btrim(${table.operation})) between 1 and 64`
+    ),
+  ]
+);
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),

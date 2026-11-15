@@ -3,6 +3,7 @@ export const E2E_ORIGIN = "http://127.0.0.1:4173";
 export const E2E_ACCOUNTS = [
   { name: "Participant A", email: "a@example.test", role: "participant" },
   { name: "Participant B", email: "b@example.test", role: "participant" },
+  { name: "Participant C", email: "c@example.test", role: "participant" },
   {
     name: "Program Manager",
     email: "manager@example.test",

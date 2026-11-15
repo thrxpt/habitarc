@@ -5,6 +5,11 @@ import { Button } from "#components/ui/button.tsx";
 
 import { authClient } from "../auth-client";
 import type {
+  ActivityEntryDraft,
+  RecordEntryResponse,
+  TodayWorkspace,
+} from "../entries";
+import type {
   HabitCreationResponse,
   HabitDraft,
   HabitWorkspace,
@@ -16,6 +21,8 @@ import { SignInPanel } from "./sign-in-panel";
 import { WorkspacePanel } from "./workspace-panel";
 
 interface AccountScreenProps {
+  todayWorkspace?: TodayWorkspace;
+  onRecordEntry?: (draft: ActivityEntryDraft) => Promise<RecordEntryResponse>;
   habitWorkspace?: HabitWorkspace;
   onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
   identity: Identity | null;
@@ -33,6 +40,8 @@ interface AccountScreenProps {
 const EMPTY_TEMPLATES: ActivityTemplate[] = [];
 
 export const AccountScreen = ({
+  todayWorkspace,
+  onRecordEntry,
   habitWorkspace,
   onCreateHabit,
   identity,
@@ -104,6 +113,8 @@ export const AccountScreen = ({
         {identity ? (
           <WorkspacePanel
             key={identity.id}
+            todayWorkspace={todayWorkspace}
+            onRecordEntry={onRecordEntry}
             habitWorkspace={habitWorkspace}
             onCreateHabit={onCreateHabit}
             identity={identity}
