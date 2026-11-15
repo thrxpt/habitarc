@@ -1,6 +1,6 @@
 # Habitarc requirements traceability
 
-Status: accepted baseline mapping of planned verification. The tables retain their planning status; actual F01 test results, tested revision, and incomplete acceptance gates are recorded in the [F01 verification ledger](auth.md#f01-verification-ledger). Other features remain planned. This matrix is not proof of integrated-release acceptance.
+Status: accepted baseline mapping of planned verification. Original planning rows remain visible; current F01–F04 test results and release gaps are recorded in the [Deliverable 1 execution ledger](deliverables/deliverable-1/part-f.md). F06–F12 remain planned. This matrix alone is not proof of integrated-release acceptance.
 
 Requirement definitions live in the [SRS](srs.md), feature descriptions/dependencies in the [inventory](features.md), and dates/release gates in the [sprint plan](sprints/plan.md). Each link below opens the feature contract containing the paired AC/STS, test level, preconditions/actions, and expected result.
 
@@ -60,6 +60,6 @@ Requirement definitions live in the [SRS](srs.md), feature descriptions/dependen
 
 The baseline accounts for all 12 FRs, 17 BRs, and 8 important NFRs and references all 43 accepted AC/STS pairs. Cross-cutting rows name an ongoing responsibility, not permission to skip checks on later operations. NFR targets and their measurement methods remain defined in the SRS; a link to a planned check does not mean the target has been met.
 
-No requirement was removed or rescheduled during this document reorganization. All requirements remain unverified. Course access, independent UAT participation, the approved maintenance request, cloud credit runway, and the Sprint 1 capacity shortfall remain explicit prerequisites/risks in the sprint plan.
+No requirement was removed or rescheduled during this document reorganization. The status column preserves the original planned whole-product checks. Sprint 1 actual results are recorded in the [Deliverable 1 ledger](deliverables/deliverable-1/part-f.md); later-sprint verification remains planned. Course access, independent UAT participation, the approved maintenance request, cloud credit runway, and the Sprint 1 capacity shortfall remain explicit prerequisites/risks in the sprint plan.
 
 During implementation, extend each applicable requirement/AC/STS mapping with actual test file/name or measurement, PLANNED/PASS/FAIL/SKIPPED/INCOMPLETE result, tested commit, run/evidence reference, tester, and date. Preserve baseline changes and coverage gaps rather than replacing missing results with inferred success. See the [shared verification and Definition of Done](sprints/README.md#definition-of-done-and-evidence-protocol).

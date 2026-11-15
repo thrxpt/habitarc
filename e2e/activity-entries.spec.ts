@@ -44,7 +44,7 @@ const publishTemplate = async (page: Page, name: string) => {
 test("Participant records durable progress and safely retries lost responses and failed saves", async ({
   page,
   browser,
-}) => {
+}, testInfo) => {
   const templateName = "Today Study E2E";
   await page.goto("/");
   await publishTemplate(page, templateName);
@@ -158,6 +158,13 @@ test("Participant records durable progress and safely retries lost responses and
     "aria-valuetext",
     "75 of 60 minutes (125%)"
   );
+  await expect(
+    finalToday.getByRole("button", { name: "Add entry" })
+  ).toBeEnabled();
+  await finalToday.screenshot({
+    path: testInfo.outputPath("persisted-progress.png"),
+    caret: "initial",
+  });
 
   // Verify 360px responsive layout with entry composer open without horizontal overflow.
   await page.setViewportSize({ width: 360, height: 800 });

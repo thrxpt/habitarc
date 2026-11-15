@@ -1,6 +1,6 @@
 # Habitarc software requirements
 
-Status: accepted requirements baseline following user confirmation of Q25. All requirements below are planned, not implemented or verified. Course sources and deadline corrections are recorded in [the product plan](sprints/plan.md).
+Status: accepted requirements baseline following user confirmation of Q25. Requirements describe the complete product; F01–F04 now have implemented Sprint 1 coverage. Current execution and remaining release gates are recorded in the [Deliverable 1 ledger](deliverables/deliverable-1/part-f.md); this baseline alone is not proof of verification. Course sources and deadline corrections are recorded in [the product plan](sprints/plan.md).
 
 ## Problem, actors, and scope
 
@@ -70,8 +70,18 @@ These targets are accepted planning requirements, not achieved results or claims
 
 No high-availability SLA is promised for the single-zone course deployment. Credit expiry, billing state, grading-period duration, and provider quotas are operational prerequisites; failure to satisfy them blocks the deployment plan rather than silently authorizing paid upgrades.
 
-## Scope changes
+## Assumptions and resolved decisions
+
+- Context: study and movement routines for students under the Habit and Activity Tracking theme; records and assessment accounts are synthetic. Pre-provisioned accounts meet Sprint 1 access needs without public registration/recovery.
+- The team comprises Theeraphat Jaingam (67070501063) and Chanya Poolketkij (67070501058). Both contribute across implementation and review; concrete GitHub evidence is retained in Part F.
+- One TanStack Start application with Better Auth, Drizzle, and PostgreSQL provides UI/application/storage responsibilities. ADR 0004 records shared persistence; actual local integration is tested rather than inferred from installed dependencies.
+- ADR 0001 freezes used template measurements; ADR 0003 preserves effective-dated goals. These prevent later maintenance from rewriting the meaning of private history.
+- ADR 0002 chooses Cloud Run/ordinary Cloud SQL within the existing trial budget. Actual project, costs, ingress, backup/restore, and grading access require later operational verification. No cloud success is assumed here.
+- The planning record reports the user's Deliverable 1 deadline correction to November 15, 2026. The original reference still says November 8; it remains unchanged. Course deadline timezone and later lab handouts need current course confirmation.
+- Later features F06–F12 remain allocated rather than silently removed. Cloud delivery belongs to Lab 5; its incomplete status does not erase the local release and teammate-review requirements for Deliverable 1.
+
+## Change control
 
 Requirements have stable IDs. Proposed removals, changed rules, or sprint moves must identify affected features, acceptance criteria, tests, documents, and course approvals. Preserve original contracts and actual chronology. An incomplete requirement remains incomplete until verified; it cannot be renamed as technical debt to claim completion.
 
-Implementation and execution evidence are intentionally absent from this planning baseline. The [feature inventory](features.md) lists the complete feature scope and dependencies; the [traceability matrix](traceability.md) maps every requirement to features, sprints, and planned AC/STS. [Sprint contracts](sprints/README.md) define observable acceptance criteria and planned verification, while the [System-Level SDS](system-sds.md) defines their accepted implementation boundaries.
+The [feature inventory](features.md) lists the complete feature scope and dependencies; the [traceability matrix](traceability.md) maps every requirement to features, sprints, and planned AC/STS. [Sprint contracts](sprints/README.md) define observable acceptance criteria and planned verification, while the [System-Level SDS](system-sds.md) defines their accepted implementation boundaries. The Deliverable 1 ledger supplies actual test results without replacing the baseline or its original chronology.

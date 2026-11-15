@@ -1,6 +1,6 @@
 # Habitarc product and three-sprint plan
 
-Status: accepted planning baseline. The user confirmed Q1–25, including the complete product scope, security/quality details, estimates, and three-sprint allocation. The planning interview is complete. Implementation and cloud provisioning require a separate instruction; no product implementation or deployment has been performed by this planning task.
+Status: accepted planning baseline. The user confirmed Q1–25, including the complete product scope, security/quality details, estimates, and three-sprint allocation. The planning interview is complete. The original plan preceded implementation. F01–F04 are now integrated into `sprint-1`; current verification and the remaining main-release gates are recorded in the [Deliverable 1 ledger](../deliverables/deliverable-1/part-f.md). Cloud delivery remains separately tracked in issue #8.
 
 This is a course-complete two-role product: define a template, establish a personal Habit, record real activity, and understand consistent progress without rewriting history. The plan covers the complete release and the engineering evidence required across three sprints.
 
@@ -16,7 +16,7 @@ This is a course-complete two-role product: define a template, establish a perso
 - [Glossary](../../GLOSSARY.md): canonical domain vocabulary.
 - [ADR 0001](../adr/0001-preserve-used-template-measurement-rules.md), [ADR 0002](../adr/0002-cloud-run-and-cloud-sql.md), and [ADR 0003](../adr/0003-effective-dated-habit-goals.md): stable template rules, trial-budget deployment, and historical goal revisions.
 
-All implementation and verification statuses are PLANNED. Documentation checks are not evidence that the product works.
+Original allocations remain the product baseline. Actual Sprint 1 implementation/results are recorded separately; documentation checks alone are not product verification.
 
 ## Product direction
 
