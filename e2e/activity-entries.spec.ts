@@ -1,7 +1,19 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { Pool } from "pg";
 
-import { e2ePassword } from "./accounts";
+import { addCalendarDays } from "../src/entries";
+import { e2eDatabaseURL, e2ePassword } from "./accounts";
+
+test.beforeEach(async () => {
+  // Browser scenarios share the same loopback IP and disposable database.
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  try {
+    await pool.query('TRUNCATE "rateLimit"');
+  } finally {
+    await pool.end();
+  }
+});
 
 const signIn = async (page: Page, email: string) => {
   await page.getByLabel("Email", { exact: true }).fill(email);
@@ -251,5 +263,164 @@ test("Participant records durable progress and safely retries lost responses and
     ).toBeDisabled();
   } finally {
     await staticContext.close();
+  }
+});
+
+const openFixtureHistory = async (page: Page) => {
+  await page.goto("/");
+  await signIn(page, "history@example.test");
+  const today = page.getByRole("region", { name: "Today", exact: true });
+  const dateLabel = await today.getByText(/Account date:/u).textContent();
+  const todayDate = dateLabel?.match(/\d{4}-\d{2}-\d{2}/u)?.[0];
+  if (todayDate === undefined) {
+    throw new Error("Expected Today’s account date.");
+  }
+  await page
+    .getByRole("link", { name: "View history for History Study E2E" })
+    .click();
+  return { today, todayDate };
+};
+
+test("Participant corrects private dated history, rejects stale edits, and retries a confirmed deletion", async ({
+  page,
+  browser,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  const { today, todayDate } = await openFixtureHistory(page);
+  const yesterday = addCalendarDays(todayDate, -1);
+  const olderDate = addCalendarDays(todayDate, -7);
+  const source = page.getByRole("region", { name: todayDate, exact: true });
+  const destination = page.getByRole("region", {
+    name: yesterday,
+    exact: true,
+  });
+  const older = page.getByRole("region", { name: olderDate, exact: true });
+  await expect(source).toContainText("45 / 40 minutes");
+  await expect(source).toContainText("Completed");
+  await expect(destination).toContainText("10 minutes recorded");
+  await expect(destination).toContainText("Off schedule");
+  await expect(older).toContainText("Read-only");
+  await expect(older.getByRole("button")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    360
+  );
+
+  const secondTab = await page.context().newPage();
+  await secondTab.goto(page.url());
+  const secondSource = secondTab.getByRole("region", {
+    name: todayDate,
+    exact: true,
+  });
+  await secondSource
+    .getByRole("button", { name: "Edit entry", exact: true })
+    .click();
+  await secondSource.getByLabel("Amount (minutes)").fill("35");
+
+  await source.getByRole("button", { name: "Edit entry", exact: true }).click();
+  await source.getByLabel("Amount (minutes)").fill("30");
+  await source.getByLabel("Activity date").fill(yesterday);
+  await source.getByRole("button", { name: "Save changes" }).click();
+  await expect(source).toContainText("0 / 40 minutes");
+  await expect(source).toContainText("In progress");
+  await expect(destination).toContainText("40 minutes recorded");
+
+  await secondSource.getByRole("button", { name: "Save changes" }).click();
+  await expect(secondTab.getByRole("alert")).toContainText(
+    "This entry changed"
+  );
+  await expect(secondSource.getByLabel("Amount (minutes)")).toHaveValue("35");
+  await secondSource.getByRole("button", { name: "Refresh history" }).click();
+  await expect(secondSource).toContainText("0 / 40 minutes");
+  const staleMoved = secondTab
+    .getByRole("region", { name: yesterday, exact: true })
+    .getByRole("listitem")
+    .filter({ hasText: "30 minutes" });
+  await staleMoved
+    .getByRole("button", { name: "Edit entry", exact: true })
+    .click();
+
+  const moved = destination
+    .getByRole("listitem")
+    .filter({ hasText: "30 minutes" });
+  await moved
+    .getByRole("button", { name: "Delete entry", exact: true })
+    .click();
+  await expect(destination).toContainText("40 minutes recorded");
+  await moved.getByRole("button", { name: "Cancel", exact: true }).click();
+  await moved
+    .getByRole("button", { name: "Delete entry", exact: true })
+    .click();
+  let deletionStatus: number | undefined;
+  await page.route("**/_serverFn/*", async (route) => {
+    if (deletionStatus === undefined && route.request().method() === "POST") {
+      const response = await route.fetch();
+      deletionStatus = response.status();
+      await route.abort("failed");
+      return;
+    }
+    await route.continue();
+  });
+  await moved.getByRole("button", { name: "Confirm deletion" }).click();
+  await expect(destination.getByRole("alert")).toContainText(
+    "couldn’t confirm"
+  );
+  expect(deletionStatus).toBe(200);
+  await moved.getByRole("button", { name: "Retry deletion" }).click();
+  await expect(destination).toContainText("10 minutes recorded");
+  await expect(page.getByRole("status")).toContainText("Entry deleted");
+  await expect(moved).toHaveCount(0);
+  await staleMoved.getByRole("button", { name: "Save changes" }).click();
+  await expect(secondTab.getByRole("alert")).toContainText(
+    "This entry is no longer available. Refresh history"
+  );
+  await secondTab.close();
+
+  const otherPage = await browser.newPage();
+  try {
+    await otherPage.goto("/");
+    await signIn(otherPage, "b@example.test");
+    await otherPage.goto(page.url());
+    await expect(
+      otherPage.getByRole("heading", { name: "History unavailable" })
+    ).toBeVisible();
+    await expect(otherPage.getByText("10 minutes recorded")).toHaveCount(0);
+  } finally {
+    await otherPage.close();
+  }
+
+  await page.getByRole("link", { name: "Back to workspace" }).click();
+  await expect(today).toContainText("0 / 40 minutes");
+});
+
+test("An open correction becomes read-only after account midnight", async ({
+  page,
+}) => {
+  const { todayDate } = await openFixtureHistory(page);
+  const edgeDate = addCalendarDays(todayDate, -6);
+  const nextDate = addCalendarDays(todayDate, 1);
+  const edge = page.getByRole("region", { name: edgeDate, exact: true });
+  await edge.getByRole("button", { name: "Edit entry", exact: true }).click();
+  await edge.getByLabel("Amount (minutes)").fill("25");
+
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  try {
+    await pool.query("UPDATE e2e_clock.override SET instant = $1", [
+      `${nextDate}T00:00:10+07:00`,
+    ]);
+    await edge.getByRole("button", { name: "Save changes" }).click();
+    await expect(edge.getByRole("alert")).toContainText(
+      `today (${nextDate}) or the previous 6 days`
+    );
+    await edge.getByRole("button", { name: "Refresh history" }).click();
+    await expect(edge).toContainText("5 minutes recorded");
+    await expect(edge).toContainText("Read-only");
+    await expect(edge.getByRole("button")).toHaveCount(0);
+    await expect(
+      page.getByText("Signed in as History Participant")
+    ).toBeVisible();
+    await signOut(page);
+  } finally {
+    await pool.query("UPDATE e2e_clock.override SET instant = NULL");
+    await pool.end();
   }
 });

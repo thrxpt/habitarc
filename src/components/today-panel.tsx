@@ -148,7 +148,8 @@ const EntryRecordForm = ({
         setFieldErrors({});
         const formattedAmount = `${response.entry.amount.toLocaleString("en-US")} ${template.unit}`;
         const formattedTotal = `${response.dailyTotal.toLocaleString("en-US")} ${template.unit}`;
-        if (activityDate === accountDate) {
+        const savedDate = response.entry.activityDate;
+        if (savedDate === accountDate) {
           setSavedMessage(
             response.kind === "replayed"
               ? `Entry confirmed (already saved): ${formattedAmount}. Today’s total: ${formattedTotal}.`
@@ -157,8 +158,8 @@ const EntryRecordForm = ({
         } else {
           setSavedMessage(
             response.kind === "replayed"
-              ? `Entry confirmed (already saved) for ${activityDate}: ${formattedAmount} (Daily Total: ${formattedTotal}).`
-              : `Saved ${formattedAmount} for ${activityDate} (Daily Total: ${formattedTotal}).`
+              ? `Entry confirmed (already saved) for ${savedDate}: ${formattedAmount} (Daily Total: ${formattedTotal}).`
+              : `Saved ${formattedAmount} for ${savedDate} (Daily Total: ${formattedTotal}).`
           );
         }
       }

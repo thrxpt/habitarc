@@ -1,5 +1,3 @@
-import { Alert, AlertDescription } from "#components/ui/alert.tsx";
-
 import type {
   ActivityEntryDraft,
   RecordEntryResponse,
@@ -30,7 +28,6 @@ export const WorkspacePanel = ({
   hasMoreTemplates = false,
   loadingMoreTemplates = false,
   loadMoreTemplatesError = "",
-  error,
   onCreateTemplate,
   onLoadMoreTemplates,
 }: {
@@ -43,7 +40,6 @@ export const WorkspacePanel = ({
   hasMoreTemplates?: boolean;
   loadingMoreTemplates?: boolean;
   loadMoreTemplatesError?: string;
-  error: string;
   onCreateTemplate?: (
     draft: ActivityTemplateDraft
   ) => Promise<ActivityTemplate>;
@@ -117,10 +113,5 @@ export const WorkspacePanel = ({
       loadMoreError={loadMoreTemplatesError}
       onLoadMore={onLoadMoreTemplates}
     />
-    {error && (
-      <Alert variant="destructive" className="mt-4">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    )}
   </>
 );

@@ -4,9 +4,10 @@ import {
   setResponseStatus,
 } from "@tanstack/react-start/server";
 
-import type { RecordEntryResponse } from "../entries";
+import type { EntryMutationFailure } from "../entries";
 import type { HabitCreationResponse } from "../habits";
 import { isRole } from "../identity";
+import type { Identity } from "../identity";
 import { validateTemplateListQuery } from "../templates";
 import { AuthError, authenticationError } from "./auth-error";
 import { EntryError } from "./entries";
@@ -133,29 +134,70 @@ export const getToday = createServerFn({ method: "GET" })
     return await getEntryService().getToday(actor);
   });
 
-export const createEntry = createServerFn({ method: "POST" })
+export const getHistory = createServerFn({ method: "GET" })
   .middleware([applicationErrors])
   .validator((input: unknown) => input)
-  .handler(async ({ data }): Promise<RecordEntryResponse> => {
+  .handler(async ({ data }) => {
     const actor = await getAuthentication().authorizeWorkspace(
       getRequestHeaders(),
       "participant"
     );
-    try {
-      return await getEntryService().createEntry(actor, data);
-    } catch (error) {
-      if (
-        error instanceof EntryError &&
-        (error.status === 400 || error.status === 409)
-      ) {
-        // Expected validation and conflict data must survive TanStack's Error serialization.
-        setResponseStatus(error.status);
-        return {
-          kind: error.status === 400 ? "invalid" : "conflict",
-          message: error.message,
-          fieldErrors: error.fieldErrors,
-        };
-      }
-      throw error;
-    }
+    const history = await getEntryService().getHistory(actor, data);
+    return { history, viewer: { id: actor.id, name: actor.name } };
   });
+
+const entryWrite = async <Result>(
+  write: (actor: Identity) => Promise<Result>
+): Promise<Result | EntryMutationFailure> => {
+  const actor = await getAuthentication().authorizeWorkspace(
+    getRequestHeaders(),
+    "participant"
+  );
+  try {
+    return await write(actor);
+  } catch (error) {
+    if (
+      error instanceof EntryError &&
+      (error.status === 400 || error.status === 404 || error.status === 409)
+    ) {
+      // Expected validation and conflict data must survive TanStack's Error serialization.
+      setResponseStatus(error.status);
+      return {
+        kind: error.status === 400 ? "invalid" : "conflict",
+        message: error.message,
+        fieldErrors: error.fieldErrors,
+      };
+    }
+    throw error;
+  }
+};
+
+export const createEntry = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(
+    async ({ data }) =>
+      await entryWrite(
+        async (actor) => await getEntryService().createEntry(actor, data)
+      )
+  );
+
+export const updateEntry = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(
+    async ({ data }) =>
+      await entryWrite(
+        async (actor) => await getEntryService().updateEntry(actor, data)
+      )
+  );
+
+export const deleteEntry = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(
+    async ({ data }) =>
+      await entryWrite(
+        async (actor) => await getEntryService().deleteEntry(actor, data)
+      )
+  );

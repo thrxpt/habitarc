@@ -529,6 +529,340 @@ test("AC-F04-3: account midnight, 7-day window, pre-start, post-archive, off-sch
   expect(Number(receiptCount.rows[0]?.count)).toBe(4);
 });
 
+const createHistoryHabit = async () => {
+  const template = await createCountTemplate();
+  const { habit } = await habits.createHabit(participantA, {
+    templateId: template.id,
+    dailyTarget: 60,
+    weekdays: [1],
+  });
+  await pool.query("UPDATE habit SET start_date = '2026-10-01' WHERE id = $1", [
+    habit.id,
+  ]);
+  await pool.query(
+    "UPDATE goal_revision SET effective_from = '2026-10-01' WHERE habit_id = $1",
+    [habit.id]
+  );
+  return habit;
+};
+
+test("AC-F06-1: history shows dated scheduled and off-schedule amounts, with older entries read-only", async () => {
+  const habit = await createHistoryHabit();
+  let now = new Date("2026-11-09T12:00:00+07:00");
+  const clocked = createEntryService(database, { now: () => now });
+  const log = async (activityDate: string, amount: number) =>
+    await clocked.createEntry(participantA, {
+      habitId: habit.id,
+      activityDate,
+      amount,
+      requestKey: randomUUID(),
+    });
+
+  await log("2026-11-09", 60);
+  now = new Date("2026-11-16T12:00:00+07:00");
+  await pool.query(
+    "INSERT INTO goal_revision (id, habit_id, effective_from, daily_target, weekday_mask) VALUES ($1, $2, '2026-11-16', 65, 1)",
+    [randomUUID(), habit.id]
+  );
+  await log("2026-11-15", 25);
+  await log("2026-11-16", 65);
+
+  const history = await clocked.getHistory(participantA, { habitId: habit.id });
+  expect(history).toMatchObject({
+    accountDate: "2026-11-16",
+    timezone: "Asia/Bangkok",
+    writableMinDate: "2026-11-10",
+    writableMaxDate: "2026-11-16",
+  });
+  expect(history.days[0]).toMatchObject({
+    date: "2026-11-16",
+    progress: {
+      scheduled: true,
+      completed: true,
+      dailyTotal: 65,
+      dailyTarget: 65,
+    },
+    entries: [{ amount: 65 }],
+  });
+  expect(history.days[1]).toMatchObject({
+    date: "2026-11-15",
+    progress: { scheduled: false, percentage: null, dailyTotal: 25 },
+    entries: [{ amount: 25 }],
+  });
+  expect(history.days.at(-1)).toMatchObject({
+    date: "2026-11-09",
+    progress: {
+      scheduled: true,
+      completed: true,
+      dailyTotal: 60,
+      dailyTarget: 60,
+    },
+    entries: [{ amount: 60 }],
+  });
+  await expect(
+    clocked.getHistory(participantB, { habitId: habit.id })
+  ).rejects.toMatchObject({
+    status: 404,
+  });
+});
+
+const historyMondayNoon = () => new Date("2026-11-16T12:00:00+07:00");
+
+test("History pages keep entries from the same date together and reach older records", async () => {
+  const { id: habitId } = await createHistoryHabit();
+  const clocked = createEntryService(database, { now: historyMondayNoon });
+  await pool.query(
+    `INSERT INTO activity_entry (id, habit_id, activity_date, amount)
+     SELECT gen_random_uuid()::text, $1, day::date, 15
+     FROM generate_series(date '2026-10-17', date '2026-11-16', interval '1 day') AS day
+     UNION ALL SELECT gen_random_uuid()::text, $1, date '2026-10-18', 20`,
+    [habitId]
+  );
+  const latest = await clocked.getHistory(participantA, { habitId });
+  expect(latest.days).toHaveLength(30);
+  expect(latest.nextBefore).toBe("2026-10-18");
+  expect(latest.days.at(-1)).toMatchObject({
+    date: "2026-10-18",
+    progress: { dailyTotal: 35 },
+  });
+
+  const older = await clocked.getHistory(participantA, {
+    habitId,
+    before: latest.nextBefore,
+  });
+  expect(older.nextBefore).toBeNull();
+  expect(older.days).toMatchObject([
+    { date: "2026-10-17", entries: [{ amount: 15 }] },
+  ]);
+});
+
+test("AC-F06-1/4: corrections recalculate completion and move amounts atomically", async () => {
+  const habit = await createHistoryHabit();
+  const clocked = createEntryService(database, { now: historyMondayNoon });
+  const observer = createEntryService(otherDatabase, {
+    now: historyMondayNoon,
+  });
+  const log = async (activityDate: string, amount: number) =>
+    await clocked.createEntry(participantA, {
+      habitId: habit.id,
+      activityDate,
+      amount,
+      requestKey: randomUUID(),
+    });
+  const { entry } = await log("2026-11-16", 40);
+  await log("2026-11-16", 30);
+  await log("2026-11-15", 999_970);
+  const edit = async (
+    expectedVersion: number,
+    activityDate: string,
+    amount: number
+  ) =>
+    await clocked.updateEntry(participantA, {
+      habitId: habit.id,
+      entryId: entry.id,
+      expectedVersion,
+      activityDate,
+      amount,
+      requestKey: randomUUID(),
+    });
+  const totals = async () => {
+    const { days } = await observer.getHistory(participantA, {
+      habitId: habit.id,
+    });
+    return days.slice(0, 2).map(({ progress: { dailyTotal, completed } }) => ({
+      dailyTotal,
+      completed,
+    }));
+  };
+
+  expect(await totals()).toEqual([
+    { dailyTotal: 70, completed: true },
+    { dailyTotal: 999_970, completed: false },
+  ]);
+  await edit(1, "2026-11-16", 20);
+  const today = await observer.getToday(participantA);
+  expect(today.scheduled[0]?.progress).toMatchObject({
+    dailyTotal: 50,
+    completed: false,
+  });
+  await edit(2, "2026-11-16", 40);
+  await expect(edit(3, "2026-11-15", 40)).rejects.toMatchObject({
+    status: 409,
+  });
+  expect(await totals()).toEqual([
+    { dailyTotal: 70, completed: true },
+    { dailyTotal: 999_970, completed: false },
+  ]);
+  await edit(3, "2026-11-15", 30);
+  expect(await totals()).toEqual([
+    { dailyTotal: 30, completed: false },
+    { dailyTotal: 1_000_000, completed: false },
+  ]);
+  expect(
+    await observer.listEntries(participantA, habit.id, "2026-11-15")
+  ).toContainEqual(
+    expect.objectContaining({ id: entry.id, amount: 30, version: 4 })
+  );
+});
+
+test("AC-F06-2: account midnight closes both sides of a move and older entries remain intact", async () => {
+  const habit = await createHistoryHabit();
+  let now = new Date("2026-11-16T23:59:50+07:00");
+  const clocked = createEntryService(database, { now: () => now });
+  const log = async (activityDate: string) => {
+    const { entry } = await clocked.createEntry(participantA, {
+      habitId: habit.id,
+      activityDate,
+      amount: 20,
+      requestKey: randomUUID(),
+    });
+    return {
+      habitId: habit.id,
+      entryId: entry.id,
+      expectedVersion: entry.version,
+      requestKey: randomUUID(),
+    };
+  };
+  const edge = await log("2026-11-10");
+  const inside = await log("2026-11-15");
+  const correction = { ...edge, activityDate: "2026-11-10", amount: 25 };
+  await expect(clocked.updateEntry(participantA, correction)).resolves.toEqual({
+    kind: "applied",
+  });
+
+  now = new Date("2026-11-17T00:00:10+07:00");
+  const nextDay = await clocked.getHistory(participantA, { habitId: habit.id });
+  expect(nextDay).toMatchObject({
+    accountDate: "2026-11-17",
+    writableMinDate: "2026-11-11",
+  });
+  await expect(clocked.updateEntry(participantA, correction)).resolves.toEqual({
+    kind: "replayed",
+  });
+  const oldTarget = { ...edge, expectedVersion: 2, requestKey: randomUUID() };
+  await expect(
+    clocked.updateEntry(participantA, {
+      ...oldTarget,
+      activityDate: "2026-11-16",
+      amount: 30,
+    })
+  ).rejects.toMatchObject({ status: 400 });
+  await expect(
+    clocked.deleteEntry(participantA, oldTarget)
+  ).rejects.toMatchObject({ status: 400 });
+  await expect(
+    clocked.updateEntry(participantA, {
+      ...inside,
+      activityDate: "2026-11-10",
+      amount: 30,
+    })
+  ).rejects.toMatchObject({ status: 400 });
+  expect(await clocked.listEntries(participantA, habit.id)).toMatchObject([
+    { activityDate: "2026-11-10", amount: 25, version: 2 },
+    { activityDate: "2026-11-15", amount: 20, version: 1 },
+  ]);
+
+  await pool.query(
+    "UPDATE habit SET archived_from = '2026-11-17' WHERE id = $1",
+    [habit.id]
+  );
+  await expect(
+    clocked.updateEntry(participantA, {
+      ...inside,
+      activityDate: "2026-11-17",
+      amount: 30,
+    })
+  ).rejects.toMatchObject({
+    status: 400,
+    message:
+      "Entries cannot be recorded on or after this Habit’s archive date (2026-11-17).",
+  });
+  await expect(clocked.deleteEntry(participantA, inside)).resolves.toEqual({
+    kind: "applied",
+  });
+  const archived = await clocked.getHistory(participantA, {
+    habitId: habit.id,
+  });
+  expect(archived.writableMaxDate).toBe("2026-11-16");
+});
+
+test("AC-F06-3: ownership and versions guard corrections, and retained receipts prevent resurrection", async () => {
+  const habit = await createHistoryHabit();
+  const clocked = createEntryService(database, { now: historyMondayNoon });
+  const otherTab = createEntryService(otherDatabase, {
+    now: historyMondayNoon,
+  });
+  const original = {
+    habitId: habit.id,
+    activityDate: "2026-11-16",
+    amount: 60,
+    requestKey: randomUUID(),
+  };
+  const { entry } = await clocked.createEntry(participantA, original);
+  const target = {
+    habitId: habit.id,
+    entryId: entry.id,
+    expectedVersion: entry.version,
+    requestKey: randomUUID(),
+  };
+  const edit = { ...target, activityDate: "2026-11-15", amount: 25 };
+  await expect(clocked.updateEntry(participantA, edit)).resolves.toEqual({
+    kind: "applied",
+  });
+  await expect(otherTab.updateEntry(participantA, edit)).resolves.toEqual({
+    kind: "replayed",
+  });
+  await expect(otherTab.updateEntry(participantB, edit)).rejects.toMatchObject({
+    status: 404,
+  });
+  await expect(
+    otherTab.updateEntry(participantA, {
+      ...edit,
+      amount: 20,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({
+    status: 409,
+    message: "This entry changed. Refresh history before trying again.",
+  });
+  await expect(
+    otherTab.deleteEntry(participantA, { ...target, requestKey: randomUUID() })
+  ).rejects.toMatchObject({ status: 409 });
+  await expect(
+    otherTab.createEntry(participantA, original)
+  ).resolves.toMatchObject({
+    kind: "replayed",
+    entry: { id: entry.id, activityDate: "2026-11-15", amount: 25, version: 2 },
+    dailyTotal: 25,
+  });
+
+  const deletion = { ...target, expectedVersion: 2, requestKey: randomUUID() };
+  const replies = await Promise.all([
+    clocked.deleteEntry(participantA, deletion),
+    otherTab.deleteEntry(participantA, deletion),
+  ]);
+  expect(replies).toEqual(
+    expect.arrayContaining([{ kind: "applied" }, { kind: "replayed" }])
+  );
+  await expect(
+    otherTab.deleteEntry(participantB, deletion)
+  ).rejects.toMatchObject({ status: 404 });
+  await expect(otherTab.deleteEntry(managerM, deletion)).rejects.toMatchObject({
+    status: 403,
+  });
+  await expect(
+    otherTab.createEntry(participantA, original)
+  ).rejects.toMatchObject({
+    status: 409,
+    message: "This entry was previously recorded and subsequently removed.",
+  });
+  await expect(otherTab.updateEntry(participantA, edit)).rejects.toMatchObject({
+    status: 409,
+    message: "This change was saved before the entry was deleted.",
+  });
+  expect(await clocked.listEntries(participantA, habit.id)).toEqual([]);
+});
+
 test("AC-F04-4: concurrent ceiling writes cannot exceed 1,440 minutes or 1,000,000 counts, and rejected writes leave no receipt", async () => {
   const study = await createStudyTemplate();
   const { habit: minuteHabit } = await habits.createHabit(participantA, {
@@ -683,6 +1017,9 @@ const serverFunctionPatterns = {
   createHabit: /\bcreateHabit\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   getToday: /\bgetToday\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createEntry: /\bcreateEntry\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  getHistory: /\bgetHistory\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  updateEntry: /\bupdateEntry\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  deleteEntry: /\bdeleteEntry\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
 };
 
 const entryServerClient = async (origin: string) => {
@@ -750,7 +1087,7 @@ const entryServerClient = async (origin: string) => {
 };
 
 test(
-  "TanStack Start enforces Today and entry recording authorization, idempotency, conflict serialization, and reload persistence over HTTP",
+  "TanStack Start enforces private tracking authorization, idempotency, conflict serialization, and reload persistence over HTTP",
   { timeout: 30_000 },
   async () => {
     const port = await new Promise<number>((resolve, reject) => {
@@ -1056,6 +1393,47 @@ test(
         headers: { cookie: managerCookie },
       });
       expect(await managerReload.text()).not.toContain("Scheduled for today");
+
+      const correction = {
+        habitId,
+        entryId: "missing",
+        expectedVersion: 1,
+        requestKey: "private-entry",
+      };
+      const [
+        visitorHistory,
+        managerHistory,
+        otherHistory,
+        otherUpdate,
+        otherDelete,
+      ] = await Promise.all([
+        callServerFn("getHistory", { method: "GET", data: { habitId } }),
+        callServerFn("getHistory", {
+          method: "GET",
+          data: { habitId },
+          cookie: managerCookie,
+        }),
+        callServerFn("getHistory", {
+          method: "GET",
+          data: { habitId },
+          cookie: otherCookie,
+        }),
+        callServerFn("updateEntry", {
+          method: "POST",
+          data: { ...correction, activityDate: todayDate, amount: 25 },
+          cookie: otherCookie,
+        }),
+        callServerFn("deleteEntry", {
+          method: "POST",
+          data: correction,
+          cookie: otherCookie,
+        }),
+      ]);
+      expect(visitorHistory.status).toBe(401);
+      expect(managerHistory.status).toBe(403);
+      expect(otherHistory.status).toBe(404);
+      expect(otherUpdate.status).toBe(404);
+      expect(otherDelete.status).toBe(404);
     } finally {
       if (child.pid !== undefined) {
         if (process.platform === "win32") {

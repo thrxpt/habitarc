@@ -1,19 +1,38 @@
 /* eslint-disable no-bitwise -- A seven-bit mask stores the weekday Schedule. */
 import { randomUUID } from "node:crypto";
 
-import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import {
+  addCalendarDays,
   calculateDayProgress,
   checkEntryDateEligibility,
   getWritableDateBounds,
   resolveGoalForDate,
+  validateCorrectionTarget,
   validateEntryInput,
+  validateHistoryQuery,
 } from "../entries";
 import type {
   ActivityEntry,
+  ActivityEntryDraft,
+  EntryCorrectionSuccess,
   EntryFieldErrors,
   GoalSnapshot,
+  HabitHistory,
   RecordEntrySuccess,
   TodayHabitItem,
   TodayWorkspace,
@@ -21,8 +40,9 @@ import type {
 import { WEEKDAYS } from "../habits";
 import type { Identity } from "../identity";
 import { MEASUREMENT_CEILINGS } from "../templates";
+import type { ActivityTemplate } from "../templates";
 import { AuthError } from "./auth-error";
-import type { Database } from "./database";
+import type { Database, Transaction } from "./database";
 import {
   activityEntry,
   activityTemplate,
@@ -34,6 +54,9 @@ import {
 import { toActivityTemplate } from "./templates";
 
 const CREATE_ENTRY_OPERATION = "createEntry";
+const HISTORY_PAGE_DATES = 30;
+const STALE_ENTRY_MESSAGE =
+  "This entry changed. Refresh history before trying again.";
 
 export class EntryError extends Error {
   readonly status: number;
@@ -68,6 +91,28 @@ const decodeWeekdays = (weekdayMask: number): number[] =>
     (day) => day.value
   );
 
+const toGoalSnapshot = (
+  row: typeof goalRevision.$inferSelect
+): GoalSnapshot => ({
+  effectiveFrom: row.effectiveFrom,
+  dailyTarget: row.dailyTarget,
+  weekdays: decodeWeekdays(row.weekdayMask),
+});
+
+const progressForEntries = (
+  date: string,
+  entries: readonly ActivityEntry[],
+  goal: GoalSnapshot | undefined,
+  tracking: Pick<typeof habit.$inferSelect, "startDate" | "archivedFrom">
+) =>
+  calculateDayProgress({
+    date,
+    dailyTotal: entries.reduce((total, entry) => total + entry.amount, 0),
+    goal,
+    startDate: tracking.startDate,
+    archivedFrom: tracking.archivedFrom,
+  });
+
 const accountDateExpression = (now?: () => Date) => {
   if (now === undefined) {
     return sql<string>`to_char(clock_timestamp() AT TIME ZONE ${user.timezone}, 'YYYY-MM-DD')`;
@@ -80,16 +125,181 @@ export interface EntryServiceOptions {
   now?: () => Date;
 }
 
+const lockOwnedHabit = async (
+  transaction: Transaction,
+  actor: Identity,
+  habitId: string
+) => {
+  // Serialize tracking mutations per participant before locking the Habit row.
+  const [participant] = await transaction
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.id, actor.id), eq(user.role, "participant")))
+    .for("update");
+  if (participant === undefined) {
+    throw new AuthError(403, "Forbidden");
+  }
+  const [owned] = await transaction
+    .select()
+    .from(habit)
+    .where(and(eq(habit.id, habitId), eq(habit.participantId, actor.id)))
+    .for("update");
+  if (owned === undefined) {
+    throw new EntryError(404, "Habit not found.");
+  }
+  return owned;
+};
+
+const readEntryTemplate = async (
+  transaction: Transaction,
+  templateId: string
+) => {
+  const [template] = await transaction
+    .select()
+    .from(activityTemplate)
+    .where(eq(activityTemplate.id, templateId));
+  if (template === undefined) {
+    throw new EntryError(404, "Habit not found.");
+  }
+  return toActivityTemplate(template);
+};
+
+const requireWritableDate = (
+  activityDate: string,
+  accountDate: string,
+  tracking: typeof habit.$inferSelect
+) => {
+  const eligibility = checkEntryDateEligibility({
+    activityDate,
+    accountDate,
+    startDate: tracking.startDate,
+    archivedFrom: tracking.archivedFrom,
+  });
+  if (!eligibility.ok) {
+    throw new EntryError(400, eligibility.message, {
+      activityDate: eligibility.message,
+    });
+  }
+};
+
+const getDailyTotal = async (
+  transaction: Transaction,
+  habitId: string,
+  date: string,
+  excludeEntryId?: string
+) => {
+  const [row] = await transaction
+    .select({
+      total: sql<number>`coalesce(sum(${activityEntry.amount}), 0)::int`,
+    })
+    .from(activityEntry)
+    .where(
+      and(
+        eq(activityEntry.habitId, habitId),
+        eq(activityEntry.activityDate, date),
+        excludeEntryId === undefined
+          ? undefined
+          : ne(activityEntry.id, excludeEntryId)
+      )
+    );
+  return row?.total ?? 0;
+};
+
+const requireDailyTotalWithinLimit = (
+  total: number,
+  template: ActivityTemplate
+) => {
+  const ceiling = MEASUREMENT_CEILINGS[template.unit];
+  if (total > ceiling) {
+    const message = `Daily total cannot exceed ${ceiling.toLocaleString("en-US")} ${template.unit}.`;
+    throw new EntryError(409, message, { amount: message });
+  }
+};
+
+const validateReplacement = async (
+  transaction: Transaction,
+  entry: typeof activityEntry.$inferSelect,
+  draft: ActivityEntryDraft,
+  templateId: string
+) => {
+  const template = await readEntryTemplate(transaction, templateId);
+  const checked = validateEntryInput(draft, template);
+  if (!checked.ok) {
+    throw new EntryError(400, "Check your entry details.", checked.fieldErrors);
+  }
+
+  const destinationTotal = await getDailyTotal(
+    transaction,
+    entry.habitId,
+    draft.activityDate,
+    entry.id
+  );
+  requireDailyTotalWithinLimit(destinationTotal + draft.amount, template);
+  if (entry.activityDate !== draft.activityDate) {
+    const sourceTotal = await getDailyTotal(
+      transaction,
+      entry.habitId,
+      entry.activityDate,
+      entry.id
+    );
+    requireDailyTotalWithinLimit(sourceTotal, template);
+  }
+};
+
+type EntryReceipt = Pick<
+  typeof mutationReceipt.$inferInsert,
+  "actorId" | "requestKey" | "operation" | "payloadFingerprint"
+>;
+
+const findReceipt = async (transaction: Transaction, request: EntryReceipt) => {
+  const [existing] = await transaction
+    .select()
+    .from(mutationReceipt)
+    .where(
+      and(
+        eq(mutationReceipt.actorId, request.actorId),
+        eq(mutationReceipt.requestKey, request.requestKey)
+      )
+    );
+  if (
+    existing !== undefined &&
+    (existing.operation !== request.operation ||
+      existing.payloadFingerprint !== request.payloadFingerprint)
+  ) {
+    throw new EntryError(
+      409,
+      "This request key was already used for a different entry change."
+    );
+  }
+  return existing;
+};
+
+const saveReceipt = async (
+  transaction: Transaction,
+  request: EntryReceipt,
+  resourceId: string
+) => {
+  await transaction.insert(mutationReceipt).values({
+    ...request,
+    id: randomUUID(),
+    resourceId,
+    status: "applied",
+  });
+};
+
 export const createEntryService = (
   database: Database,
   options: EntryServiceOptions = {}
 ) => {
-  const getToday = async (actor: Identity): Promise<TodayWorkspace> => {
+  const readCalendar = async (
+    connection: Database | Transaction,
+    actor: Identity
+  ) => {
     if (actor.role !== "participant") {
       throw new AuthError(403, "Forbidden");
     }
 
-    const userRows = await database
+    const userRows = await connection
       .select({
         timezone: user.timezone,
         accountDate: accountDateExpression(options.now),
@@ -100,8 +310,11 @@ export const createEntryService = (
     if (calendar === undefined) {
       throw new AuthError(403, "Forbidden");
     }
+    return calendar;
+  };
 
-    const { accountDate, timezone } = calendar;
+  const getToday = async (actor: Identity): Promise<TodayWorkspace> => {
+    const { accountDate, timezone } = await readCalendar(database, actor);
 
     const habitRows = await database
       .select()
@@ -152,11 +365,7 @@ export const createEntryService = (
     const revisionsByHabit = new Map<string, GoalSnapshot[]>();
     for (const row of revisionRows) {
       const existing = revisionsByHabit.get(row.habitId) ?? [];
-      existing.push({
-        effectiveFrom: row.effectiveFrom,
-        dailyTarget: row.dailyTarget,
-        weekdays: decodeWeekdays(row.weekdayMask),
-      });
+      existing.push(toGoalSnapshot(row));
       revisionsByHabit.set(row.habitId, existing);
     }
 
@@ -177,17 +386,12 @@ export const createEntryService = (
         continue;
       }
       const entries = entriesByHabit.get(row.habit.id) ?? [];
-      let dailyTotal = 0;
-      for (const entry of entries) {
-        dailyTotal += entry.amount;
-      }
-      const progress = calculateDayProgress({
-        date: accountDate,
-        dailyTotal,
+      const progress = progressForEntries(
+        accountDate,
+        entries,
         goal,
-        startDate: row.habit.startDate,
-        archivedFrom: row.habit.archivedFrom,
-      });
+        row.habit
+      );
       const bounds = getWritableDateBounds({
         accountDate,
         startDate: row.habit.startDate,
@@ -218,6 +422,111 @@ export const createEntryService = (
       timezone,
       scheduled,
       unscheduled,
+    };
+  };
+
+  const getHistory = async (
+    actor: Identity,
+    input: unknown
+  ): Promise<HabitHistory> => {
+    const calendar = await readCalendar(database, actor);
+    const query = validateHistoryQuery(input);
+    if (!query.ok) {
+      throw new EntryError(400, query.message);
+    }
+    const { habitId, before } = query;
+    const [row] = await database
+      .select()
+      .from(habit)
+      .innerJoin(activityTemplate, eq(activityTemplate.id, habit.templateId))
+      .where(and(eq(habit.id, habitId), eq(habit.participantId, actor.id)));
+    if (row === undefined) {
+      throw new EntryError(404, "Habit not found.");
+    }
+
+    const bounds = getWritableDateBounds({ ...calendar, ...row.habit });
+    const writableMinDate = bounds.writable ? bounds.minDate : null;
+    const writableMaxDate = bounds.writable ? bounds.maxDate : null;
+    const recordedDates = database
+      .selectDistinct({ date: activityEntry.activityDate })
+      .from(activityEntry)
+      .where(
+        and(
+          eq(activityEntry.habitId, habitId),
+          lte(activityEntry.activityDate, calendar.accountDate),
+          before === undefined
+            ? undefined
+            : lt(activityEntry.activityDate, before)
+        )
+      )
+      .orderBy(desc(activityEntry.activityDate))
+      .limit(HISTORY_PAGE_DATES + 1);
+    const [entryRows, revisionRows] = await Promise.all([
+      database
+        .select()
+        .from(activityEntry)
+        .where(
+          and(
+            eq(activityEntry.habitId, habitId),
+            inArray(activityEntry.activityDate, recordedDates)
+          )
+        )
+        .orderBy(
+          desc(activityEntry.activityDate),
+          asc(activityEntry.createdAt),
+          asc(activityEntry.id)
+        ),
+      database
+        .select()
+        .from(goalRevision)
+        .where(eq(goalRevision.habitId, habitId)),
+    ]);
+
+    const entriesByDate = new Map<string, ActivityEntry[]>();
+    for (const entry of entryRows) {
+      const entries = entriesByDate.get(entry.activityDate) ?? [];
+      entries.push(toActivityEntry(entry));
+      entriesByDate.set(entry.activityDate, entries);
+    }
+    const dates = [...entriesByDate.keys()];
+    const nextBefore =
+      dates.length > HISTORY_PAGE_DATES
+        ? (dates[HISTORY_PAGE_DATES - 1] ?? null)
+        : null;
+    const displayedDates = new Set<string>();
+    if (
+      before === undefined &&
+      writableMinDate !== null &&
+      writableMaxDate !== null
+    ) {
+      for (
+        let date = writableMaxDate;
+        date >= writableMinDate;
+        date = addCalendarDays(date, -1)
+      ) {
+        displayedDates.add(date);
+      }
+    }
+    for (const date of dates.slice(0, HISTORY_PAGE_DATES)) {
+      displayedDates.add(date);
+    }
+    const revisions = revisionRows.map(toGoalSnapshot);
+    return {
+      ...calendar,
+      habitId,
+      template: toActivityTemplate(row.activity_template),
+      writableMinDate,
+      writableMaxDate,
+      nextBefore,
+      days: [...displayedDates].map((date) => {
+        const entries = entriesByDate.get(date) ?? [];
+        const goal = resolveGoalForDate(revisions, date);
+        return {
+          date,
+          entries,
+          progress: progressForEntries(date, entries, goal, row.habit),
+        };
+      }),
     };
   };
 
@@ -274,106 +583,49 @@ export const createEntryService = (
     const draft = validation.value;
 
     return await database.transaction(async (transaction) => {
-      // Serialize tracking mutations per participant before locking the Habit row.
-      const userRows = await transaction
-        .select({
-          id: user.id,
-          timezone: user.timezone,
-          accountDate: accountDateExpression(options.now),
-        })
-        .from(user)
-        .where(and(eq(user.id, actor.id), eq(user.role, "participant")))
-        .for("update");
-      const participantRow = userRows.at(0);
-      if (participantRow === undefined) {
-        throw new AuthError(403, "Forbidden");
-      }
-
-      const habitRows = await transaction
-        .select()
-        .from(habit)
-        .where(
-          and(eq(habit.id, draft.habitId), eq(habit.participantId, actor.id))
-        )
-        .for("update");
-      const habitRow = habitRows.at(0);
-      if (habitRow === undefined) {
-        throw new EntryError(404, "Habit not found.");
-      }
-
-      const payloadFingerprint = JSON.stringify({
-        habitId: draft.habitId,
-        activityDate: draft.activityDate,
-        amount: draft.amount,
-      });
-
-      const receiptRows = await transaction
-        .select()
-        .from(mutationReceipt)
-        .where(
-          and(
-            eq(mutationReceipt.actorId, actor.id),
-            eq(mutationReceipt.requestKey, draft.requestKey)
-          )
-        );
-      const existingReceipt = receiptRows.at(0);
+      const habitRow = await lockOwnedHabit(transaction, actor, draft.habitId);
+      const receipt = {
+        actorId: actor.id,
+        requestKey: draft.requestKey,
+        operation: CREATE_ENTRY_OPERATION,
+        payloadFingerprint: JSON.stringify({
+          habitId: draft.habitId,
+          activityDate: draft.activityDate,
+          amount: draft.amount,
+        }),
+      };
+      const existingReceipt = await findReceipt(transaction, receipt);
       if (existingReceipt !== undefined) {
-        if (
-          existingReceipt.operation !== CREATE_ENTRY_OPERATION ||
-          existingReceipt.payloadFingerprint !== payloadFingerprint
-        ) {
-          throw new EntryError(
-            409,
-            "This request key was already used for a different entry."
-          );
-        }
-
-        const existingEntryRows = await transaction
+        const [existingEntry] = await transaction
           .select()
           .from(activityEntry)
           .where(
             and(
               eq(activityEntry.id, existingReceipt.resourceId),
-              eq(activityEntry.habitId, draft.habitId)
+              eq(activityEntry.habitId, habitRow.id)
             )
           );
-        const existingEntry = existingEntryRows.at(0);
         if (existingEntry === undefined) {
           throw new EntryError(
             409,
             "This entry was previously recorded and subsequently removed."
           );
         }
-
-        const totalRows = await transaction
-          .select({
-            total: sql<number>`coalesce(sum(${activityEntry.amount}), 0)::int`,
-          })
-          .from(activityEntry)
-          .where(
-            and(
-              eq(activityEntry.habitId, draft.habitId),
-              eq(activityEntry.activityDate, draft.activityDate)
-            )
-          );
-
         return {
           kind: "replayed",
           entry: toActivityEntry(existingEntry),
-          dailyTotal: totalRows.at(0)?.total ?? existingEntry.amount,
+          dailyTotal: await getDailyTotal(
+            transaction,
+            habitRow.id,
+            existingEntry.activityDate
+          ),
         };
       }
 
-      const templateRows = await transaction
-        .select()
-        .from(activityTemplate)
-        .where(eq(activityTemplate.id, habitRow.templateId));
-      const templateRow = templateRows.at(0);
-      if (templateRow === undefined) {
-        throw new EntryError(404, "Habit not found.");
-      }
-
-      const template = toActivityTemplate(templateRow);
+      const template = await readEntryTemplate(
+        transaction,
+        habitRow.templateId
+      );
       const checked = validateEntryInput(draft, template);
       if (!checked.ok) {
         throw new EntryError(
@@ -383,35 +635,12 @@ export const createEntryService = (
         );
       }
 
-      const eligibility = checkEntryDateEligibility({
-        activityDate: draft.activityDate,
-        accountDate: participantRow.accountDate,
-        startDate: habitRow.startDate,
-        archivedFrom: habitRow.archivedFrom,
-      });
-      if (!eligibility.ok) {
-        throw new EntryError(400, eligibility.message, {
-          activityDate: eligibility.message,
-        });
-      }
-
-      const totalRows = await transaction
-        .select({
-          total: sql<number>`coalesce(sum(${activityEntry.amount}), 0)::int`,
-        })
-        .from(activityEntry)
-        .where(
-          and(
-            eq(activityEntry.habitId, draft.habitId),
-            eq(activityEntry.activityDate, draft.activityDate)
-          )
-        );
-      const currentTotal = totalRows.at(0)?.total ?? 0;
-      const ceiling = MEASUREMENT_CEILINGS[template.unit];
-      if (currentTotal + draft.amount > ceiling) {
-        const message = `Daily total cannot exceed ${ceiling.toLocaleString("en-US")} ${template.unit}.`;
-        throw new EntryError(409, message, { amount: message });
-      }
+      const { accountDate } = await readCalendar(transaction, actor);
+      requireWritableDate(draft.activityDate, accountDate, habitRow);
+      const dailyTotal =
+        (await getDailyTotal(transaction, habitRow.id, draft.activityDate)) +
+        draft.amount;
+      requireDailyTotalWithinLimit(dailyTotal, template);
 
       const insertedRows = await transaction
         .insert(activityEntry)
@@ -428,27 +657,129 @@ export const createEntryService = (
         throw new Error("Activity Entry creation did not return a record.");
       }
 
-      await transaction.insert(mutationReceipt).values({
-        id: randomUUID(),
-        actorId: actor.id,
-        requestKey: draft.requestKey,
-        operation: CREATE_ENTRY_OPERATION,
-        payloadFingerprint,
-        resourceId: inserted.id,
-        status: "applied",
-      });
+      await saveReceipt(transaction, receipt, inserted.id);
+      return { kind: "created", entry: toActivityEntry(inserted), dailyTotal };
+    });
+  };
 
-      return {
-        kind: "created",
-        entry: toActivityEntry(inserted),
-        dailyTotal: currentTotal + draft.amount,
+  const correctEntry = async (
+    actor: Identity,
+    input: unknown,
+    operation: "updateEntry" | "deleteEntry"
+  ): Promise<EntryCorrectionSuccess> => {
+    if (actor.role !== "participant") {
+      throw new AuthError(403, "Forbidden");
+    }
+
+    const target = validateCorrectionTarget(input);
+    const replacement =
+      operation === "updateEntry" ? validateEntryInput(input) : undefined;
+    if (!target.ok || replacement?.ok === false) {
+      throw new EntryError(400, "Check your entry details.", {
+        ...(target.ok ? {} : target.fieldErrors),
+        ...(replacement?.ok === false ? replacement.fieldErrors : {}),
+      });
+    }
+
+    const { habitId, entryId, expectedVersion, requestKey } = target.value;
+    const draft = replacement?.value;
+    return await database.transaction(async (transaction) => {
+      const habitRow = await lockOwnedHabit(transaction, actor, habitId);
+      const receipt = {
+        actorId: actor.id,
+        requestKey,
+        operation,
+        payloadFingerprint: JSON.stringify({
+          habitId,
+          entryId,
+          expectedVersion,
+          activityDate: draft?.activityDate,
+          amount: draft?.amount,
+        }),
       };
+      const existingReceipt = await findReceipt(transaction, receipt);
+      if (existingReceipt !== undefined && operation === "deleteEntry") {
+        return { kind: "replayed" };
+      }
+
+      const matchesEntry = and(
+        eq(activityEntry.id, entryId),
+        eq(activityEntry.habitId, habitId)
+      );
+      const [entry] = await transaction
+        .select()
+        .from(activityEntry)
+        .where(matchesEntry);
+      if (existingReceipt !== undefined) {
+        if (entry === undefined) {
+          throw new EntryError(
+            409,
+            "This change was saved before the entry was deleted."
+          );
+        }
+        return { kind: "replayed" };
+      }
+      if (entry === undefined) {
+        throw new EntryError(
+          404,
+          "This entry is no longer available. Refresh history to see the latest entries."
+        );
+      }
+      if (entry.version !== expectedVersion) {
+        throw new EntryError(409, STALE_ENTRY_MESSAGE);
+      }
+
+      const { accountDate } = await readCalendar(transaction, actor);
+      requireWritableDate(entry.activityDate, accountDate, habitRow);
+
+      const matchesVersion = and(
+        matchesEntry,
+        eq(activityEntry.version, expectedVersion)
+      );
+      if (draft === undefined) {
+        const [deleted] = await transaction
+          .delete(activityEntry)
+          .where(matchesVersion)
+          .returning({ id: activityEntry.id });
+        if (deleted === undefined) {
+          throw new EntryError(409, STALE_ENTRY_MESSAGE);
+        }
+      } else {
+        requireWritableDate(draft.activityDate, accountDate, habitRow);
+        await validateReplacement(
+          transaction,
+          entry,
+          draft,
+          habitRow.templateId
+        );
+        const [updated] = await transaction
+          .update(activityEntry)
+          .set({
+            activityDate: draft.activityDate,
+            amount: draft.amount,
+            version: entry.version + 1,
+            updatedAt: sql`clock_timestamp()`,
+          })
+          .where(matchesVersion)
+          .returning({ id: activityEntry.id });
+        if (updated === undefined) {
+          throw new EntryError(409, STALE_ENTRY_MESSAGE);
+        }
+      }
+
+      await saveReceipt(transaction, receipt, entryId);
+      return { kind: "applied" };
     });
   };
 
   return {
     getToday,
+    getHistory,
     listEntries,
     createEntry,
+    updateEntry: async (actor: Identity, input: unknown) =>
+      await correctEntry(actor, input, "updateEntry"),
+    deleteEntry: async (actor: Identity, input: unknown) =>
+      await correctEntry(actor, input, "deleteEntry"),
   };
 };

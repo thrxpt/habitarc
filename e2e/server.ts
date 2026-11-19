@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { once } from "node:events";
 
 import { Pool } from "pg";
@@ -8,12 +8,17 @@ import { Pool } from "pg";
 import { createDatabase } from "../src/server/database";
 import { migrate } from "../src/server/migrate";
 import { provisionAccounts } from "../src/server/provision";
-import { E2E_ACCOUNTS, E2E_ORIGIN, e2ePassword } from "./accounts";
+import {
+  E2E_ACCOUNTS,
+  E2E_ORIGIN,
+  e2eDatabaseURL,
+  e2ePassword,
+} from "./accounts";
+import { seedEntryHistory } from "./history-fixture";
 
 const serve = async (databaseURL: string) => {
-  const databaseName = `e2e_${randomUUID().replaceAll("-", "")}`;
-  const isolatedURL = new URL(databaseURL);
-  isolatedURL.pathname = `/${databaseName}`;
+  const isolatedURL = e2eDatabaseURL();
+  const databaseName = isolatedURL.pathname.slice(1);
   const control = new Pool({ connectionString: databaseURL });
   const pool = new Pool({ connectionString: isolatedURL.toString(), max: 5 });
   const secret = randomBytes(48).toString("base64url");
@@ -41,8 +46,9 @@ const serve = async (databaseURL: string) => {
     await control.query(`CREATE DATABASE "${databaseName}"`);
     databaseCreated = true;
     await migrate(pool);
+    const database = createDatabase(pool);
     await provisionAccounts(
-      createDatabase(pool),
+      database,
       {
         baseURL: E2E_ORIGIN,
         secret,
@@ -54,6 +60,23 @@ const serve = async (databaseURL: string) => {
         password: e2ePassword(),
         timezone: "Asia/Bangkok",
       }))
+    );
+    await seedEntryHistory(database);
+    // Override the account-date clock for app connections to this disposable database.
+    await pool.query(`
+      CREATE SCHEMA e2e_clock;
+      CREATE TABLE e2e_clock.override (instant timestamptz);
+      INSERT INTO e2e_clock.override VALUES (NULL);
+      CREATE FUNCTION e2e_clock.clock_timestamp() RETURNS timestamptz
+      LANGUAGE sql VOLATILE AS $$
+        SELECT coalesce(instant, pg_catalog.clock_timestamp()) FROM e2e_clock.override
+      $$;
+    `);
+    const appDatabaseURL = new URL(isolatedURL);
+    const connectionOptions = appDatabaseURL.searchParams.get("options") ?? "";
+    appDatabaseURL.searchParams.set(
+      "options",
+      `${connectionOptions} -c search_path=e2e_clock,pg_catalog,public`.trim()
     );
     if (stopping) {
       return;
@@ -67,7 +90,7 @@ const serve = async (databaseURL: string) => {
         env: {
           ...process.env,
           NODE_ENV: "development",
-          DATABASE_URL: isolatedURL.toString(),
+          DATABASE_URL: appDatabaseURL.toString(),
           BETTER_AUTH_URL: E2E_ORIGIN,
           BETTER_AUTH_SECRET: secret,
         },

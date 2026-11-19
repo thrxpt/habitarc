@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 
@@ -15,6 +15,7 @@ if (process.env.TEST_DATABASE_URL === undefined && existsSync(localEnvFile)) {
 }
 
 process.env.HABITARC_E2E_PASSWORD ??= randomBytes(24).toString("base64url");
+process.env.HABITARC_E2E_DATABASE ??= `e2e_${randomUUID().replaceAll("-", "")}`;
 
 export default defineConfig({
   testDir: "./e2e",
