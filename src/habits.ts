@@ -121,7 +121,9 @@ export const validateGoalInput = (
     : MEASUREMENT_CEILINGS.counts;
   const validTarget = isDailyTarget(dailyTarget, minimum, ceiling);
   if (!validTarget) {
-    fieldErrors.dailyTarget = `Daily Target must be a whole number from ${minimum.toLocaleString("en-US")} to ${ceiling.toLocaleString("en-US")}${template ? ` ${template.unit}` : ""}.`;
+    fieldErrors.dailyTarget = template
+      ? `Daily Target must be a whole number from ${minimum.toLocaleString("en-US")} to ${ceiling.toLocaleString("en-US")} ${template.unit}.`
+      : "Enter a valid whole-number Daily Target.";
   }
   if (weekdays === undefined) {
     fieldErrors.weekdays = "Choose at least one weekday, with no duplicates.";

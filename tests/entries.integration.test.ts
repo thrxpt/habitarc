@@ -468,14 +468,18 @@ test("F07 validates goal bounds and restricts changes to the owner of a Habit tr
       });
     })
   );
-  await expect(
-    service.reviseGoal(participantA, { ...draft, dailyTarget: 17.5 })
-  ).rejects.toMatchObject({
-    status: 400,
-    fieldErrors: {
-      dailyTarget: "Daily Target must be a whole number from 1 to 1,000,000.",
-    },
-  });
+  await Promise.all(
+    [17.5, 0, -1, 1_000_001].map(async (dailyTarget) => {
+      await expect(
+        service.reviseGoal(participantA, { ...draft, dailyTarget })
+      ).rejects.toMatchObject({
+        status: 400,
+        fieldErrors: {
+          dailyTarget: "Enter a valid whole-number Daily Target.",
+        },
+      });
+    })
+  );
   await Promise.all(
     [[], [3, 3], [8]].map(async (weekdays) => {
       await expect(

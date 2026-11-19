@@ -1,3 +1,5 @@
+/// <reference lib="esnext.temporal" />
+
 import { and, eq, sql } from "drizzle-orm";
 import type { SQLWrapper } from "drizzle-orm";
 
@@ -15,6 +17,22 @@ export interface AccountCalendar {
   timezone: string;
   observedAt: number;
 }
+
+const MIN_REFRESH_DELAY_MS = 1000;
+
+export const getAccountDateRefreshDelay = ({
+  accountDate,
+  timezone,
+  observedAt,
+}: AccountCalendar): number => {
+  const tomorrow = Temporal.PlainDate.from(accountDate)
+    .add({ days: 1 })
+    .toZonedDateTime(timezone);
+  return Math.max(
+    MIN_REFRESH_DELAY_MS,
+    tomorrow.epochMilliseconds - observedAt
+  );
+};
 
 const accountInstant = (now?: () => Date) =>
   now === undefined

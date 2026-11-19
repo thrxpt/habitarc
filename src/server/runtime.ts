@@ -1,5 +1,3 @@
-/// <reference lib="esnext.temporal" />
-
 import { existsSync } from "node:fs";
 
 import { Pool } from "pg";
@@ -13,7 +11,7 @@ import { createEntryService, readTodayWorkspace } from "./entries";
 import { createHabitService, readHabitWorkspace } from "./habits";
 import { isLoopbackHost } from "./loopback";
 import { createTemplateService } from "./templates";
-import { readTracking } from "./tracking";
+import { getAccountDateRefreshDelay, readTracking } from "./tracking";
 
 // Node loads private local configuration without publishing it through Vite's client env.
 if (existsSync(".env.local")) {
@@ -110,13 +108,6 @@ export const readTrackingWorkspace = async (actor: Identity) =>
       actor.id,
       calendar
     );
-    // Start of day handles skipped or repeated midnight in an IANA timezone.
-    const tomorrow = Temporal.PlainDate.from(calendar.accountDate)
-      .add({ days: 1 })
-      .toZonedDateTime(calendar.timezone);
-    const refreshInMs = Math.max(
-      1000,
-      tomorrow.epochMilliseconds - calendar.observedAt
-    );
+    const refreshInMs = getAccountDateRefreshDelay(calendar);
     return { habitWorkspace, todayWorkspace, refreshInMs };
   });
