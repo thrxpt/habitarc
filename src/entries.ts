@@ -27,7 +27,17 @@ export interface ActivityEntryDraft {
   requestKey: string;
 }
 
-export type EntryField = keyof ActivityEntryDraft;
+export interface EntryCorrectionTarget {
+  habitId: string;
+  entryId: string;
+  expectedVersion: number;
+  requestKey: string;
+}
+
+export type UpdateEntryDraft = EntryCorrectionTarget &
+  Pick<ActivityEntryDraft, "activityDate" | "amount">;
+
+export type EntryField = keyof ActivityEntryDraft | keyof EntryCorrectionTarget;
 
 export type EntryFieldErrors = Partial<Record<EntryField, string>>;
 
@@ -37,18 +47,23 @@ export interface RecordEntrySuccess {
   dailyTotal: number;
 }
 
-export type RecordEntryResponse =
-  | RecordEntrySuccess
-  | {
-      kind: "invalid";
-      message: string;
-      fieldErrors: EntryFieldErrors;
-    }
-  | {
-      kind: "conflict";
-      message: string;
-      fieldErrors: EntryFieldErrors;
-    };
+export type EntryMutationFailure = (
+  | { kind: "invalid" }
+  | { kind: "conflict" }
+) & {
+  message: string;
+  fieldErrors: EntryFieldErrors;
+};
+
+export type RecordEntryResponse = RecordEntrySuccess | EntryMutationFailure;
+
+export interface EntryCorrectionSuccess {
+  kind: "applied" | "replayed";
+}
+
+export type EntryCorrectionResponse =
+  | EntryCorrectionSuccess
+  | EntryMutationFailure;
 
 export interface DayProgress {
   scheduled: boolean;
@@ -78,6 +93,23 @@ export interface TodayWorkspace {
   timezone: string;
   scheduled: TodayHabitItem[];
   unscheduled: TodayHabitItem[];
+}
+
+export interface HistoryDay {
+  date: string;
+  progress: DayProgress;
+  entries: ActivityEntry[];
+}
+
+export interface HabitHistory {
+  habitId: string;
+  template: ActivityTemplate;
+  accountDate: string;
+  timezone: string;
+  writableMinDate: string | null;
+  writableMaxDate: string | null;
+  days: HistoryDay[];
+  nextBefore: string | null;
 }
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
@@ -351,4 +383,59 @@ export const validateEntryInput = (
       requestKey: keyResult.value,
     },
   };
+};
+
+export const validateCorrectionTarget = (
+  input: unknown
+):
+  | { ok: true; value: EntryCorrectionTarget }
+  | { ok: false; fieldErrors: EntryFieldErrors } => {
+  const habitId = validateHabitIdField(readField(input, "habitId"));
+  const entryId = readField(input, "entryId");
+  const expectedVersion = readField(input, "expectedVersion");
+  const requestKey = validateRequestKeyField(readField(input, "requestKey"));
+  const validEntryId =
+    typeof entryId === "string" && entryId.length > 0 && entryId.length <= 200;
+  const validVersion =
+    typeof expectedVersion === "number" &&
+    Number.isSafeInteger(expectedVersion) &&
+    expectedVersion >= 1;
+  if (!habitId.ok || !validEntryId || !validVersion || !requestKey.ok) {
+    return {
+      ok: false,
+      fieldErrors: {
+        habitId: habitId.ok ? undefined : habitId.error,
+        entryId: validEntryId ? undefined : "Select an Activity Entry.",
+        expectedVersion: validVersion
+          ? undefined
+          : "Refresh history and try again.",
+        requestKey: requestKey.ok ? undefined : requestKey.error,
+      },
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      habitId: habitId.value,
+      entryId,
+      expectedVersion,
+      requestKey: requestKey.value,
+    },
+  };
+};
+
+export const validateHistoryQuery = (
+  input: unknown
+):
+  | { ok: true; habitId: string; before: string | undefined }
+  | { ok: false; message: string } => {
+  const habitId = validateHabitIdField(readField(input, "habitId"));
+  if (!habitId.ok) {
+    return { ok: false, message: habitId.error };
+  }
+  const before = readField(input, "before");
+  if (before !== undefined && !isValidIsoDate(before)) {
+    return { ok: false, message: "Enter a valid history date." };
+  }
+  return { ok: true, habitId: habitId.value, before };
 };

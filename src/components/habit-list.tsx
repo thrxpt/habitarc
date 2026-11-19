@@ -57,6 +57,13 @@ export const HabitList = ({ workspace }: { workspace: HabitWorkspace }) => (
                 <dd>{formatTrackingPeriod(habit, workspace.accountDate)}</dd>
               </div>
             </dl>
+            <a
+              href={`/habits/${encodeURIComponent(habit.id)}/history`}
+              className="mt-4 inline-block text-sm underline"
+            >
+              View history
+              <span className="sr-only"> for {habit.template.name}</span>
+            </a>
           </li>
         ))}
       </ul>
