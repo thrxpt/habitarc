@@ -51,10 +51,15 @@ export const GoalRevisionForm = ({
   useEffect(() => {
     if (conflict) {
       reloadLink.current?.focus();
-    } else if (notice) {
+    } else if (
+      notice ||
+      (expired &&
+        (document.activeElement === document.body ||
+          document.activeElement?.closest("form")?.id === formId))
+    ) {
       trigger.current?.focus();
     }
-  }, [conflict, notice]);
+  }, [conflict, expired, formId, notice]);
 
   const toggle = () => {
     if (edit !== null) {

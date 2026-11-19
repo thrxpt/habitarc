@@ -436,7 +436,8 @@ export const createEntryService = (
         }
         const revisions = revisionRows.map(toGoalSnapshot);
         return {
-          ...calendar,
+          accountDate: calendar.accountDate,
+          timezone: calendar.timezone,
           habitId,
           template: toActivityTemplate(row.activity_template),
           writableMinDate,

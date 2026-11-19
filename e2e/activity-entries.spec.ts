@@ -483,7 +483,7 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
     await today.getByRole("button", { name: "Save entry" }).click();
     await expect(today).toContainText("40 / 60 minutes");
 
-    await setClock("2026-11-17T23:59:59+07:00");
+    await setClock("2026-11-17T12:00:00+07:00");
     await page.reload();
     const habits = page.getByRole("region", { name: "Your Habits" });
     const edit = habits.getByRole("button", { name: "Edit goal settings" });
@@ -579,18 +579,24 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
     await expect(yesterday).toContainText("40 / 60 minutes");
     await expect(yesterday).toContainText("Missed");
 
+    await setClock("2026-11-17T23:59:30+07:00");
+    await page.clock.install();
     await page.getByRole("link", { name: "Back to workspace" }).click();
     await edit.click();
     await expect(form).toContainText("2026-11-18");
     await form.getByLabel("Daily Target").fill("35");
+    await expect(form.getByLabel("Daily Target")).toBeFocused();
     await setClock("2026-11-18T00:00:00+07:00");
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await page.clock.fastForward(31_000);
     await expect(today).toContainText("0 / 30 minutes");
     await expect(habits.getByText(/Pending settings/u)).toHaveCount(0);
     await expect(form.getByLabel("Daily Target")).toHaveValue("35");
     await expect(form.getByRole("alert")).toContainText("This draft was for");
     await expect(save).toBeDisabled();
-    await habits.getByRole("button", { name: "Close goal settings" }).click();
+    await expect(
+      habits.getByRole("button", { name: "Close goal settings" })
+    ).toBeFocused();
+    await page.keyboard.press("Enter");
     await edit.click();
     await expect(form).toContainText("2026-11-19");
     await expect(form.getByLabel("Daily Target")).toHaveValue("30");

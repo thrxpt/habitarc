@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import type { SQLWrapper } from "drizzle-orm";
 
 import type { Identity } from "../identity";
 import { AuthError } from "./auth-error";
@@ -12,15 +13,19 @@ export interface TrackingServiceOptions {
 export interface AccountCalendar {
   accountDate: string;
   timezone: string;
+  observedAt: number;
 }
 
-export const accountDateExpression = (now?: () => Date) => {
-  if (now === undefined) {
-    return sql<string>`to_char(clock_timestamp() AT TIME ZONE ${user.timezone}, 'YYYY-MM-DD')`;
-  }
-  const instant = now().toISOString();
-  return sql<string>`to_char(${instant}::timestamptz AT TIME ZONE ${user.timezone}, 'YYYY-MM-DD')`;
-};
+const accountInstant = (now?: () => Date) =>
+  now === undefined
+    ? sql`clock_timestamp()`
+    : sql`${now().toISOString()}::timestamptz`;
+
+const accountDateAt = (instant: SQLWrapper) =>
+  sql<string>`to_char(${instant} AT TIME ZONE ${user.timezone}, 'YYYY-MM-DD')`;
+
+export const accountDateExpression = (now?: () => Date) =>
+  accountDateAt(accountInstant(now));
 
 export const readAccountCalendar = async (
   database: Database | Transaction,
@@ -30,12 +35,22 @@ export const readAccountCalendar = async (
   if (actor.role !== "participant") {
     throw new AuthError(403, "Forbidden");
   }
+  const instant = accountInstant(now);
+  const clock = database
+    .$with("account_clock", { instant: instant.as("instant") })
+    .as(sql`select ${instant} as instant`);
   const [calendar] = await database
+    .with(clock)
     .select({
       timezone: user.timezone,
-      accountDate: accountDateExpression(now),
+      accountDate: accountDateAt(clock.instant),
+      observedAt:
+        sql<number>`floor(extract(epoch from ${clock.instant}) * 1000)`.mapWith(
+          Number
+        ),
     })
     .from(user)
+    .crossJoin(clock)
     .where(and(eq(user.id, actor.id), eq(user.role, "participant")));
   if (calendar === undefined) {
     throw new AuthError(403, "Forbidden");

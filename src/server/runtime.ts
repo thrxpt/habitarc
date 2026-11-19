@@ -1,3 +1,5 @@
+/// <reference lib="esnext.temporal" />
+
 import { existsSync } from "node:fs";
 
 import { Pool } from "pg";
@@ -108,5 +110,13 @@ export const readTrackingWorkspace = async (actor: Identity) =>
       actor.id,
       calendar
     );
-    return { habitWorkspace, todayWorkspace };
+    // Start of day handles skipped or repeated midnight in an IANA timezone.
+    const tomorrow = Temporal.PlainDate.from(calendar.accountDate)
+      .add({ days: 1 })
+      .toZonedDateTime(calendar.timezone);
+    const refreshInMs = Math.max(
+      1000,
+      tomorrow.epochMilliseconds - calendar.observedAt
+    );
+    return { habitWorkspace, todayWorkspace, refreshInMs };
   });

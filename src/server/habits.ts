@@ -117,10 +117,11 @@ const readHabits = async (
 export const readHabitWorkspace = async (
   database: Database | Transaction,
   participantId: string,
-  calendar: AccountCalendar
+  { accountDate, timezone }: AccountCalendar
 ): Promise<HabitWorkspace> => ({
-  ...calendar,
-  items: await readHabits(database, participantId, calendar.accountDate),
+  accountDate,
+  timezone,
+  items: await readHabits(database, participantId, accountDate),
 });
 
 export const createHabitService = (
