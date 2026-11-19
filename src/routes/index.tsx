@@ -9,9 +9,9 @@ import {
   createTemplate,
   createHabit,
   getIdentity,
-  getToday,
+  getTrackingWorkspace,
   listTemplates,
-  listHabits,
+  reviseGoal,
 } from "../server/functions";
 import type {
   ActivityTemplate,
@@ -25,7 +25,7 @@ const EMPTY_TEMPLATE_PAGE: ActivityTemplatePage = {
 };
 
 const Home = () => {
-  const { identity, templatePage, habitWorkspace, todayWorkspace } =
+  const { identity, templatePage, habitWorkspace, todayWorkspace, rolloverAt } =
     Route.useLoaderData();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -45,6 +45,22 @@ const Home = () => {
       void router.invalidate();
     }
   }, [identity?.id, session?.user.id, isPending, router]);
+
+  useEffect(() => {
+    const refreshWorkspace = () => {
+      void router.invalidate();
+    };
+    let rolloverTimer: number | undefined;
+    if (rolloverAt !== null) {
+      window.addEventListener("focus", refreshWorkspace);
+      const remaining = Math.max(0, rolloverAt - window.performance.now());
+      rolloverTimer = window.setTimeout(refreshWorkspace, remaining);
+    }
+    return () => {
+      window.removeEventListener("focus", refreshWorkspace);
+      window.clearTimeout(rolloverTimer);
+    };
+  }, [rolloverAt, router]);
 
   const activeExtra = extraState?.forPage === templatePage ? extraState : null;
   const templates =
@@ -103,6 +119,13 @@ const Home = () => {
         }
         return result;
       }}
+      onReviseGoal={async (draft) => {
+        const result = await reviseGoal({ data: draft });
+        if (result.kind === "saved" || result.kind === "replayed") {
+          await router.invalidate({ sync: true });
+        }
+        return result;
+      }}
       identity={identity}
       templates={templates}
       hasMoreTemplates={nextCursor !== null}
@@ -122,30 +145,42 @@ const Home = () => {
 };
 
 export const Route = createFileRoute("/")({
-  loader: async () => {
-    const identity = await getIdentity();
-    if (!identity) {
-      return {
-        identity: null,
-        templatePage: EMPTY_TEMPLATE_PAGE,
-        habitWorkspace: null,
-        todayWorkspace: null,
-      };
-    }
-    const templatePage = await listTemplates();
-    if (identity.role !== "participant") {
+  loader: {
+    staleReloadMode: "blocking",
+    handler: async () => {
+      // Server-rendered data starts from the browser's navigation time origin.
+      const startedAt =
+        typeof window === "undefined" ? 0 : window.performance.now();
+      const identity = await getIdentity();
+      if (!identity) {
+        return {
+          identity: null,
+          templatePage: EMPTY_TEMPLATE_PAGE,
+          habitWorkspace: null,
+          todayWorkspace: null,
+          rolloverAt: null,
+        };
+      }
+      const templatePage = await listTemplates();
+      if (identity.role !== "participant") {
+        return {
+          identity,
+          templatePage,
+          habitWorkspace: null,
+          todayWorkspace: null,
+          rolloverAt: null,
+        };
+      }
+      const { habitWorkspace, todayWorkspace, refreshInMs } =
+        await getTrackingWorkspace();
       return {
         identity,
         templatePage,
-        habitWorkspace: null,
-        todayWorkspace: null,
+        habitWorkspace,
+        todayWorkspace,
+        rolloverAt: startedAt + refreshInMs,
       };
-    }
-    const [habitWorkspace, todayWorkspace] = await Promise.all([
-      listHabits(),
-      getToday(),
-    ]);
-    return { identity, templatePage, habitWorkspace, todayWorkspace };
+    },
   },
   component: Home,
   errorComponent: () => (

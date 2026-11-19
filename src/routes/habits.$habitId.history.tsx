@@ -2,10 +2,10 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { authClient } from "../auth-client";
+import { isValidIsoDate } from "../calendar";
 import { AccountShell } from "../components/account-shell";
 import { HistoryPanel } from "../components/history-panel";
 import { PageHeading } from "../components/page-heading";
-import { isValidIsoDate } from "../entries";
 import { deleteEntry, getHistory, updateEntry } from "../server/functions";
 
 const HistoryUnavailable = () => (

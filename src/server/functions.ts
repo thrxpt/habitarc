@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-start/server";
 
 import type { EntryMutationFailure } from "../entries";
-import type { HabitCreationResponse } from "../habits";
+import type { GoalRevisionResponse, HabitCreationResponse } from "../habits";
 import { isRole } from "../identity";
 import type { Identity } from "../identity";
 import { validateTemplateListQuery } from "../templates";
@@ -17,6 +17,7 @@ import {
   getEntryService,
   getHabitService,
   getTemplateService,
+  readTrackingWorkspace,
 } from "./runtime";
 import { TemplateError } from "./templates";
 
@@ -44,6 +45,25 @@ const authenticationErrors = serverErrors(authenticationError);
 const applicationErrors = serverErrors(
   () => new AuthError(503, "Service temporarily unavailable")
 );
+
+const authorizeParticipant = async () =>
+  await getAuthentication().authorizeWorkspace(
+    getRequestHeaders(),
+    "participant"
+  );
+
+const trackingWriteFailure = <Fields>(
+  error: Error & { status: number; fieldErrors: Fields }
+) => {
+  const { status, message, fieldErrors } = error;
+  if (status !== 400 && status !== 404 && status !== 409) {
+    throw error;
+  }
+  // Expected validation and conflict data must survive TanStack's Error serialization.
+  setResponseStatus(status);
+  const kind = status === 400 ? "invalid" : "conflict";
+  return { kind, message, fieldErrors } as const;
+};
 
 export const getIdentity = createServerFn({ method: "GET" })
   .middleware([authenticationErrors])
@@ -93,10 +113,7 @@ export const createTemplate = createServerFn({ method: "POST" })
 export const listHabits = createServerFn({ method: "GET" })
   .middleware([applicationErrors])
   .handler(async () => {
-    const actor = await getAuthentication().authorizeWorkspace(
-      getRequestHeaders(),
-      "participant"
-    );
+    const actor = await authorizeParticipant();
     return await getHabitService().listHabits(actor);
   });
 
@@ -104,10 +121,7 @@ export const createHabit = createServerFn({ method: "POST" })
   .middleware([applicationErrors])
   .validator((input: unknown) => input)
   .handler(async ({ data }): Promise<HabitCreationResponse> => {
-    const actor = await getAuthentication().authorizeWorkspace(
-      getRequestHeaders(),
-      "participant"
-    );
+    const actor = await authorizeParticipant();
     try {
       return await getHabitService().createHabit(actor, data);
     } catch (error) {
@@ -124,14 +138,33 @@ export const createHabit = createServerFn({ method: "POST" })
     }
   });
 
+export const reviseGoal = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(async ({ data }): Promise<GoalRevisionResponse> => {
+    const actor = await authorizeParticipant();
+    try {
+      return await getHabitService().reviseGoal(actor, data);
+    } catch (error) {
+      if (error instanceof HabitError) {
+        return trackingWriteFailure(error);
+      }
+      throw error;
+    }
+  });
+
 export const getToday = createServerFn({ method: "GET" })
   .middleware([applicationErrors])
   .handler(async () => {
-    const actor = await getAuthentication().authorizeWorkspace(
-      getRequestHeaders(),
-      "participant"
-    );
+    const actor = await authorizeParticipant();
     return await getEntryService().getToday(actor);
+  });
+
+export const getTrackingWorkspace = createServerFn({ method: "GET" })
+  .middleware([applicationErrors])
+  .handler(async () => {
+    const actor = await authorizeParticipant();
+    return await readTrackingWorkspace(actor);
   });
 
 export const getHistory = createServerFn({ method: "GET" })
@@ -139,10 +172,7 @@ export const getHistory = createServerFn({ method: "GET" })
   .validator((input: unknown) => input)
   .handler(async ({ data }) => {
     try {
-      const actor = await getAuthentication().authorizeWorkspace(
-        getRequestHeaders(),
-        "participant"
-      );
+      const actor = await authorizeParticipant();
       const history = await getEntryService().getHistory(actor, data);
       return { history, viewer: { id: actor.id, name: actor.name } };
     } catch (error) {
@@ -161,24 +191,12 @@ export const getHistory = createServerFn({ method: "GET" })
 const entryWrite = async <Result>(
   write: (actor: Identity) => Promise<Result>
 ): Promise<Result | EntryMutationFailure> => {
-  const actor = await getAuthentication().authorizeWorkspace(
-    getRequestHeaders(),
-    "participant"
-  );
+  const actor = await authorizeParticipant();
   try {
     return await write(actor);
   } catch (error) {
-    if (
-      error instanceof EntryError &&
-      (error.status === 400 || error.status === 404 || error.status === 409)
-    ) {
-      // Expected validation and conflict data must survive TanStack's Error serialization.
-      setResponseStatus(error.status);
-      return {
-        kind: error.status === 400 ? "invalid" : "conflict",
-        message: error.message,
-        fieldErrors: error.fieldErrors,
-      };
+    if (error instanceof EntryError) {
+      return trackingWriteFailure(error);
     }
     throw error;
   }

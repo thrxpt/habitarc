@@ -1,4 +1,3 @@
-/* eslint-disable no-bitwise -- A seven-bit mask stores the weekday Schedule. */
 import { randomUUID } from "node:crypto";
 
 import {
@@ -16,8 +15,8 @@ import {
   sql,
 } from "drizzle-orm";
 
+import { addCalendarDays } from "../calendar";
 import {
-  addCalendarDays,
   calculateDayProgress,
   checkEntryDateEligibility,
   getWritableDateBounds,
@@ -31,27 +30,24 @@ import type {
   ActivityEntryDraft,
   EntryCorrectionSuccess,
   EntryFieldErrors,
-  GoalSnapshot,
   HabitHistory,
   RecordEntrySuccess,
   TodayHabitItem,
   TodayWorkspace,
 } from "../entries";
-import { WEEKDAYS } from "../habits";
+import type { GoalSnapshot } from "../habits";
 import type { Identity } from "../identity";
 import { MEASUREMENT_CEILINGS } from "../templates";
 import type { ActivityTemplate } from "../templates";
 import { AuthError } from "./auth-error";
 import type { Database, Transaction } from "./database";
-import {
-  activityEntry,
-  activityTemplate,
-  goalRevision,
-  habit,
-  mutationReceipt,
-  user,
-} from "./schema";
+import { toGoalSnapshot } from "./habits";
+import { readMutationReceipt, saveMutationReceipt } from "./mutation-receipts";
+import type { MutationRequest } from "./mutation-receipts";
+import { activityEntry, activityTemplate, goalRevision, habit } from "./schema";
 import { toActivityTemplate } from "./templates";
+import { lockOwnedHabit, readAccountCalendar, readTracking } from "./tracking";
+import type { AccountCalendar, TrackingServiceOptions } from "./tracking";
 
 const CREATE_ENTRY_OPERATION = "createEntry";
 const HISTORY_PAGE_DATES = 30;
@@ -86,19 +82,6 @@ const toActivityEntry = (
   updatedAt: row.updatedAt.toISOString(),
 });
 
-const decodeWeekdays = (weekdayMask: number): number[] =>
-  WEEKDAYS.filter((day) => (weekdayMask & (1 << (day.value - 1))) !== 0).map(
-    (day) => day.value
-  );
-
-const toGoalSnapshot = (
-  row: typeof goalRevision.$inferSelect
-): GoalSnapshot => ({
-  effectiveFrom: row.effectiveFrom,
-  dailyTarget: row.dailyTarget,
-  weekdays: decodeWeekdays(row.weekdayMask),
-});
-
 const progressForEntries = (
   date: string,
   entries: readonly ActivityEntry[],
@@ -113,37 +96,12 @@ const progressForEntries = (
     archivedFrom: tracking.archivedFrom,
   });
 
-const accountDateExpression = (now?: () => Date) => {
-  if (now === undefined) {
-    return sql<string>`to_char(clock_timestamp() AT TIME ZONE ${user.timezone}, 'YYYY-MM-DD')`;
-  }
-  const instant = now().toISOString();
-  return sql<string>`to_char(${instant}::timestamptz AT TIME ZONE ${user.timezone}, 'YYYY-MM-DD')`;
-};
-
-export interface EntryServiceOptions {
-  now?: () => Date;
-}
-
-const lockOwnedHabit = async (
+const requireOwnedHabit = async (
   transaction: Transaction,
   actor: Identity,
   habitId: string
 ) => {
-  // Serialize tracking mutations per participant before locking the Habit row.
-  const [participant] = await transaction
-    .select({ id: user.id })
-    .from(user)
-    .where(and(eq(user.id, actor.id), eq(user.role, "participant")))
-    .for("update");
-  if (participant === undefined) {
-    throw new AuthError(403, "Forbidden");
-  }
-  const [owned] = await transaction
-    .select()
-    .from(habit)
-    .where(and(eq(habit.id, habitId), eq(habit.participantId, actor.id)))
-    .for("update");
+  const owned = await lockOwnedHabit(transaction, actor, habitId);
   if (owned === undefined) {
     throw new EntryError(404, "Habit not found.");
   }
@@ -253,289 +211,251 @@ const validateReplacement = async (
   }
 };
 
-type EntryReceipt = Pick<
-  typeof mutationReceipt.$inferInsert,
-  "actorId" | "requestKey" | "operation" | "payloadFingerprint"
->;
-
-const findReceipt = async (transaction: Transaction, request: EntryReceipt) => {
-  const [existing] = await transaction
-    .select()
-    .from(mutationReceipt)
-    .where(
-      and(
-        eq(mutationReceipt.actorId, request.actorId),
-        eq(mutationReceipt.requestKey, request.requestKey)
-      )
-    );
-  if (
-    existing !== undefined &&
-    (existing.operation !== request.operation ||
-      existing.payloadFingerprint !== request.payloadFingerprint)
-  ) {
+const findReceipt = async (
+  transaction: Transaction,
+  request: MutationRequest
+) => {
+  const receipt = await readMutationReceipt(transaction, request);
+  if (receipt.kind === "conflict") {
     throw new EntryError(
       409,
       "This request key was already used for a different entry change."
     );
   }
-  return existing;
+  return receipt.kind === "applied" ? receipt : undefined;
 };
 
-const saveReceipt = async (
-  transaction: Transaction,
-  request: EntryReceipt,
-  resourceId: string
-) => {
-  await transaction.insert(mutationReceipt).values({
-    ...request,
-    id: randomUUID(),
-    resourceId,
-    status: "applied",
-  });
+export const readTodayWorkspace = async (
+  database: Database | Transaction,
+  participantId: string,
+  { accountDate, timezone }: AccountCalendar
+): Promise<TodayWorkspace> => {
+  const habitRows = await database
+    .select()
+    .from(habit)
+    .innerJoin(activityTemplate, eq(habit.templateId, activityTemplate.id))
+    .where(
+      and(
+        eq(habit.participantId, participantId),
+        lte(habit.startDate, accountDate),
+        or(isNull(habit.archivedFrom), gt(habit.archivedFrom, accountDate))
+      )
+    )
+    .orderBy(asc(habit.startDate), asc(habit.id));
+
+  if (habitRows.length === 0) {
+    return {
+      accountDate,
+      timezone,
+      scheduled: [],
+      unscheduled: [],
+    };
+  }
+
+  const habitIds = habitRows.map((row) => row.habit.id);
+
+  const revisionRows = await database
+    .select()
+    .from(goalRevision)
+    .where(
+      and(
+        inArray(goalRevision.habitId, habitIds),
+        lte(goalRevision.effectiveFrom, accountDate)
+      )
+    );
+  const entryRows = await database
+    .select()
+    .from(activityEntry)
+    .where(
+      and(
+        inArray(activityEntry.habitId, habitIds),
+        eq(activityEntry.activityDate, accountDate)
+      )
+    )
+    .orderBy(asc(activityEntry.createdAt), asc(activityEntry.id));
+
+  const revisionsByHabit = new Map<string, GoalSnapshot[]>();
+  for (const row of revisionRows) {
+    const existing = revisionsByHabit.get(row.habitId) ?? [];
+    existing.push(toGoalSnapshot(row));
+    revisionsByHabit.set(row.habitId, existing);
+  }
+
+  const entriesByHabit = new Map<string, ActivityEntry[]>();
+  for (const row of entryRows) {
+    const existing = entriesByHabit.get(row.habitId) ?? [];
+    existing.push(toActivityEntry(row));
+    entriesByHabit.set(row.habitId, existing);
+  }
+
+  const scheduled: TodayHabitItem[] = [];
+  const unscheduled: TodayHabitItem[] = [];
+
+  for (const row of habitRows) {
+    const revisions = revisionsByHabit.get(row.habit.id) ?? [];
+    const goal = resolveGoalForDate(revisions, accountDate);
+    if (goal === undefined) {
+      continue;
+    }
+    const entries = entriesByHabit.get(row.habit.id) ?? [];
+    const progress = progressForEntries(accountDate, entries, goal, row.habit);
+    const bounds = getWritableDateBounds({
+      accountDate,
+      startDate: row.habit.startDate,
+      archivedFrom: row.habit.archivedFrom,
+    });
+    const item: TodayHabitItem = {
+      habit: {
+        id: row.habit.id,
+        template: toActivityTemplate(row.activity_template),
+        startDate: row.habit.startDate,
+        archivedFrom: row.habit.archivedFrom,
+        goal,
+      },
+      progress,
+      entries,
+      writableMinDate: bounds.writable ? bounds.minDate : null,
+      writableMaxDate: bounds.writable ? bounds.maxDate : null,
+    };
+    if (progress.scheduled) {
+      scheduled.push(item);
+    } else {
+      unscheduled.push(item);
+    }
+  }
+
+  return {
+    accountDate,
+    timezone,
+    scheduled,
+    unscheduled,
+  };
 };
 
 export const createEntryService = (
   database: Database,
-  options: EntryServiceOptions = {}
+  options: TrackingServiceOptions = {}
 ) => {
-  const readCalendar = async (
-    connection: Database | Transaction,
-    actor: Identity
-  ) => {
-    if (actor.role !== "participant") {
-      throw new AuthError(403, "Forbidden");
-    }
-
-    const userRows = await connection
-      .select({
-        timezone: user.timezone,
-        accountDate: accountDateExpression(options.now),
-      })
-      .from(user)
-      .where(and(eq(user.id, actor.id), eq(user.role, "participant")));
-    const calendar = userRows.at(0);
-    if (calendar === undefined) {
-      throw new AuthError(403, "Forbidden");
-    }
-    return calendar;
-  };
-
-  const getToday = async (actor: Identity): Promise<TodayWorkspace> => {
-    const { accountDate, timezone } = await readCalendar(database, actor);
-
-    const habitRows = await database
-      .select()
-      .from(habit)
-      .innerJoin(activityTemplate, eq(habit.templateId, activityTemplate.id))
-      .where(
-        and(
-          eq(habit.participantId, actor.id),
-          lte(habit.startDate, accountDate),
-          or(isNull(habit.archivedFrom), gt(habit.archivedFrom, accountDate))
-        )
-      )
-      .orderBy(asc(habit.startDate), asc(habit.id));
-
-    if (habitRows.length === 0) {
-      return {
-        accountDate,
-        timezone,
-        scheduled: [],
-        unscheduled: [],
-      };
-    }
-
-    const habitIds = habitRows.map((row) => row.habit.id);
-
-    const [revisionRows, entryRows] = await Promise.all([
-      database
-        .select()
-        .from(goalRevision)
-        .where(
-          and(
-            inArray(goalRevision.habitId, habitIds),
-            lte(goalRevision.effectiveFrom, accountDate)
-          )
-        ),
-      database
-        .select()
-        .from(activityEntry)
-        .where(
-          and(
-            inArray(activityEntry.habitId, habitIds),
-            eq(activityEntry.activityDate, accountDate)
-          )
-        )
-        .orderBy(asc(activityEntry.createdAt), asc(activityEntry.id)),
-    ]);
-
-    const revisionsByHabit = new Map<string, GoalSnapshot[]>();
-    for (const row of revisionRows) {
-      const existing = revisionsByHabit.get(row.habitId) ?? [];
-      existing.push(toGoalSnapshot(row));
-      revisionsByHabit.set(row.habitId, existing);
-    }
-
-    const entriesByHabit = new Map<string, ActivityEntry[]>();
-    for (const row of entryRows) {
-      const existing = entriesByHabit.get(row.habitId) ?? [];
-      existing.push(toActivityEntry(row));
-      entriesByHabit.set(row.habitId, existing);
-    }
-
-    const scheduled: TodayHabitItem[] = [];
-    const unscheduled: TodayHabitItem[] = [];
-
-    for (const row of habitRows) {
-      const revisions = revisionsByHabit.get(row.habit.id) ?? [];
-      const goal = resolveGoalForDate(revisions, accountDate);
-      if (goal === undefined) {
-        continue;
-      }
-      const entries = entriesByHabit.get(row.habit.id) ?? [];
-      const progress = progressForEntries(
-        accountDate,
-        entries,
-        goal,
-        row.habit
-      );
-      const bounds = getWritableDateBounds({
-        accountDate,
-        startDate: row.habit.startDate,
-        archivedFrom: row.habit.archivedFrom,
-      });
-      const item: TodayHabitItem = {
-        habit: {
-          id: row.habit.id,
-          template: toActivityTemplate(row.activity_template),
-          startDate: row.habit.startDate,
-          archivedFrom: row.habit.archivedFrom,
-          goal,
-        },
-        progress,
-        entries,
-        writableMinDate: bounds.writable ? bounds.minDate : null,
-        writableMaxDate: bounds.writable ? bounds.maxDate : null,
-      };
-      if (progress.scheduled) {
-        scheduled.push(item);
-      } else {
-        unscheduled.push(item);
-      }
-    }
-
-    return {
-      accountDate,
-      timezone,
-      scheduled,
-      unscheduled,
-    };
-  };
+  const getToday = async (actor: Identity): Promise<TodayWorkspace> =>
+    await readTracking(
+      database,
+      actor,
+      async (transaction, calendar) =>
+        await readTodayWorkspace(transaction, actor.id, calendar),
+      options.now
+    );
 
   const getHistory = async (
     actor: Identity,
     input: unknown
-  ): Promise<HabitHistory> => {
-    const calendar = await readCalendar(database, actor);
-    const query = validateHistoryQuery(input);
-    if (!query.ok) {
-      throw new EntryError(400, query.message);
-    }
-    const { habitId, before } = query;
-    const [row] = await database
-      .select()
-      .from(habit)
-      .innerJoin(activityTemplate, eq(activityTemplate.id, habit.templateId))
-      .where(and(eq(habit.id, habitId), eq(habit.participantId, actor.id)));
-    if (row === undefined) {
-      throw new EntryError(404, "Habit not found.");
-    }
-
-    const bounds = getWritableDateBounds({ ...calendar, ...row.habit });
-    const writableMinDate = bounds.writable ? bounds.minDate : null;
-    const writableMaxDate = bounds.writable ? bounds.maxDate : null;
-    const recordedDates = database
-      .selectDistinct({ date: activityEntry.activityDate })
-      .from(activityEntry)
-      .where(
-        and(
-          eq(activityEntry.habitId, habitId),
-          lte(activityEntry.activityDate, calendar.accountDate),
-          before === undefined
-            ? undefined
-            : lt(activityEntry.activityDate, before)
-        )
-      )
-      .orderBy(desc(activityEntry.activityDate))
-      .limit(HISTORY_PAGE_DATES + 1);
-    const [entryRows, revisionRows] = await Promise.all([
-      database
-        .select()
-        .from(activityEntry)
-        .where(
-          and(
-            eq(activityEntry.habitId, habitId),
-            inArray(activityEntry.activityDate, recordedDates)
+  ): Promise<HabitHistory> =>
+    await readTracking(
+      database,
+      actor,
+      async (transaction, calendar) => {
+        const query = validateHistoryQuery(input);
+        if (!query.ok) {
+          throw new EntryError(400, query.message);
+        }
+        const { habitId, before } = query;
+        const [row] = await transaction
+          .select()
+          .from(habit)
+          .innerJoin(
+            activityTemplate,
+            eq(activityTemplate.id, habit.templateId)
           )
-        )
-        .orderBy(
-          desc(activityEntry.activityDate),
-          asc(activityEntry.createdAt),
-          asc(activityEntry.id)
-        ),
-      database
-        .select()
-        .from(goalRevision)
-        .where(eq(goalRevision.habitId, habitId)),
-    ]);
+          .where(and(eq(habit.id, habitId), eq(habit.participantId, actor.id)));
+        if (row === undefined) {
+          throw new EntryError(404, "Habit not found.");
+        }
 
-    const entriesByDate = new Map<string, ActivityEntry[]>();
-    for (const entry of entryRows) {
-      const entries = entriesByDate.get(entry.activityDate) ?? [];
-      entries.push(toActivityEntry(entry));
-      entriesByDate.set(entry.activityDate, entries);
-    }
-    const dates = [...entriesByDate.keys()];
-    const nextBefore =
-      dates.length > HISTORY_PAGE_DATES
-        ? (dates[HISTORY_PAGE_DATES - 1] ?? null)
-        : null;
-    const displayedDates = new Set<string>();
-    if (
-      before === undefined &&
-      writableMinDate !== null &&
-      writableMaxDate !== null
-    ) {
-      for (
-        let date = writableMaxDate;
-        date >= writableMinDate;
-        date = addCalendarDays(date, -1)
-      ) {
-        displayedDates.add(date);
-      }
-    }
-    for (const date of dates.slice(0, HISTORY_PAGE_DATES)) {
-      displayedDates.add(date);
-    }
-    const revisions = revisionRows.map(toGoalSnapshot);
-    return {
-      ...calendar,
-      habitId,
-      template: toActivityTemplate(row.activity_template),
-      writableMinDate,
-      writableMaxDate,
-      nextBefore,
-      days: [...displayedDates].map((date) => {
-        const entries = entriesByDate.get(date) ?? [];
-        const goal = resolveGoalForDate(revisions, date);
+        const bounds = getWritableDateBounds({ ...calendar, ...row.habit });
+        const writableMinDate = bounds.writable ? bounds.minDate : null;
+        const writableMaxDate = bounds.writable ? bounds.maxDate : null;
+        const recordedDates = transaction
+          .selectDistinct({ date: activityEntry.activityDate })
+          .from(activityEntry)
+          .where(
+            and(
+              eq(activityEntry.habitId, habitId),
+              lte(activityEntry.activityDate, calendar.accountDate),
+              before === undefined
+                ? undefined
+                : lt(activityEntry.activityDate, before)
+            )
+          )
+          .orderBy(desc(activityEntry.activityDate))
+          .limit(HISTORY_PAGE_DATES + 1);
+        const entryRows = await transaction
+          .select()
+          .from(activityEntry)
+          .where(
+            and(
+              eq(activityEntry.habitId, habitId),
+              inArray(activityEntry.activityDate, recordedDates)
+            )
+          )
+          .orderBy(
+            desc(activityEntry.activityDate),
+            asc(activityEntry.createdAt),
+            asc(activityEntry.id)
+          );
+        const revisionRows = await transaction
+          .select()
+          .from(goalRevision)
+          .where(eq(goalRevision.habitId, habitId));
+
+        const entriesByDate = new Map<string, ActivityEntry[]>();
+        for (const entry of entryRows) {
+          const entries = entriesByDate.get(entry.activityDate) ?? [];
+          entries.push(toActivityEntry(entry));
+          entriesByDate.set(entry.activityDate, entries);
+        }
+        const dates = [...entriesByDate.keys()];
+        const nextBefore =
+          dates.length > HISTORY_PAGE_DATES
+            ? (dates[HISTORY_PAGE_DATES - 1] ?? null)
+            : null;
+        const displayedDates = new Set<string>();
+        if (
+          before === undefined &&
+          writableMinDate !== null &&
+          writableMaxDate !== null
+        ) {
+          for (
+            let date = writableMaxDate;
+            date >= writableMinDate;
+            date = addCalendarDays(date, -1)
+          ) {
+            displayedDates.add(date);
+          }
+        }
+        for (const date of dates.slice(0, HISTORY_PAGE_DATES)) {
+          displayedDates.add(date);
+        }
+        const revisions = revisionRows.map(toGoalSnapshot);
         return {
-          date,
-          entries,
-          progress: progressForEntries(date, entries, goal, row.habit),
+          accountDate: calendar.accountDate,
+          timezone: calendar.timezone,
+          habitId,
+          template: toActivityTemplate(row.activity_template),
+          writableMinDate,
+          writableMaxDate,
+          nextBefore,
+          days: [...displayedDates].map((date) => {
+            const entries = entriesByDate.get(date) ?? [];
+            const goal = resolveGoalForDate(revisions, date);
+            return {
+              date,
+              entries,
+              progress: progressForEntries(date, entries, goal, row.habit),
+            };
+          }),
         };
-      }),
-    };
-  };
+      },
+      options.now
+    );
 
   const listEntries = async (
     actor: Identity,
@@ -590,7 +510,11 @@ export const createEntryService = (
     const draft = validation.value;
 
     return await database.transaction(async (transaction) => {
-      const habitRow = await lockOwnedHabit(transaction, actor, draft.habitId);
+      const habitRow = await requireOwnedHabit(
+        transaction,
+        actor,
+        draft.habitId
+      );
       const receipt = {
         actorId: actor.id,
         requestKey: draft.requestKey,
@@ -642,7 +566,11 @@ export const createEntryService = (
         );
       }
 
-      const { accountDate } = await readCalendar(transaction, actor);
+      const { accountDate } = await readAccountCalendar(
+        transaction,
+        actor,
+        options.now
+      );
       requireWritableDate(draft.activityDate, accountDate, habitRow);
       const dailyTotal =
         (await getDailyTotal(transaction, habitRow.id, draft.activityDate)) +
@@ -664,7 +592,7 @@ export const createEntryService = (
         throw new Error("Activity Entry creation did not return a record.");
       }
 
-      await saveReceipt(transaction, receipt, inserted.id);
+      await saveMutationReceipt(transaction, receipt, inserted.id);
       return { kind: "created", entry: toActivityEntry(inserted), dailyTotal };
     });
   };
@@ -691,7 +619,7 @@ export const createEntryService = (
     const { habitId, entryId, expectedVersion, requestKey } = target.value;
     const draft = replacement?.value;
     return await database.transaction(async (transaction) => {
-      const habitRow = await lockOwnedHabit(transaction, actor, habitId);
+      const habitRow = await requireOwnedHabit(transaction, actor, habitId);
       const receipt = {
         actorId: actor.id,
         requestKey,
@@ -736,7 +664,11 @@ export const createEntryService = (
         throw new EntryError(409, STALE_ENTRY_MESSAGE);
       }
 
-      const { accountDate } = await readCalendar(transaction, actor);
+      const { accountDate } = await readAccountCalendar(
+        transaction,
+        actor,
+        options.now
+      );
       const sourceDate = entryDateEligibility(
         entry.activityDate,
         accountDate,
@@ -784,7 +716,7 @@ export const createEntryService = (
         }
       }
 
-      await saveReceipt(transaction, receipt, entryId);
+      await saveMutationReceipt(transaction, receipt, entryId);
       return { kind: "applied" };
     });
   };

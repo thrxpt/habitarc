@@ -39,6 +39,8 @@ const habit: Habit = {
   template,
   startDate: "2026-11-15",
   archivedFrom: null,
+  version: 1,
+  pendingGoal: null,
   goal: {
     effectiveFrom: "2026-11-15",
     dailyTarget: 60,

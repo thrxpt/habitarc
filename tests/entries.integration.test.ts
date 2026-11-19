@@ -9,6 +9,7 @@ import { fromCrossJSON, toJSONAsync } from "seroval";
 import type { SerovalNode } from "seroval";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vite-plus/test";
 
+import { addCalendarDays } from "../src/calendar";
 import type { Identity } from "../src/identity";
 import { createAuthentication } from "../src/server/auth";
 import { createDatabase } from "../src/server/database";
@@ -141,6 +142,408 @@ const createCountTemplate = async () =>
     entryMinimum: 1,
     entryMaximum: 1_000_000,
   });
+
+test("AC-F07-1/3: tomorrow's target and weekdays apply only from their effective date", async () => {
+  let instant = new Date("2026-11-15T12:00:00+07:00");
+  const now = () => instant;
+  const habitService = createHabitService(database, { now });
+  const activity = createEntryService(otherDatabase, { now });
+  const template = await createStudyTemplate();
+  const { habit } = await habitService.createHabit(participantA, {
+    templateId: template.id,
+    dailyTarget: 60,
+    weekdays: [1, 2],
+  });
+  const sunday = await activity.createEntry(participantA, {
+    habitId: habit.id,
+    activityDate: "2026-11-15",
+    amount: 20,
+    requestKey: randomUUID(),
+  });
+  instant = new Date("2026-11-16T12:00:00+07:00");
+  await activity.createEntry(participantA, {
+    habitId: habit.id,
+    activityDate: "2026-11-16",
+    amount: 40,
+    requestKey: randomUUID(),
+  });
+  instant = new Date("2026-11-17T23:59:59+07:00");
+  const history = async () => {
+    const result = await activity.getHistory(participantA, {
+      habitId: habit.id,
+    });
+    return result.days;
+  };
+
+  await expect(
+    habitService.reviseGoal(participantA, {
+      habitId: habit.id,
+      expectedVersion: habit.version,
+      effectiveFrom: "2026-11-18",
+      dailyTarget: 30,
+      weekdays: [3, 7],
+      requestKey: randomUUID(),
+    })
+  ).resolves.toEqual({ kind: "saved" });
+  await expect(habitService.listHabits(participantA)).resolves.toMatchObject({
+    items: [
+      {
+        goal: { dailyTarget: 60, weekdays: [1, 2] },
+        pendingGoal: {
+          effectiveFrom: "2026-11-18",
+          dailyTarget: 30,
+          weekdays: [3, 7],
+        },
+      },
+    ],
+  });
+  expect(await history()).toMatchObject([
+    {
+      date: "2026-11-17",
+      progress: { scheduled: true, dailyTarget: 60, dailyTotal: 0 },
+    },
+    {
+      date: "2026-11-16",
+      progress: { dailyTarget: 60, dailyTotal: 40, completed: false },
+    },
+    {
+      date: "2026-11-15",
+      progress: { scheduled: false, dailyTotal: 20, completed: false },
+    },
+  ]);
+  await expect(activity.getToday(participantA)).resolves.toMatchObject({
+    scheduled: [{ progress: { dailyTarget: 60 } }],
+  });
+
+  instant = new Date("2026-11-18T00:00:00+07:00");
+  await expect(habitService.listHabits(participantA)).resolves.toMatchObject({
+    items: [{ goal: { dailyTarget: 30, weekdays: [3, 7] }, pendingGoal: null }],
+  });
+  await expect(activity.getToday(participantA)).resolves.toMatchObject({
+    scheduled: [{ progress: { dailyTarget: 30 } }],
+  });
+  await activity.updateEntry(participantA, {
+    habitId: habit.id,
+    entryId: sunday.entry.id,
+    expectedVersion: sunday.entry.version,
+    activityDate: "2026-11-16",
+    amount: 20,
+    requestKey: randomUUID(),
+  });
+  expect(await history()).toMatchObject([
+    { date: "2026-11-18", progress: { dailyTarget: 30 } },
+    { date: "2026-11-17", progress: { dailyTarget: 60 } },
+    {
+      date: "2026-11-16",
+      progress: { dailyTarget: 60, dailyTotal: 60, completed: true },
+    },
+    {
+      date: "2026-11-15",
+      progress: { scheduled: false, dailyTotal: 0, completed: false },
+    },
+  ]);
+});
+
+test("AC-F07-2: concurrent edits conflict, same-day edits replace tomorrow's plan, and a waiting edit expires at midnight", async () => {
+  let instant = new Date("2026-11-17T23:59:59+07:00");
+  const now = () => instant;
+  const writer = createHabitService(database, { now });
+  const otherWriter = createHabitService(otherDatabase, { now });
+  const template = await createStudyTemplate();
+  const { habit } = await writer.createHabit(participantA, {
+    templateId: template.id,
+    dailyTarget: 60,
+    weekdays: [2, 3],
+  });
+  const draft = {
+    habitId: habit.id,
+    expectedVersion: habit.version,
+    effectiveFrom: "2026-11-18",
+    dailyTarget: 35,
+    weekdays: [3, 4],
+    requestKey: randomUUID(),
+  };
+  const competing = { ...draft, dailyTarget: 80, requestKey: randomUUID() };
+  const raced = await Promise.allSettled([
+    writer.reviseGoal(participantA, draft),
+    otherWriter.reviseGoal(participantA, competing),
+  ]);
+  expect(raced.filter((result) => result.status === "fulfilled")).toHaveLength(
+    1
+  );
+  expect(raced.find((result) => result.status === "rejected")).toMatchObject({
+    reason: {
+      status: 409,
+      message:
+        "Your Habit settings changed. Reload the workspace before trying again.",
+    },
+  });
+  const winning = raced[0]?.status === "fulfilled" ? draft : competing;
+  const readHabit = async () => {
+    const { items } = await otherWriter.listHabits(participantA);
+    return items[0];
+  };
+  const pending = await readHabit();
+  expect(pending).toMatchObject({
+    version: habit.version + 1,
+    goal: { dailyTarget: 60, weekdays: [2, 3] },
+    pendingGoal: { dailyTarget: winning.dailyTarget, weekdays: [3, 4] },
+  });
+
+  const replacement = {
+    ...draft,
+    expectedVersion: habit.version + 1,
+    dailyTarget: 30,
+    weekdays: [5, 3],
+    requestKey: randomUUID(),
+  };
+  await expect(writer.reviseGoal(participantA, replacement)).resolves.toEqual({
+    kind: "saved",
+  });
+  await expect(
+    otherWriter.reviseGoal(participantA, { ...replacement, weekdays: [3, 5] })
+  ).resolves.toEqual({ kind: "replayed" });
+  await expect(
+    otherWriter.reviseGoal(participantA, { ...replacement, dailyTarget: 31 })
+  ).rejects.toMatchObject({ status: 409 });
+  expect(await readHabit()).toMatchObject({
+    version: habit.version + 2,
+    goal: { dailyTarget: 60 },
+    pendingGoal: { dailyTarget: 30, weekdays: [3, 5] },
+  });
+
+  const blocker = await pool.connect();
+  let waitingEdit: ReturnType<typeof writer.reviseGoal> | undefined;
+  const late = {
+    ...draft,
+    expectedVersion: habit.version + 2,
+    dailyTarget: 55,
+    requestKey: randomUUID(),
+  };
+  try {
+    const { rows: backends } = await blocker.query<{ pid: number }>(
+      "SELECT pg_backend_pid() AS pid"
+    );
+    await blocker.query("BEGIN");
+    await blocker.query(
+      "SELECT id FROM goal_revision WHERE habit_id = $1 AND effective_from = $2 FOR UPDATE",
+      [habit.id, late.effectiveFrom]
+    );
+    waitingEdit = otherWriter.reviseGoal(participantA, late);
+    void waitingEdit.catch(() => {});
+    await expect
+      .poll(async () => {
+        const { rows } = await pool.query<{ waiting: boolean }>(
+          "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND $1 = ANY(pg_blocking_pids(pid))) AS waiting",
+          [backends[0]?.pid]
+        );
+        return rows[0]?.waiting;
+      })
+      .toBe(true);
+    instant = new Date("2026-11-18T00:00:00+07:00");
+  } finally {
+    await blocker.query("ROLLBACK");
+    blocker.release();
+  }
+  await expect(waitingEdit).rejects.toMatchObject({
+    status: 409,
+    message:
+      "The account date or goal settings changed. Reload the workspace to edit tomorrow’s settings.",
+  });
+  await expect(
+    otherWriter.reviseGoal(participantA, replacement)
+  ).resolves.toEqual({ kind: "replayed" });
+  expect(await readHabit()).toMatchObject({
+    version: habit.version + 2,
+    goal: { effectiveFrom: "2026-11-18", dailyTarget: 30, weekdays: [3, 5] },
+    pendingGoal: null,
+  });
+  await expect(
+    writer.reviseGoal(participantA, { ...late, effectiveFrom: "2026-11-19" })
+  ).resolves.toEqual({ kind: "saved" });
+  expect(await readHabit()).toMatchObject({
+    goal: { dailyTarget: 30 },
+    pendingGoal: { dailyTarget: 55, effectiveFrom: "2026-11-19" },
+  });
+});
+
+test("F07 reads the newly effective revision when a goal save commits across midnight", async () => {
+  let instant = new Date("2026-11-17T23:59:59+07:00");
+  const now = () => instant;
+  const writer = createHabitService(database, { now });
+  const reader = createEntryService(otherDatabase, { now });
+  const template = await createStudyTemplate();
+  const { habit } = await writer.createHabit(participantA, {
+    templateId: template.id,
+    dailyTarget: 60,
+    weekdays: [2, 3],
+  });
+  const blocker = await pool.connect();
+  let history: ReturnType<typeof reader.getHistory> | undefined;
+  let save: ReturnType<typeof writer.reviseGoal> | undefined;
+  try {
+    const { rows: backends } = await blocker.query<{ pid: number }>(
+      "SELECT pg_backend_pid() AS pid"
+    );
+    await blocker.query("BEGIN");
+    // The receipt insert waits after the guarded Goal Revision write.
+    await blocker.query("LOCK TABLE mutation_receipt IN SHARE MODE");
+    save = writer.reviseGoal(participantA, {
+      habitId: habit.id,
+      expectedVersion: habit.version,
+      effectiveFrom: "2026-11-18",
+      dailyTarget: 30,
+      weekdays: [3],
+      requestKey: randomUUID(),
+    });
+    void save.catch(() => {});
+    await expect
+      .poll(async () => {
+        const { rows } = await pool.query<{ waiting: boolean }>(
+          "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND $1 = ANY(pg_blocking_pids(pid))) AS waiting",
+          [backends[0]?.pid]
+        );
+        return rows[0]?.waiting;
+      })
+      .toBe(true);
+    history = reader.getHistory(participantA, { habitId: habit.id });
+    void history.catch(() => {});
+    await expect
+      .poll(async () => {
+        const { rows } = await pool.query<{ waiting: boolean }>(
+          "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query ILIKE '%for share%') AS waiting"
+        );
+        return rows[0]?.waiting;
+      })
+      .toBe(true);
+    instant = new Date("2026-11-18T00:00:00+07:00");
+  } finally {
+    await blocker.query("ROLLBACK");
+    blocker.release();
+  }
+  await expect(save).resolves.toEqual({ kind: "saved" });
+  await expect(history).resolves.toMatchObject({
+    accountDate: "2026-11-18",
+    days: [
+      { date: "2026-11-18", progress: { dailyTarget: 30, scheduled: true } },
+      { date: "2026-11-17", progress: { dailyTarget: 60, scheduled: true } },
+    ],
+  });
+});
+
+test("F07 validates goal bounds and restricts changes to the owner of a Habit tracking tomorrow", async () => {
+  const service = createHabitService(database, {
+    now: () => new Date("2026-11-17T12:00:00+07:00"),
+  });
+  const study = await createStudyTemplate();
+  const counts = await createCountTemplate();
+  const { habit } = await service.createHabit(participantA, {
+    templateId: study.id,
+    dailyTarget: 60,
+    weekdays: [2],
+  });
+  const { habit: countHabit } = await service.createHabit(participantA, {
+    templateId: counts.id,
+    dailyTarget: 20,
+    weekdays: [2],
+  });
+  const draft = {
+    habitId: habit.id,
+    expectedVersion: habit.version,
+    effectiveFrom: "2026-11-18",
+    dailyTarget: 1440,
+    weekdays: [3],
+    requestKey: randomUUID(),
+  };
+  await Promise.all(
+    [4, 1441].map(async (dailyTarget) => {
+      await expect(
+        service.reviseGoal(participantA, { ...draft, dailyTarget })
+      ).rejects.toMatchObject({
+        status: 400,
+        fieldErrors: {
+          dailyTarget:
+            "Daily Target must be a whole number from 5 to 1,440 minutes.",
+        },
+      });
+    })
+  );
+  await Promise.all(
+    [17.5, 0, -1, 1_000_001].map(async (dailyTarget) => {
+      await expect(
+        service.reviseGoal(participantA, { ...draft, dailyTarget })
+      ).rejects.toMatchObject({
+        status: 400,
+        fieldErrors: {
+          dailyTarget: "Enter a valid whole-number Daily Target.",
+        },
+      });
+    })
+  );
+  await Promise.all(
+    [[], [3, 3], [8]].map(async (weekdays) => {
+      await expect(
+        service.reviseGoal(participantA, { ...draft, weekdays })
+      ).rejects.toMatchObject({
+        status: 400,
+        fieldErrors: {
+          weekdays: "Choose at least one weekday, with no duplicates.",
+        },
+      });
+    })
+  );
+  await expect(
+    service.reviseGoal(participantB, {
+      ...draft,
+      participantId: participantA.id,
+    })
+  ).rejects.toMatchObject({ status: 404 });
+  await expect(service.reviseGoal(managerM, draft)).rejects.toMatchObject({
+    status: 403,
+  });
+  await expect(
+    service.reviseGoal(participantA, { ...draft, effectiveFrom: "2026-11-19" })
+  ).rejects.toMatchObject({ status: 409 });
+  await expect(service.reviseGoal(participantA, draft)).resolves.toEqual({
+    kind: "saved",
+  });
+
+  const countDraft = {
+    ...draft,
+    habitId: countHabit.id,
+    expectedVersion: countHabit.version,
+    dailyTarget: 1_000_000,
+    requestKey: randomUUID(),
+  };
+  await expect(
+    service.reviseGoal(participantA, { ...countDraft, dailyTarget: 1_000_001 })
+  ).rejects.toMatchObject({ status: 400 });
+  await expect(service.reviseGoal(participantA, countDraft)).resolves.toEqual({
+    kind: "saved",
+  });
+
+  await pool.query("UPDATE habit SET archived_from = $1 WHERE id = $2", [
+    draft.effectiveFrom,
+    habit.id,
+  ]);
+  await expect(
+    service.reviseGoal(participantA, {
+      ...draft,
+      expectedVersion: habit.version + 1,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({
+    status: 409,
+    message:
+      "Goal settings can only change for Habits that are active tomorrow.",
+  });
+  const { items } = await service.listHabits(participantA);
+  expect(items.find((item) => item.id === habit.id)).toMatchObject({
+    id: habit.id,
+    goal: { effectiveFrom: "2026-11-17", dailyTarget: 60, weekdays: [2] },
+    pendingGoal: null,
+  });
+});
 
 beforeAll(async () => {
   await control.query(`CREATE DATABASE "${databaseName}"`);
@@ -1138,6 +1541,9 @@ test("Program Managers cannot read Today or record Activity Entries", async () =
 });
 
 const serverFunctionPatterns = {
+  getTrackingWorkspace:
+    /\bgetTrackingWorkspace\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  reviseGoal: /\breviseGoal\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createTemplate:
     /\bcreateTemplate\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createHabit: /\bcreateHabit\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
@@ -1342,6 +1748,47 @@ test(
         cookie: participantCookie,
       });
       const todayDate = readStringAt(todayResp.body, ["result", "accountDate"]);
+      const revise = {
+        habitId,
+        expectedVersion: 1,
+        effectiveFrom: addCalendarDays(todayDate, 1),
+        dailyTarget: 30,
+        weekdays: [1],
+        requestKey: randomUUID(),
+      };
+      const revisionsAccess = await Promise.all([
+        callServerFn("reviseGoal", { method: "POST", data: revise }),
+        callServerFn("reviseGoal", {
+          method: "POST",
+          cookie: managerCookie,
+          data: revise,
+        }),
+        callServerFn("reviseGoal", {
+          method: "POST",
+          cookie: otherCookie,
+          data: { ...revise, participantId: participantA.id },
+        }),
+      ]);
+      expect(revisionsAccess.map(({ status }) => status)).toEqual([
+        401, 403, 404,
+      ]);
+      expect(
+        await callServerFn("getTrackingWorkspace", {
+          method: "GET",
+          cookie: participantCookie,
+        })
+      ).toMatchObject({
+        status: 200,
+        body: {
+          result: {
+            habitWorkspace: {
+              accountDate: todayDate,
+              items: [{ id: habitId, version: 1, pendingGoal: null }],
+            },
+            todayWorkspace: { accountDate: todayDate },
+          },
+        },
+      });
 
       expect(
         await callServerFn("getToday", {

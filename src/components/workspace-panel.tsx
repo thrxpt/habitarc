@@ -4,6 +4,8 @@ import type {
   TodayWorkspace,
 } from "../entries";
 import type {
+  GoalRevisionDraft,
+  GoalRevisionResponse,
   HabitCreationResponse,
   HabitDraft,
   HabitWorkspace,
@@ -23,6 +25,7 @@ export const WorkspacePanel = ({
   onRecordEntry,
   habitWorkspace,
   onCreateHabit,
+  onReviseGoal,
   identity,
   templates = EMPTY_TEMPLATES,
   hasMoreTemplates = false,
@@ -35,6 +38,7 @@ export const WorkspacePanel = ({
   onRecordEntry?: (draft: ActivityEntryDraft) => Promise<RecordEntryResponse>;
   habitWorkspace?: HabitWorkspace;
   onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
+  onReviseGoal?: (draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>;
   identity: Identity;
   templates?: ActivityTemplate[];
   hasMoreTemplates?: boolean;
@@ -99,7 +103,7 @@ export const WorkspacePanel = ({
       <TodayPanel workspace={todayWorkspace} onRecordEntry={onRecordEntry} />
     )}
     {identity.role === "participant" && habitWorkspace && (
-      <HabitList workspace={habitWorkspace} />
+      <HabitList workspace={habitWorkspace} onReviseGoal={onReviseGoal} />
     )}
     <TemplateLibrary
       habitWorkspace={

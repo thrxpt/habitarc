@@ -2,11 +2,13 @@ import { expect, test } from "vite-plus/test";
 
 import {
   addCalendarDays,
+  getIsoWeekday,
+  isValidIsoDate,
+} from "../src/calendar";
+import {
   calculateDayProgress,
   checkEntryDateEligibility,
-  getIsoWeekday,
   getWritableDateBounds,
-  isValidIsoDate,
   resolveGoalForDate,
   validateEntryInput,
 } from "../src/entries";
@@ -217,6 +219,36 @@ test("resolveGoalForDate selects the latest Goal Revision on or before the reque
   expect(resolveGoalForDate(revisions, "2026-11-09")?.dailyTarget).toBe(60);
   expect(resolveGoalForDate(revisions, "2026-11-10")?.dailyTarget).toBe(30);
   expect(resolveGoalForDate(revisions, "2026-11-15")?.dailyTarget).toBe(30);
+});
+
+test("AC-F07-3: adding a weekday creates obligations only from the effective date", () => {
+  const revisions = [
+    { effectiveFrom: "2026-11-01", dailyTarget: 60, weekdays: [1, 2] },
+    { effectiveFrom: "2026-11-18", dailyTarget: 30, weekdays: [3] },
+  ];
+  const progress = (date: string) =>
+    calculateDayProgress({
+      date,
+      dailyTotal: 40,
+      goal: resolveGoalForDate(revisions, date),
+      startDate: "2026-11-01",
+      archivedFrom: null,
+    });
+  expect(progress("2026-11-11")).toMatchObject({
+    scheduled: false,
+    dailyTotal: 40,
+    completed: false,
+  });
+  expect(progress("2026-11-17")).toMatchObject({
+    scheduled: true,
+    dailyTarget: 60,
+    completed: false,
+  });
+  expect(progress("2026-11-18")).toMatchObject({
+    scheduled: true,
+    dailyTarget: 30,
+    completed: true,
+  });
 });
 
 test("validateEntryInput enforces positive whole numbers within template bounds and valid request keys", () => {

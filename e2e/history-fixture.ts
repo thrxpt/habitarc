@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { eq } from "drizzle-orm";
 
-import { addCalendarDays, getIsoWeekday } from "../src/entries";
+import { addCalendarDays, getIsoWeekday } from "../src/calendar";
 import type { Identity } from "../src/identity";
 import type { Database } from "../src/server/database";
 import { createEntryService } from "../src/server/entries";
