@@ -512,25 +512,26 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
         .fill("45");
 
       let releaseRefresh: (() => void) | undefined;
-      let refreshHeld = false;
+      let heldRefreshes = 0;
       // eslint-disable-next-line promise/avoid-new -- The test controls when the refresh may continue.
       const refreshReleased = new Promise<void>((resolve) => {
         releaseRefresh = resolve;
       });
-      let holdNextRead = false;
+      let holdReads = false;
       await page.route("**/_serverFn/*", async (route) => {
         if (route.request().method() === "POST") {
-          holdNextRead = true;
-        } else if (holdNextRead) {
-          holdNextRead = false;
-          refreshHeld = true;
+          holdReads = true;
+        } else if (holdReads) {
+          heldRefreshes += 1;
           await refreshReleased;
         }
         await route.continue();
       });
       try {
         await save.click();
-        await expect.poll(() => refreshHeld).toBe(true);
+        await expect.poll(() => heldRefreshes).toBe(1);
+        await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+        await expect.poll(() => heldRefreshes).toBeGreaterThan(1);
         await expect(
           habits.getByRole("button", { name: "Close goal settings" })
         ).toBeDisabled();

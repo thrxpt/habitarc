@@ -406,7 +406,6 @@ test("F07 reads the newly effective revision when a goal save commits across mid
         return rows[0]?.waiting;
       })
       .toBe(true);
-    instant = new Date("2026-11-18T00:00:00+07:00");
     history = reader.getHistory(participantA, { habitId: habit.id });
     void history.catch(() => {});
     await expect
@@ -417,6 +416,7 @@ test("F07 reads the newly effective revision when a goal save commits across mid
         return rows[0]?.waiting;
       })
       .toBe(true);
+    instant = new Date("2026-11-18T00:00:00+07:00");
   } finally {
     await blocker.query("ROLLBACK");
     blocker.release();

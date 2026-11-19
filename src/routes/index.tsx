@@ -149,29 +149,32 @@ const Home = () => {
 };
 
 export const Route = createFileRoute("/")({
-  loader: async () => {
-    const identity = await getIdentity();
-    if (!identity) {
-      return {
-        identity: null,
-        templatePage: EMPTY_TEMPLATE_PAGE,
-        habitWorkspace: null,
-        todayWorkspace: null,
-        refreshInMs: null,
-      };
-    }
-    const templatePage = await listTemplates();
-    if (identity.role !== "participant") {
-      return {
-        identity,
-        templatePage,
-        habitWorkspace: null,
-        todayWorkspace: null,
-        refreshInMs: null,
-      };
-    }
-    const trackingWorkspace = await getTrackingWorkspace();
-    return { identity, templatePage, ...trackingWorkspace };
+  loader: {
+    staleReloadMode: "blocking",
+    handler: async () => {
+      const identity = await getIdentity();
+      if (!identity) {
+        return {
+          identity: null,
+          templatePage: EMPTY_TEMPLATE_PAGE,
+          habitWorkspace: null,
+          todayWorkspace: null,
+          refreshInMs: null,
+        };
+      }
+      const templatePage = await listTemplates();
+      if (identity.role !== "participant") {
+        return {
+          identity,
+          templatePage,
+          habitWorkspace: null,
+          todayWorkspace: null,
+          refreshInMs: null,
+        };
+      }
+      const trackingWorkspace = await getTrackingWorkspace();
+      return { identity, templatePage, ...trackingWorkspace };
+    },
   },
   component: Home,
   errorComponent: () => (

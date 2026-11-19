@@ -54,7 +54,7 @@ The first browser run exposed an enabled server-rendered sign-in form submitting
 
 ## F07 verification ledger
 
-Local runs used PostgreSQL 17 and Chromium. `vp test --run --passWithNoTests=false` passed 103 tests in 10 files. `vp run test:e2e` passed all seven browser tests. `vp check`, `vp run typecheck`, `vp exec drizzle-kit check`, and `vp run build` passed.
+The initial implementation at `a9f20a3` was verified locally with PostgreSQL 17 and Chromium. `vp test --run --passWithNoTests=false` passed 103 tests in 10 files. `vp run test:e2e` passed all seven browser tests. `vp check`, `vp run typecheck`, `vp exec drizzle-kit check`, and `vp run build` passed.
 
 | Requirement | Feature / AC / STS | Actual test | Status | Commit | Evidence | Tester | Date |
 | --- | --- | --- | --- | --- | --- | --- | --- |
