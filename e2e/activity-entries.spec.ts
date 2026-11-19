@@ -640,6 +640,12 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
       await page.unrouteAll({ behavior: "wait" });
     }
     await expect(today).toContainText("Account date: 2026-11-19");
+    await setClock("2026-11-20T00:00:01+07:00");
+    await page.clock.fastForward("24:00:00");
+    await expect(today).toContainText("Account date: 2026-11-20");
+    await setClock("2026-11-21T00:00:01+07:00");
+    await page.clock.fastForward("24:00:00");
+    await expect(today).toContainText("Account date: 2026-11-21");
   } finally {
     await setClock(null);
     await pool.end();
