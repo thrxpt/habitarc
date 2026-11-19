@@ -51,3 +51,15 @@ Run `vp exec playwright install chromium`, then `vp run test:e2e` with `TEST_DAT
 Three local Chromium tests pass: sign-in remains disabled before hydration with a POST fallback; a Program Manager publishes a 5–45 minute template and Participant A starts target 60 on Monday–Friday, reloads, sees duplicate prevention, switches accounts to check privacy, and signs back in to retrieve the Habit; a Participant corrects invalid target/weekday settings and uses the keyboard to choose every day on a 390px viewport. Account date/start-date assertions use `Asia/Bangkok` despite the browser's `America/Los_Angeles` timezone. These journeys supply local browser evidence for AC-F03-1 and supplementary validation/privacy presentation checks.
 
 The first browser run exposed an enabled server-rendered sign-in form submitting a native GET before hydration. A JavaScript-disabled regression test reproduced it; the sign-in controls now wait for TanStack's hydration signal, and the form explicitly uses POST. The browser test waits for confirmed Habit persistence before reloading. CI installs Chromium and executes these tests after Vitest.
+
+## F07 verification ledger
+
+Local runs used PostgreSQL 17 and Chromium. `vp test --run --passWithNoTests=false` passed 103 tests in 10 files. `vp run test:e2e` passed all seven browser tests. `vp check`, `vp run typecheck`, `vp exec drizzle-kit check`, and `vp run build` passed.
+
+| Requirement | Feature / AC / STS | Actual test | Status | Commit | Evidence | Tester | Date |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| FR-07, BR-03, BR-10 | F07 / AC-F07-1 / STS-F07-1 | Tomorrow's target and weekdays apply only from their effective date. Chromium History retains yesterday's 40 / 60 minutes after tomorrow's target changes to 30. | PASS | `a9f20a3` | [PostgreSQL integration](../tests/entries.integration.test.ts) and [Chromium](../e2e/activity-entries.spec.ts) | Codex | 2026-11-20 |
+| FR-07, BR-04, BR-07, BR-10, NFR-01, NFR-02 | F07 / AC-F07-2 / STS-F07-2 | Concurrent edits conflict, same-day edits replace the pending revision, and a save waiting on that row expires at midnight. Includes target and weekday validation, retry, and HTTP 401/403/404 cases. | PASS | `a9f20a3` | [PostgreSQL and HTTP integration](../tests/entries.integration.test.ts) | Codex | 2026-11-20 |
+| FR-07, BR-05, BR-10 | F07 / AC-F07-3 / STS-F07-3 | Adding a weekday creates obligations only from the effective date. Entry correction recalculates the original date's completion. | PASS | `a9f20a3` | [Unit test](../tests/entries.unit.test.ts) and [PostgreSQL integration](../tests/entries.integration.test.ts) | Codex | 2026-11-20 |
+
+Teammate review, sprint integration, deployed verification, and independent acceptance remain INCOMPLETE.
