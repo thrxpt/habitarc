@@ -863,6 +863,132 @@ test("AC-F06-3: ownership and versions guard corrections, and retained receipts 
   expect(await clocked.listEntries(participantA, habit.id)).toEqual([]);
 });
 
+test("Concurrent edits from the same version apply exactly one correction", async () => {
+  const { id: habitId } = await createHistoryHabit();
+  const firstTab = createEntryService(database, { now: historyMondayNoon });
+  const secondTab = createEntryService(otherDatabase, {
+    now: historyMondayNoon,
+  });
+  const activityDate = "2026-11-16";
+  const { entry } = await firstTab.createEntry(participantA, {
+    habitId,
+    activityDate,
+    amount: 60,
+    requestKey: randomUUID(),
+  });
+  const target = {
+    habitId,
+    entryId: entry.id,
+    expectedVersion: entry.version,
+    activityDate,
+  };
+  const firstEdit = { ...target, amount: 25, requestKey: randomUUID() };
+  const secondEdit = { ...target, amount: 80, requestKey: randomUUID() };
+
+  const [first, second] = await Promise.allSettled([
+    firstTab.updateEntry(participantA, firstEdit),
+    secondTab.updateEntry(participantA, secondEdit),
+  ]);
+  const firstWon = first.status === "fulfilled";
+  const winner = firstWon ? firstEdit : secondEdit;
+  expect(firstWon ? first : second).toMatchObject({
+    status: "fulfilled",
+    value: { kind: "applied" },
+  });
+  expect(firstWon ? second : first).toMatchObject({
+    status: "rejected",
+    reason: {
+      status: 409,
+      message: "This entry changed. Refresh history before trying again.",
+    },
+  });
+
+  expect(await secondTab.listEntries(participantA, habitId)).toMatchObject([
+    { id: entry.id, activityDate, amount: winner.amount, version: 2 },
+  ]);
+  const { days } = await secondTab.getHistory(participantA, { habitId });
+  expect(days[0]).toMatchObject({
+    date: activityDate,
+    progress: { dailyTotal: winner.amount },
+  });
+  const receipts = await pool.query<{ request_key: string }>(
+    "SELECT request_key FROM mutation_receipt WHERE actor_id = $1 AND request_key IN ($2, $3)",
+    [participantA.id, firstEdit.requestKey, secondEdit.requestKey]
+  );
+  expect(receipts.rows).toEqual([{ request_key: winner.requestKey }]);
+});
+
+test("A date move racing a create cannot exceed the destination’s daily ceiling", async () => {
+  const { id: habitId } = await createHistoryHabit();
+  const firstTab = createEntryService(database, { now: historyMondayNoon });
+  const secondTab = createEntryService(otherDatabase, {
+    now: historyMondayNoon,
+  });
+  const source = "2026-11-16";
+  const destination = "2026-11-15";
+  const { entry } = await firstTab.createEntry(participantA, {
+    habitId,
+    activityDate: source,
+    amount: 20,
+    requestKey: randomUUID(),
+  });
+  await firstTab.createEntry(participantA, {
+    habitId,
+    activityDate: destination,
+    amount: 999_980,
+    requestKey: randomUUID(),
+  });
+  const create = {
+    habitId,
+    activityDate: destination,
+    amount: 20,
+    requestKey: randomUUID(),
+  };
+  const move = {
+    ...create,
+    entryId: entry.id,
+    expectedVersion: entry.version,
+    requestKey: randomUUID(),
+  };
+
+  const [moved, created] = await Promise.allSettled([
+    firstTab.updateEntry(participantA, move),
+    secondTab.createEntry(participantA, create),
+  ]);
+  const moveWon = moved.status === "fulfilled";
+  expect(moveWon ? moved : created).toMatchObject({
+    status: "fulfilled",
+    value: { kind: moveWon ? "applied" : "created" },
+  });
+  expect(moveWon ? created : moved).toMatchObject({
+    status: "rejected",
+    reason: {
+      status: 409,
+      message: "Daily total cannot exceed 1,000,000 counts.",
+    },
+  });
+
+  const { days } = await secondTab.getHistory(participantA, { habitId });
+  expect(days.slice(0, 2)).toMatchObject([
+    { date: source, progress: { dailyTotal: moveWon ? 0 : 20 } },
+    { date: destination, progress: { dailyTotal: 1_000_000 } },
+  ]);
+  const saved = await secondTab.listEntries(participantA, habitId);
+  expect(saved).toHaveLength(moveWon ? 2 : 3);
+  expect(saved.find((candidate) => candidate.id === entry.id)).toMatchObject({
+    activityDate: moveWon ? destination : source,
+    amount: 20,
+    version: moveWon ? 2 : 1,
+  });
+  const receipts = await pool.query<{ request_key: string }>(
+    "SELECT request_key FROM mutation_receipt WHERE actor_id = $1 AND request_key IN ($2, $3)",
+    [participantA.id, move.requestKey, create.requestKey]
+  );
+  expect(receipts.rows).toEqual([
+    { request_key: moveWon ? move.requestKey : create.requestKey },
+  ]);
+});
+
 test("AC-F04-4: concurrent ceiling writes cannot exceed 1,440 minutes or 1,000,000 counts, and rejected writes leave no receipt", async () => {
   const study = await createStudyTemplate();
   const { habit: minuteHabit } = await habits.createHabit(participantA, {
@@ -1400,13 +1526,7 @@ test(
         expectedVersion: 1,
         requestKey: "private-entry",
       };
-      const [
-        visitorHistory,
-        managerHistory,
-        otherHistory,
-        otherUpdate,
-        otherDelete,
-      ] = await Promise.all([
+      const [visitorHistory, managerHistory, otherHistory] = await Promise.all([
         callServerFn("getHistory", { method: "GET", data: { habitId } }),
         callServerFn("getHistory", {
           method: "GET",
@@ -1418,22 +1538,33 @@ test(
           data: { habitId },
           cookie: otherCookie,
         }),
-        callServerFn("updateEntry", {
-          method: "POST",
-          data: { ...correction, activityDate: todayDate, amount: 25 },
-          cookie: otherCookie,
-        }),
-        callServerFn("deleteEntry", {
-          method: "POST",
-          data: correction,
-          cookie: otherCookie,
-        }),
       ]);
       expect(visitorHistory.status).toBe(401);
       expect(managerHistory.status).toBe(403);
       expect(otherHistory.status).toBe(404);
-      expect(otherUpdate.status).toBe(404);
-      expect(otherDelete.status).toBe(404);
+
+      const correctionAccess = [
+        { cookie: undefined, status: 401 },
+        { cookie: managerCookie, status: 403 },
+        { cookie: otherCookie, status: 404 },
+      ];
+      const endpoints = ["updateEntry", "deleteEntry"] as const;
+      await Promise.all(
+        endpoints.flatMap((endpoint) =>
+          correctionAccess.map(async ({ cookie, status }) => {
+            const data =
+              endpoint === "updateEntry"
+                ? { ...correction, activityDate: todayDate, amount: 25 }
+                : correction;
+            const response = await callServerFn(endpoint, {
+              method: "POST",
+              data,
+              cookie,
+            });
+            expect(response.status, endpoint).toBe(status);
+          })
+        )
+      );
     } finally {
       if (child.pid !== undefined) {
         if (process.platform === "win32") {

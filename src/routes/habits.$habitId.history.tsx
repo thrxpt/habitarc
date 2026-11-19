@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { authClient } from "../auth-client";
 import { AccountShell } from "../components/account-shell";
@@ -17,15 +18,21 @@ const HistoryUnavailable = () => (
 );
 
 const HistoryPage = () => {
-  const { history, viewer } = Route.useLoaderData();
+  const loaded = Route.useLoaderData();
+  const [refresh, setRefresh] = useState<{
+    from: typeof loaded;
+    result: typeof loaded;
+  } | null>(null);
+  const data = refresh?.from === loaded ? refresh.result : loaded;
   const { before } = Route.useSearch();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
-  const params = { habitId: history.habitId };
 
-  if (!isPending && session?.user.id !== viewer.id) {
+  if (data === null || (!isPending && session?.user.id !== data.viewer.id)) {
     return <HistoryUnavailable />;
   }
+  const { history, viewer } = data;
+  const params = { habitId: history.habitId };
 
   return (
     <AccountShell
@@ -42,7 +49,7 @@ const HistoryPage = () => {
         Signed in as {viewer.name}
       </p>
       <HistoryPanel
-        key={JSON.stringify([history.habitId, before])}
+        key={JSON.stringify([viewer.id, history.habitId, before])}
         history={history}
         onSubmit={async (draft) => {
           if ("amount" in draft) {
@@ -51,7 +58,8 @@ const HistoryPage = () => {
           return await deleteEntry({ data: draft });
         }}
         onRefresh={async () => {
-          await router.invalidate({ sync: true });
+          const result = await getHistory({ data: { ...params, before } });
+          setRefresh({ from: loaded, result });
         }}
       />
       {(before !== undefined || history.nextBefore !== null) && (

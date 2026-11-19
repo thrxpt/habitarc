@@ -40,12 +40,14 @@ const EntryCorrectionForm = ({
   onSubmit,
   onRefresh,
   onClose,
+  onApplied,
 }: {
   history: HabitHistory;
   correction: Correction;
   onSubmit: SubmitCorrection;
   onRefresh: () => Promise<void>;
   onClose: (message?: string) => void;
+  onApplied: (message: string) => void;
 }) => {
   const { entry, action } = correction;
   const { template } = history;
@@ -108,8 +110,7 @@ const EntryCorrectionForm = ({
         setFieldErrors(result.fieldErrors);
         setRetryKey(null);
       } else {
-        await onRefresh();
-        onClose(editing ? "Entry updated." : "Entry deleted.");
+        onApplied(editing ? "Entry updated." : "Entry deleted.");
       }
     } catch {
       setRetryKey(requestKey);
@@ -271,12 +272,55 @@ export const HistoryPanel = ({
   const hydrated = useHydrated();
   const [correction, setCorrection] = useState<Correction | null>(null);
   const [notice, setNotice] = useState("");
+  const [refreshState, setRefreshState] = useState<
+    "current" | "loading" | "failed"
+  >("current");
   const historyList = useRef<HTMLDivElement>(null);
+  const refreshButton = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef<{
+    button: HTMLButtonElement;
+    date: string;
+  } | null>(null);
   const { unit } = history.template;
 
-  const open = (entry: ActivityEntry, action: CorrectionAction) => {
+  useEffect(() => {
+    const focus = returnFocus.current;
+    if (focus === null || correction !== null || refreshState === "loading") {
+      return;
+    }
+    if (refreshState === "failed") {
+      refreshButton.current?.focus();
+      return;
+    }
+    returnFocus.current = null;
+    if (focus.button.isConnected && !focus.button.disabled) {
+      focus.button.focus();
+      return;
+    }
+    const heading = historyList.current?.querySelector<HTMLHeadingElement>(
+      `#history-${focus.date}`
+    );
+    (heading ?? historyList.current)?.focus();
+  }, [correction, refreshState]);
+
+  const open = (
+    entry: ActivityEntry,
+    action: CorrectionAction,
+    button: HTMLButtonElement
+  ) => {
+    returnFocus.current = { button, date: entry.activityDate };
     setNotice("");
     setCorrection({ entry, action });
+  };
+
+  const reloadConfirmedHistory = async () => {
+    setRefreshState("loading");
+    try {
+      await onRefresh();
+      setRefreshState("current");
+    } catch {
+      setRefreshState("failed");
+    }
   };
 
   return (
@@ -293,8 +337,26 @@ export const HistoryPanel = ({
       <output className={notice ? "mb-4 block text-sm font-medium" : "sr-only"}>
         {notice}
       </output>
+      {refreshState === "failed" && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>
+            History couldn’t reload. Refresh to see the latest totals.
+          </AlertDescription>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            ref={refreshButton}
+            onClick={() => {
+              void reloadConfirmedHistory();
+            }}
+          >
+            Refresh history
+          </Button>
+        </Alert>
+      )}
       {history.days.length === 0 && <p>No Activity Entries in this history.</p>}
-      <div className="divide-y border-y">
+      <div className="divide-y border-y" aria-busy={refreshState === "loading"}>
         {history.days.map(({ date, entries, progress }) => {
           const writable =
             history.writableMinDate !== null &&
@@ -311,7 +373,11 @@ export const HistoryPanel = ({
               className="py-5"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 id={`history-${date}`} className="text-lg font-semibold">
+                <h2
+                  id={`history-${date}`}
+                  tabIndex={-1}
+                  className="text-lg font-semibold"
+                >
                   <time dateTime={date}>{date}</time>
                 </h2>
                 {!writable && (
@@ -334,7 +400,7 @@ export const HistoryPanel = ({
                   className="mt-3 flex flex-col gap-2"
                   aria-label={`Entries on ${date}`}
                 >
-                  {entries.map((entry) => (
+                  {entries.map((entry, index) => (
                     <li key={entry.id}>
                       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                         <span>
@@ -346,13 +412,18 @@ export const HistoryPanel = ({
                               type="button"
                               size="sm"
                               variant="outline"
-                              disabled={!hydrated || correction !== null}
+                              disabled={
+                                !hydrated ||
+                                correction !== null ||
+                                refreshState !== "current"
+                              }
+                              aria-label={`Edit entry for ${entry.amount.toLocaleString("en-US")} ${unit} on ${date}, entry ${index + 1} of ${entries.length}`}
                               aria-expanded={
                                 correction?.entry.id === entry.id &&
                                 correction.action === "edit"
                               }
-                              onClick={() => {
-                                open(entry, "edit");
+                              onClick={(event) => {
+                                open(entry, "edit", event.currentTarget);
                               }}
                             >
                               Edit entry
@@ -361,13 +432,18 @@ export const HistoryPanel = ({
                               type="button"
                               size="sm"
                               variant="outline"
-                              disabled={!hydrated || correction !== null}
+                              disabled={
+                                !hydrated ||
+                                correction !== null ||
+                                refreshState !== "current"
+                              }
+                              aria-label={`Delete entry for ${entry.amount.toLocaleString("en-US")} ${unit} on ${date}, entry ${index + 1} of ${entries.length}`}
                               aria-expanded={
                                 correction?.entry.id === entry.id &&
                                 correction.action === "delete"
                               }
-                              onClick={() => {
-                                open(entry, "delete");
+                              onClick={(event) => {
+                                open(entry, "delete", event.currentTarget);
                               }}
                             >
                               Delete entry
@@ -385,7 +461,11 @@ export const HistoryPanel = ({
                           onClose={(message) => {
                             setCorrection(null);
                             setNotice(message ?? "");
-                            historyList.current?.focus();
+                          }}
+                          onApplied={(message) => {
+                            setCorrection(null);
+                            setNotice(message);
+                            void reloadConfirmedHistory();
                           }}
                         />
                       )}

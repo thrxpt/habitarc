@@ -164,17 +164,24 @@ const readEntryTemplate = async (
   return toActivityTemplate(template);
 };
 
-const requireWritableDate = (
+const entryDateEligibility = (
   activityDate: string,
   accountDate: string,
   tracking: typeof habit.$inferSelect
-) => {
-  const eligibility = checkEntryDateEligibility({
+) =>
+  checkEntryDateEligibility({
     activityDate,
     accountDate,
     startDate: tracking.startDate,
     archivedFrom: tracking.archivedFrom,
   });
+
+const requireWritableDate = (
+  activityDate: string,
+  accountDate: string,
+  tracking: typeof habit.$inferSelect
+) => {
+  const eligibility = entryDateEligibility(activityDate, accountDate, tracking);
   if (!eligibility.ok) {
     throw new EntryError(400, eligibility.message, {
       activityDate: eligibility.message,
@@ -730,7 +737,17 @@ export const createEntryService = (
       }
 
       const { accountDate } = await readCalendar(transaction, actor);
-      requireWritableDate(entry.activityDate, accountDate, habitRow);
+      const sourceDate = entryDateEligibility(
+        entry.activityDate,
+        accountDate,
+        habitRow
+      );
+      if (!sourceDate.ok) {
+        throw new EntryError(
+          400,
+          `The entry from ${entry.activityDate} is now read-only. ${sourceDate.message}`
+        );
+      }
 
       const matchesVersion = and(
         matchesEntry,

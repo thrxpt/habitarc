@@ -138,12 +138,24 @@ export const getHistory = createServerFn({ method: "GET" })
   .middleware([applicationErrors])
   .validator((input: unknown) => input)
   .handler(async ({ data }) => {
-    const actor = await getAuthentication().authorizeWorkspace(
-      getRequestHeaders(),
-      "participant"
-    );
-    const history = await getEntryService().getHistory(actor, data);
-    return { history, viewer: { id: actor.id, name: actor.name } };
+    try {
+      const actor = await getAuthentication().authorizeWorkspace(
+        getRequestHeaders(),
+        "participant"
+      );
+      const history = await getEntryService().getHistory(actor, data);
+      return { history, viewer: { id: actor.id, name: actor.name } };
+    } catch (error) {
+      if (
+        (error instanceof AuthError &&
+          (error.status === 401 || error.status === 403)) ||
+        (error instanceof EntryError && error.status === 404)
+      ) {
+        setResponseStatus(error.status);
+        return null;
+      }
+      throw error;
+    }
   });
 
 const entryWrite = async <Result>(

@@ -311,16 +311,45 @@ test("Participant corrects private dated history, rejects stale edits, and retri
     name: todayDate,
     exact: true,
   });
-  await secondSource
-    .getByRole("button", { name: "Edit entry", exact: true })
-    .click();
+  await secondSource.getByRole("button", { name: /^Edit entry/u }).click();
   await secondSource.getByLabel("Amount (minutes)").fill("35");
 
-  await source.getByRole("button", { name: "Edit entry", exact: true }).click();
+  await source.getByRole("button", { name: /^Edit entry/u }).click();
   await source.getByLabel("Amount (minutes)").fill("30");
   await source.getByLabel("Activity date").fill(yesterday);
+  let moveStatus: number | undefined;
+  let correctionWrites = 0;
+  let historyReadFailed = false;
+  await page.route("**/_serverFn/*", async (route) => {
+    if (route.request().method() === "POST") {
+      correctionWrites += 1;
+      const response = await route.fetch();
+      moveStatus = response.status();
+      await route.fulfill({ response });
+      return;
+    }
+    if (moveStatus === 200 && !historyReadFailed) {
+      historyReadFailed = true;
+      await route.abort("failed");
+      return;
+    }
+    await route.continue();
+  });
   await source.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("status")).toContainText("Entry updated");
+  await expect(page.getByRole("alert")).toContainText(
+    "History couldn’t reload"
+  );
+  await expect(
+    page.getByRole("button", { name: "Refresh history" })
+  ).toBeFocused();
+  await page.getByRole("button", { name: "Refresh history" }).click();
   await expect(source).toContainText("0 / 40 minutes");
+  expect(moveStatus).toBe(200);
+  expect(historyReadFailed).toBe(true);
+  expect(correctionWrites).toBe(1);
+  await expect(source.getByRole("heading")).toBeFocused();
+  await page.unroute("**/_serverFn/*");
   await expect(source).toContainText("In progress");
   await expect(destination).toContainText("40 minutes recorded");
 
@@ -335,21 +364,18 @@ test("Participant corrects private dated history, rejects stale edits, and retri
     .getByRole("region", { name: yesterday, exact: true })
     .getByRole("listitem")
     .filter({ hasText: "30 minutes" });
-  await staleMoved
-    .getByRole("button", { name: "Edit entry", exact: true })
-    .click();
+  await staleMoved.getByRole("button", { name: /^Edit entry/u }).click();
 
   const moved = destination
     .getByRole("listitem")
     .filter({ hasText: "30 minutes" });
-  await moved
-    .getByRole("button", { name: "Delete entry", exact: true })
-    .click();
+  await moved.getByRole("button", { name: /^Delete entry/u }).click();
   await expect(destination).toContainText("40 minutes recorded");
   await moved.getByRole("button", { name: "Cancel", exact: true }).click();
-  await moved
-    .getByRole("button", { name: "Delete entry", exact: true })
-    .click();
+  await expect(
+    moved.getByRole("button", { name: /^Delete entry/u })
+  ).toBeFocused();
+  await moved.getByRole("button", { name: /^Delete entry/u }).click();
   let deletionStatus: number | undefined;
   await page.route("**/_serverFn/*", async (route) => {
     if (deletionStatus === undefined && route.request().method() === "POST") {
@@ -399,8 +425,10 @@ test("An open correction becomes read-only after account midnight", async ({
   const edgeDate = addCalendarDays(todayDate, -6);
   const nextDate = addCalendarDays(todayDate, 1);
   const edge = page.getByRole("region", { name: edgeDate, exact: true });
-  await edge.getByRole("button", { name: "Edit entry", exact: true }).click();
+  await edge.getByRole("button", { name: /^Edit entry/u }).click();
   await edge.getByLabel("Amount (minutes)").fill("25");
+  const chosenDate = edge.getByLabel("Activity date");
+  await chosenDate.fill(todayDate);
 
   const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
   try {
@@ -409,8 +437,9 @@ test("An open correction becomes read-only after account midnight", async ({
     ]);
     await edge.getByRole("button", { name: "Save changes" }).click();
     await expect(edge.getByRole("alert")).toContainText(
-      `today (${nextDate}) or the previous 6 days`
+      `The entry from ${edgeDate} is now read-only.`
     );
+    await expect(chosenDate).toHaveAttribute("aria-invalid", "false");
     await edge.getByRole("button", { name: "Refresh history" }).click();
     await expect(edge).toContainText("5 minutes recorded");
     await expect(edge).toContainText("Read-only");
