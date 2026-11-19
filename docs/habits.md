@@ -56,10 +56,14 @@ The first browser run exposed an enabled server-rendered sign-in form submitting
 
 The initial implementation at `a9f20a3` was verified locally with PostgreSQL 17 and Chromium. `vp test --run --passWithNoTests=false` passed 103 tests in 10 files. `vp run test:e2e` passed all seven browser tests. `vp check`, `vp run typecheck`, `vp exec drizzle-kit check`, and `vp run build` passed.
 
+The completed follow-up at `179d202` passed 104 Vitest tests and seven Chromium tests locally, and its [CI validation](https://github.com/thrxpt/habitarc/actions/runs/44585633925/job/135777667050) passed. The review fixes at `308e85f` passed 105 Vitest tests and seven Chromium tests locally on 2026-11-20. `vp check`, `vp run typecheck`, `vp exec drizzle-kit check`, and `vp run build` also passed for that revision.
+
 | Requirement | Feature / AC / STS | Actual test | Status | Commit | Evidence | Tester | Date |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | FR-07, BR-03, BR-10 | F07 / AC-F07-1 / STS-F07-1 | Tomorrow's target and weekdays apply only from their effective date. Chromium History retains yesterday's 40 / 60 minutes after tomorrow's target changes to 30. | PASS | `a9f20a3` | [PostgreSQL integration](../tests/entries.integration.test.ts) and [Chromium](../e2e/activity-entries.spec.ts) | Codex | 2026-11-20 |
 | FR-07, BR-04, BR-07, BR-10, NFR-01, NFR-02 | F07 / AC-F07-2 / STS-F07-2 | Concurrent edits conflict, same-day edits replace the pending revision, and a save waiting on that row expires at midnight. Includes target and weekday validation, retry, and HTTP 401/403/404 cases. | PASS | `a9f20a3` | [PostgreSQL and HTTP integration](../tests/entries.integration.test.ts) | Codex | 2026-11-20 |
 | FR-07, BR-05, BR-10 | F07 / AC-F07-3 / STS-F07-3 | Adding a weekday creates obligations only from the effective date. Entry correction recalculates the original date's completion. | PASS | `a9f20a3` | [Unit test](../tests/entries.unit.test.ts) and [PostgreSQL integration](../tests/entries.integration.test.ts) | Codex | 2026-11-20 |
+| FR-07, BR-03–05, BR-07, BR-10, NFR-01, NFR-02 | F07 / AC-F07-1–3 / STS-F07-1–3 | Full Vitest and Chromium suites, including concurrent saves, history, expiry, delayed refresh, and consecutive account midnights. | PASS | `179d202` | [CI validation](https://github.com/thrxpt/habitarc/actions/runs/44585633925/job/135777667050) and local runs | Codex | 2026-11-20 |
+| FR-07, BR-03, BR-04, BR-07 | F07 / AC-F07-2 / STS-F07-2 | Goal validation uses a unit-neutral preliminary error and template-specific bounds. Workspace refresh accounts for 23-hour and 25-hour Los Angeles DST days. | PASS | `308e85f` | [Goal validation integration](../tests/entries.integration.test.ts) and [DST unit test](../tests/tracking.unit.test.ts) | Codex | 2026-11-20 |
 
 Teammate review, sprint integration, deployed verification, and independent acceptance remain INCOMPLETE.
