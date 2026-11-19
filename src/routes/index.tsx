@@ -46,6 +46,18 @@ const Home = () => {
     }
   }, [identity?.id, session?.user.id, isPending, router]);
 
+  useEffect(() => {
+    const refreshWorkspace = () => {
+      void router.invalidate();
+    };
+    if (identity?.role === "participant") {
+      window.addEventListener("focus", refreshWorkspace);
+    }
+    return () => {
+      window.removeEventListener("focus", refreshWorkspace);
+    };
+  }, [identity?.role, router]);
+
   const activeExtra = extraState?.forPage === templatePage ? extraState : null;
   const templates =
     activeExtra === null
@@ -106,7 +118,7 @@ const Home = () => {
       onReviseGoal={async (draft) => {
         const result = await reviseGoal({ data: draft });
         if (result.kind === "saved" || result.kind === "replayed") {
-          await router.invalidate();
+          await router.invalidate({ sync: true });
         }
         return result;
       }}

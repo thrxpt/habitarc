@@ -29,6 +29,7 @@ import {
   lockOwnedHabit,
   lockParticipant,
   readAccountCalendar,
+  readTracking,
 } from "./tracking";
 import type { AccountCalendar, TrackingServiceOptions } from "./tracking";
 
@@ -126,10 +127,14 @@ export const createHabitService = (
   database: Database,
   options: TrackingServiceOptions = {}
 ) => {
-  const listHabits = async (actor: Identity): Promise<HabitWorkspace> => {
-    const calendar = await readAccountCalendar(database, actor, options.now);
-    return await readHabitWorkspace(database, actor.id, calendar);
-  };
+  const listHabits = async (actor: Identity): Promise<HabitWorkspace> =>
+    await readTracking(
+      database,
+      actor,
+      async (transaction, calendar) =>
+        await readHabitWorkspace(transaction, actor.id, calendar),
+      options.now
+    );
 
   const createHabit = async (
     actor: Identity,

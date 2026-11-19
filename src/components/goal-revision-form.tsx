@@ -37,6 +37,7 @@ export const GoalRevisionForm = ({
   const hydrated = useHydrated();
   const formId = useId();
   const trigger = useRef<HTMLButtonElement>(null);
+  const reloadLink = useRef<HTMLAnchorElement>(null);
   const [edit, setEdit] = useState<GoalEditor | null>(null);
   const [pending, setPending] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<GoalFieldErrors>({});
@@ -44,12 +45,16 @@ export const GoalRevisionForm = ({
   const [conflict, setConflict] = useState(false);
   const [retry, setRetry] = useState<GoalRevisionDraft | null>(null);
   const [notice, setNotice] = useState("");
+  const expired =
+    edit !== null && edit.effectiveFrom !== tomorrow && retry === null;
 
   useEffect(() => {
-    if (notice) {
+    if (conflict) {
+      reloadLink.current?.focus();
+    } else if (notice) {
       trigger.current?.focus();
     }
-  }, [notice]);
+  }, [conflict, notice]);
 
   const toggle = () => {
     if (edit !== null) {
@@ -72,7 +77,7 @@ export const GoalRevisionForm = ({
 
   const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!hydrated || edit === null || pending || conflict) {
+    if (!hydrated || edit === null || pending || conflict || expired) {
       return;
     }
     setError("");
@@ -111,7 +116,7 @@ export const GoalRevisionForm = ({
     setPending(false);
   };
 
-  const locked = pending || conflict || retry !== null;
+  const locked = pending || conflict || expired || retry !== null;
   let saveLabel = "Save tomorrow’s settings";
   if (pending) {
     saveLabel = "Saving…";
@@ -175,12 +180,20 @@ export const GoalRevisionForm = ({
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+            {expired && !conflict && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  This draft was for {edit.effectiveFrom}. Close and reopen goal
+                  settings to edit {tomorrow}.
+                </AlertDescription>
+              </Alert>
+            )}
             {conflict ? (
-              <a className="text-sm underline" href="/">
+              <a ref={reloadLink} className="text-sm underline" href="/">
                 Reload workspace
               </a>
             ) : (
-              <Button type="submit" disabled={pending}>
+              <Button type="submit" disabled={pending || expired}>
                 {saveLabel}
               </Button>
             )}

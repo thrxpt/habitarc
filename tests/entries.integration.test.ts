@@ -367,6 +367,70 @@ test("AC-F07-2: concurrent edits conflict, same-day edits replace tomorrow's pla
   });
 });
 
+test("F07 reads the newly effective revision when a goal save commits across midnight", async () => {
+  let instant = new Date("2026-11-17T23:59:59+07:00");
+  const now = () => instant;
+  const writer = createHabitService(database, { now });
+  const reader = createEntryService(otherDatabase, { now });
+  const template = await createStudyTemplate();
+  const { habit } = await writer.createHabit(participantA, {
+    templateId: template.id,
+    dailyTarget: 60,
+    weekdays: [2, 3],
+  });
+  const blocker = await pool.connect();
+  let history: ReturnType<typeof reader.getHistory> | undefined;
+  let save: ReturnType<typeof writer.reviseGoal> | undefined;
+  try {
+    const { rows: backends } = await blocker.query<{ pid: number }>(
+      "SELECT pg_backend_pid() AS pid"
+    );
+    await blocker.query("BEGIN");
+    // The receipt insert waits after the guarded Goal Revision write.
+    await blocker.query("LOCK TABLE mutation_receipt IN SHARE MODE");
+    save = writer.reviseGoal(participantA, {
+      habitId: habit.id,
+      expectedVersion: habit.version,
+      effectiveFrom: "2026-11-18",
+      dailyTarget: 30,
+      weekdays: [3],
+      requestKey: randomUUID(),
+    });
+    void save.catch(() => {});
+    await expect
+      .poll(async () => {
+        const { rows } = await pool.query<{ waiting: boolean }>(
+          "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND $1 = ANY(pg_blocking_pids(pid))) AS waiting",
+          [backends[0]?.pid]
+        );
+        return rows[0]?.waiting;
+      })
+      .toBe(true);
+    instant = new Date("2026-11-18T00:00:00+07:00");
+    history = reader.getHistory(participantA, { habitId: habit.id });
+    void history.catch(() => {});
+    await expect
+      .poll(async () => {
+        const { rows } = await pool.query<{ waiting: boolean }>(
+          "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query ILIKE '%for share%') AS waiting"
+        );
+        return rows[0]?.waiting;
+      })
+      .toBe(true);
+  } finally {
+    await blocker.query("ROLLBACK");
+    blocker.release();
+  }
+  await expect(save).resolves.toEqual({ kind: "saved" });
+  await expect(history).resolves.toMatchObject({
+    accountDate: "2026-11-18",
+    days: [
+      { date: "2026-11-18", progress: { dailyTarget: 30, scheduled: true } },
+      { date: "2026-11-17", progress: { dailyTarget: 60, scheduled: true } },
+    ],
+  });
+});
+
 test("F07 validates goal bounds and restricts changes to the owner of a Habit tracking tomorrow", async () => {
   const service = createHabitService(database, {
     now: () => new Date("2026-11-17T12:00:00+07:00"),

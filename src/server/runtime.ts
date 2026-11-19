@@ -11,7 +11,7 @@ import { createEntryService, readTodayWorkspace } from "./entries";
 import { createHabitService, readHabitWorkspace } from "./habits";
 import { isLoopbackHost } from "./loopback";
 import { createTemplateService } from "./templates";
-import { readAccountCalendar } from "./tracking";
+import { readTracking } from "./tracking";
 
 // Node loads private local configuration without publishing it through Vite's client env.
 if (existsSync(".env.local")) {
@@ -97,20 +97,16 @@ export const getEntryService = () => {
 };
 
 export const readTrackingWorkspace = async (actor: Identity) =>
-  await getDatabase().transaction(
-    async (transaction) => {
-      const calendar = await readAccountCalendar(transaction, actor);
-      const habitWorkspace = await readHabitWorkspace(
-        transaction,
-        actor.id,
-        calendar
-      );
-      const todayWorkspace = await readTodayWorkspace(
-        transaction,
-        actor.id,
-        calendar
-      );
-      return { habitWorkspace, todayWorkspace };
-    },
-    { isolationLevel: "repeatable read", accessMode: "read only" }
-  );
+  await readTracking(getDatabase(), actor, async (transaction, calendar) => {
+    const habitWorkspace = await readHabitWorkspace(
+      transaction,
+      actor.id,
+      calendar
+    );
+    const todayWorkspace = await readTodayWorkspace(
+      transaction,
+      actor.id,
+      calendar
+    );
+    return { habitWorkspace, todayWorkspace };
+  });

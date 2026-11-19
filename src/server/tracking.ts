@@ -45,16 +45,40 @@ export const readAccountCalendar = async (
 
 export const lockParticipant = async (
   transaction: Transaction,
-  actor: Identity
+  actor: Identity,
+  mode: "share" | "update" = "update"
 ) => {
   const [participant] = await transaction
     .select({ id: user.id })
     .from(user)
     .where(and(eq(user.id, actor.id), eq(user.role, "participant")))
-    .for("update");
+    .for(mode);
   if (participant === undefined) {
     throw new AuthError(403, "Forbidden");
   }
+};
+
+export const readTracking = async <Result>(
+  database: Database,
+  actor: Identity,
+  read: (
+    transaction: Transaction,
+    calendar: AccountCalendar
+  ) => Promise<Result>,
+  now?: () => Date
+): Promise<Result> => {
+  if (actor.role !== "participant") {
+    throw new AuthError(403, "Forbidden");
+  }
+  return await database.transaction(
+    async (transaction) => {
+      // Wait for any save admitted before midnight before sampling the date.
+      await lockParticipant(transaction, actor, "share");
+      const calendar = await readAccountCalendar(transaction, actor, now);
+      return await read(transaction, calendar);
+    },
+    { isolationLevel: "read committed" }
+  );
 };
 
 export const lockOwnedHabit = async (

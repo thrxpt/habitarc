@@ -495,7 +495,7 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
     await expect(form).toContainText("2026-11-18");
     await form.getByRole("checkbox", { name: "Monday" }).uncheck();
     await form.getByRole("checkbox", { name: "Tuesday" }).uncheck();
-    await form.getByLabel("Daily Target").fill("30");
+    await form.getByLabel("Daily Target").fill("35");
     await save.click();
     await expect(
       form.getByText("Choose at least one weekday, with no duplicates.")
@@ -511,21 +511,55 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
         .getByLabel("Daily Target")
         .fill("45");
 
-      await save.click();
+      let releaseRefresh: (() => void) | undefined;
+      let refreshHeld = false;
+      // eslint-disable-next-line promise/avoid-new -- The test controls when the refresh may continue.
+      const refreshReleased = new Promise<void>((resolve) => {
+        releaseRefresh = resolve;
+      });
+      let holdNextRead = false;
+      await page.route("**/_serverFn/*", async (route) => {
+        if (route.request().method() === "POST") {
+          holdNextRead = true;
+        } else if (holdNextRead) {
+          holdNextRead = false;
+          refreshHeld = true;
+          await refreshReleased;
+        }
+        await route.continue();
+      });
+      try {
+        await save.click();
+        await expect.poll(() => refreshHeld).toBe(true);
+        await expect(
+          habits.getByRole("button", { name: "Close goal settings" })
+        ).toBeDisabled();
+        await expect(edit).toHaveCount(0);
+      } finally {
+        releaseRefresh?.();
+        await page.unrouteAll({ behavior: "wait" });
+      }
       await expect(habits.getByRole("status")).toContainText(
         "Goal settings saved for 2026-11-18."
       );
+      await edit.click();
+      await expect(form.getByLabel("Daily Target")).toHaveValue("35");
+      await form.getByLabel("Daily Target").fill("30");
+      await save.click();
       await expect(habits).toContainText("Pending settings from 2026-11-18");
       await expect(habits).toContainText("30 minutes · Wednesday");
       await expect(today).toContainText("0 / 60 minutes");
 
       await stale
         .getByRole("button", { name: "Save tomorrow’s settings" })
-        .click();
+        .press("Enter");
       await expect(stale.getByRole("alert")).toContainText(
         "Your Habit settings changed."
       );
-      await stale.getByRole("link", { name: "Reload workspace" }).click();
+      await expect(
+        stale.getByRole("link", { name: "Reload workspace" })
+      ).toBeFocused();
+      await stale.keyboard.press("Enter");
       await expect(
         stale.getByRole("region", { name: "Your Habits" })
       ).toContainText("30 minutes · Wednesday");
@@ -545,8 +579,25 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
     await expect(yesterday).toContainText("40 / 60 minutes");
     await expect(yesterday).toContainText("Missed");
 
+    await page.getByRole("link", { name: "Back to workspace" }).click();
+    await edit.click();
+    await expect(form).toContainText("2026-11-18");
+    await form.getByLabel("Daily Target").fill("35");
     await setClock("2026-11-18T00:00:00+07:00");
-    await page.reload();
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(today).toContainText("0 / 30 minutes");
+    await expect(habits.getByText(/Pending settings/u)).toHaveCount(0);
+    await expect(form.getByLabel("Daily Target")).toHaveValue("35");
+    await expect(form.getByRole("alert")).toContainText("This draft was for");
+    await expect(save).toBeDisabled();
+    await habits.getByRole("button", { name: "Close goal settings" }).click();
+    await edit.click();
+    await expect(form).toContainText("2026-11-19");
+    await expect(form.getByLabel("Daily Target")).toHaveValue("30");
+
+    await habits
+      .getByRole("link", { name: `View history for ${templateName}` })
+      .click();
     await expect(yesterday).toContainText("40 / 60 minutes");
     await expect(
       page.getByRole("region", { name: "2026-11-18", exact: true })

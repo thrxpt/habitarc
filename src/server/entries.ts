@@ -46,7 +46,7 @@ import { readMutationReceipt, saveMutationReceipt } from "./mutation-receipts";
 import type { MutationRequest } from "./mutation-receipts";
 import { activityEntry, activityTemplate, goalRevision, habit } from "./schema";
 import { toActivityTemplate } from "./templates";
-import { lockOwnedHabit, readAccountCalendar } from "./tracking";
+import { lockOwnedHabit, readAccountCalendar, readTracking } from "./tracking";
 import type { AccountCalendar, TrackingServiceOptions } from "./tracking";
 
 const CREATE_ENTRY_OPERATION = "createEntry";
@@ -336,115 +336,125 @@ export const createEntryService = (
   database: Database,
   options: TrackingServiceOptions = {}
 ) => {
-  const getToday = async (actor: Identity): Promise<TodayWorkspace> => {
-    const calendar = await readAccountCalendar(database, actor, options.now);
-    return await readTodayWorkspace(database, actor.id, calendar);
-  };
+  const getToday = async (actor: Identity): Promise<TodayWorkspace> =>
+    await readTracking(
+      database,
+      actor,
+      async (transaction, calendar) =>
+        await readTodayWorkspace(transaction, actor.id, calendar),
+      options.now
+    );
 
   const getHistory = async (
     actor: Identity,
     input: unknown
-  ): Promise<HabitHistory> => {
-    const calendar = await readAccountCalendar(database, actor, options.now);
-    const query = validateHistoryQuery(input);
-    if (!query.ok) {
-      throw new EntryError(400, query.message);
-    }
-    const { habitId, before } = query;
-    const [row] = await database
-      .select()
-      .from(habit)
-      .innerJoin(activityTemplate, eq(activityTemplate.id, habit.templateId))
-      .where(and(eq(habit.id, habitId), eq(habit.participantId, actor.id)));
-    if (row === undefined) {
-      throw new EntryError(404, "Habit not found.");
-    }
-
-    const bounds = getWritableDateBounds({ ...calendar, ...row.habit });
-    const writableMinDate = bounds.writable ? bounds.minDate : null;
-    const writableMaxDate = bounds.writable ? bounds.maxDate : null;
-    const recordedDates = database
-      .selectDistinct({ date: activityEntry.activityDate })
-      .from(activityEntry)
-      .where(
-        and(
-          eq(activityEntry.habitId, habitId),
-          lte(activityEntry.activityDate, calendar.accountDate),
-          before === undefined
-            ? undefined
-            : lt(activityEntry.activityDate, before)
-        )
-      )
-      .orderBy(desc(activityEntry.activityDate))
-      .limit(HISTORY_PAGE_DATES + 1);
-    const [entryRows, revisionRows] = await Promise.all([
-      database
-        .select()
-        .from(activityEntry)
-        .where(
-          and(
-            eq(activityEntry.habitId, habitId),
-            inArray(activityEntry.activityDate, recordedDates)
+  ): Promise<HabitHistory> =>
+    await readTracking(
+      database,
+      actor,
+      async (transaction, calendar) => {
+        const query = validateHistoryQuery(input);
+        if (!query.ok) {
+          throw new EntryError(400, query.message);
+        }
+        const { habitId, before } = query;
+        const [row] = await transaction
+          .select()
+          .from(habit)
+          .innerJoin(
+            activityTemplate,
+            eq(activityTemplate.id, habit.templateId)
           )
-        )
-        .orderBy(
-          desc(activityEntry.activityDate),
-          asc(activityEntry.createdAt),
-          asc(activityEntry.id)
-        ),
-      database
-        .select()
-        .from(goalRevision)
-        .where(eq(goalRevision.habitId, habitId)),
-    ]);
+          .where(and(eq(habit.id, habitId), eq(habit.participantId, actor.id)));
+        if (row === undefined) {
+          throw new EntryError(404, "Habit not found.");
+        }
 
-    const entriesByDate = new Map<string, ActivityEntry[]>();
-    for (const entry of entryRows) {
-      const entries = entriesByDate.get(entry.activityDate) ?? [];
-      entries.push(toActivityEntry(entry));
-      entriesByDate.set(entry.activityDate, entries);
-    }
-    const dates = [...entriesByDate.keys()];
-    const nextBefore =
-      dates.length > HISTORY_PAGE_DATES
-        ? (dates[HISTORY_PAGE_DATES - 1] ?? null)
-        : null;
-    const displayedDates = new Set<string>();
-    if (
-      before === undefined &&
-      writableMinDate !== null &&
-      writableMaxDate !== null
-    ) {
-      for (
-        let date = writableMaxDate;
-        date >= writableMinDate;
-        date = addCalendarDays(date, -1)
-      ) {
-        displayedDates.add(date);
-      }
-    }
-    for (const date of dates.slice(0, HISTORY_PAGE_DATES)) {
-      displayedDates.add(date);
-    }
-    const revisions = revisionRows.map(toGoalSnapshot);
-    return {
-      ...calendar,
-      habitId,
-      template: toActivityTemplate(row.activity_template),
-      writableMinDate,
-      writableMaxDate,
-      nextBefore,
-      days: [...displayedDates].map((date) => {
-        const entries = entriesByDate.get(date) ?? [];
-        const goal = resolveGoalForDate(revisions, date);
+        const bounds = getWritableDateBounds({ ...calendar, ...row.habit });
+        const writableMinDate = bounds.writable ? bounds.minDate : null;
+        const writableMaxDate = bounds.writable ? bounds.maxDate : null;
+        const recordedDates = transaction
+          .selectDistinct({ date: activityEntry.activityDate })
+          .from(activityEntry)
+          .where(
+            and(
+              eq(activityEntry.habitId, habitId),
+              lte(activityEntry.activityDate, calendar.accountDate),
+              before === undefined
+                ? undefined
+                : lt(activityEntry.activityDate, before)
+            )
+          )
+          .orderBy(desc(activityEntry.activityDate))
+          .limit(HISTORY_PAGE_DATES + 1);
+        const entryRows = await transaction
+          .select()
+          .from(activityEntry)
+          .where(
+            and(
+              eq(activityEntry.habitId, habitId),
+              inArray(activityEntry.activityDate, recordedDates)
+            )
+          )
+          .orderBy(
+            desc(activityEntry.activityDate),
+            asc(activityEntry.createdAt),
+            asc(activityEntry.id)
+          );
+        const revisionRows = await transaction
+          .select()
+          .from(goalRevision)
+          .where(eq(goalRevision.habitId, habitId));
+
+        const entriesByDate = new Map<string, ActivityEntry[]>();
+        for (const entry of entryRows) {
+          const entries = entriesByDate.get(entry.activityDate) ?? [];
+          entries.push(toActivityEntry(entry));
+          entriesByDate.set(entry.activityDate, entries);
+        }
+        const dates = [...entriesByDate.keys()];
+        const nextBefore =
+          dates.length > HISTORY_PAGE_DATES
+            ? (dates[HISTORY_PAGE_DATES - 1] ?? null)
+            : null;
+        const displayedDates = new Set<string>();
+        if (
+          before === undefined &&
+          writableMinDate !== null &&
+          writableMaxDate !== null
+        ) {
+          for (
+            let date = writableMaxDate;
+            date >= writableMinDate;
+            date = addCalendarDays(date, -1)
+          ) {
+            displayedDates.add(date);
+          }
+        }
+        for (const date of dates.slice(0, HISTORY_PAGE_DATES)) {
+          displayedDates.add(date);
+        }
+        const revisions = revisionRows.map(toGoalSnapshot);
         return {
-          date,
-          entries,
-          progress: progressForEntries(date, entries, goal, row.habit),
+          ...calendar,
+          habitId,
+          template: toActivityTemplate(row.activity_template),
+          writableMinDate,
+          writableMaxDate,
+          nextBefore,
+          days: [...displayedDates].map((date) => {
+            const entries = entriesByDate.get(date) ?? [];
+            const goal = resolveGoalForDate(revisions, date);
+            return {
+              date,
+              entries,
+              progress: progressForEntries(date, entries, goal, row.habit),
+            };
+          }),
         };
-      }),
-    };
-  };
+      },
+      options.now
+    );
 
   const listEntries = async (
     actor: Identity,
