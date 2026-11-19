@@ -9,9 +9,9 @@ import {
   createTemplate,
   createHabit,
   getIdentity,
-  getToday,
+  getTrackingWorkspace,
   listTemplates,
-  listHabits,
+  reviseGoal,
 } from "../server/functions";
 import type {
   ActivityTemplate,
@@ -103,6 +103,13 @@ const Home = () => {
         }
         return result;
       }}
+      onReviseGoal={async (draft) => {
+        const result = await reviseGoal({ data: draft });
+        if (result.kind === "saved" || result.kind === "replayed") {
+          await router.invalidate();
+        }
+        return result;
+      }}
       identity={identity}
       templates={templates}
       hasMoreTemplates={nextCursor !== null}
@@ -141,10 +148,7 @@ export const Route = createFileRoute("/")({
         todayWorkspace: null,
       };
     }
-    const [habitWorkspace, todayWorkspace] = await Promise.all([
-      listHabits(),
-      getToday(),
-    ]);
+    const { habitWorkspace, todayWorkspace } = await getTrackingWorkspace();
     return { identity, templatePage, habitWorkspace, todayWorkspace };
   },
   component: Home,

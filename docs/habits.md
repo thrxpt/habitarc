@@ -12,7 +12,15 @@ Habit creation locks the selected Activity Template row before checking eligibil
 
 Migration `0003_habits.sql` uses PostgreSQL's `btree_gist` extension and an exclusion constraint on owner, template, and date range. This prevents overlapping periods even for direct database writes. Run migrations with a role permitted to install the extension; PostgreSQL 17 provides it. The migration is additive and retains existing account/template data. Roll back application traffic to a compatible release if necessary; do not drop Habit tables to roll back an application release.
 
-A template UPDATE/archive takes the same row lock as creation. A database trigger freezes unit and entry bounds once any Habit references the template, including an ended Habit. Description edits and archive remain possible. If an edit/archive wins the lock, creation rechecks the committed definition; if creation wins, a waiting measurement edit is rejected. New manager mutation endpoints and Habit archive/goal-edit controls belong to later work.
+A template UPDATE/archive takes the same row lock as creation. A database trigger freezes unit and entry bounds once any Habit references the template, including an ended Habit. Description edits and archive remain possible. If an edit/archive wins the lock, creation rechecks the committed definition; if creation wins, a waiting measurement edit is rejected. New manager mutation endpoints and Habit archive controls belong to later work.
+
+## Goal revisions
+
+Participants can open **Edit goal settings** under **Your Habits**. The workspace displays the current Daily Target and Schedule and any pending settings with their effective date. Tomorrow starts at midnight in the Account Timezone.
+
+`reviseGoal` checks ownership and the Habit version under the Participant and Habit locks. It locks any existing pending Goal Revision before checking the effective date in the write. Saving a second edit for the same account date replaces the pending revision. A stale version or a form left open across midnight requires reloading the workspace before saving again. Retries with the same request key confirm the original save without changing the latest settings.
+
+Migration `0005_habit-goal-version.sql` initializes existing Habits at version 1 and preserves their Goal Revisions. Each save updates the pending revision, Habit version, and mutation receipt in one transaction. The workspace reads Today and Your Habits against the same account date and database snapshot. Today and History resolve the applicable Goal Revision for each date. An eligible Activity Entry correction updates actual totals under that date’s existing target and schedule.
 
 ## Verification boundaries
 

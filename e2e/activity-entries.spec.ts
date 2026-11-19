@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { Pool } from "pg";
 
-import { addCalendarDays } from "../src/entries";
+import { addCalendarDays } from "../src/calendar";
 import { e2eDatabaseURL, e2ePassword } from "./accounts";
 
 test.beforeEach(async () => {
@@ -450,6 +450,113 @@ test("An open correction becomes read-only after account midnight", async ({
     await signOut(page);
   } finally {
     await pool.query("UPDATE e2e_clock.override SET instant = NULL");
+    await pool.end();
+  }
+});
+
+test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps the original target", async ({
+  page,
+}) => {
+  const templateName = "Goal Revisions E2E";
+  await page.setViewportSize({ width: 360, height: 800 });
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  const setClock = async (instant: string | null) =>
+    await pool.query("UPDATE e2e_clock.override SET instant = $1", [instant]);
+  try {
+    await setClock("2026-11-16T12:00:00+07:00");
+    await page.goto("/");
+    await publishTemplate(page, templateName);
+    await signIn(page, "b@example.test");
+
+    await page.getByRole("button", { name: templateName }).click();
+    const start = page.getByRole("form", {
+      name: `Start ${templateName} Habit`,
+    });
+    await start.getByLabel("Daily Target").fill("60");
+    await start.getByRole("checkbox", { name: "Monday" }).check();
+    await start.getByRole("checkbox", { name: "Tuesday" }).check();
+    await start.getByRole("button", { name: "Start Habit" }).click();
+    const today = page.getByRole("region", { name: "Today", exact: true });
+    await expect(today).toContainText("0 / 60 minutes");
+    await today.getByRole("button", { name: "Add entry" }).click();
+    await today.getByLabel("Amount (minutes)").fill("40");
+    await today.getByRole("button", { name: "Save entry" }).click();
+    await expect(today).toContainText("40 / 60 minutes");
+
+    await setClock("2026-11-17T23:59:59+07:00");
+    await page.reload();
+    const habits = page.getByRole("region", { name: "Your Habits" });
+    const edit = habits.getByRole("button", { name: "Edit goal settings" });
+    await edit.click();
+    const form = habits.getByRole("form", {
+      name: `Edit goal settings for ${templateName}`,
+    });
+    const save = form.getByRole("button", { name: "Save tomorrow’s settings" });
+    await expect(form).toContainText("2026-11-18");
+    await form.getByRole("checkbox", { name: "Monday" }).uncheck();
+    await form.getByRole("checkbox", { name: "Tuesday" }).uncheck();
+    await form.getByLabel("Daily Target").fill("30");
+    await save.click();
+    await expect(
+      form.getByText("Choose at least one weekday, with no duplicates.")
+    ).toBeVisible();
+    await form.getByRole("checkbox", { name: "Wednesday" }).check();
+
+    const stale = await page.context().newPage();
+    try {
+      await stale.goto("/");
+      await stale.getByRole("button", { name: "Edit goal settings" }).click();
+      await stale
+        .getByRole("form", { name: `Edit goal settings for ${templateName}` })
+        .getByLabel("Daily Target")
+        .fill("45");
+
+      await save.click();
+      await expect(habits.getByRole("status")).toContainText(
+        "Goal settings saved for 2026-11-18."
+      );
+      await expect(habits).toContainText("Pending settings from 2026-11-18");
+      await expect(habits).toContainText("30 minutes · Wednesday");
+      await expect(today).toContainText("0 / 60 minutes");
+
+      await stale
+        .getByRole("button", { name: "Save tomorrow’s settings" })
+        .click();
+      await expect(stale.getByRole("alert")).toContainText(
+        "Your Habit settings changed."
+      );
+      await stale.getByRole("link", { name: "Reload workspace" }).click();
+      await expect(
+        stale.getByRole("region", { name: "Your Habits" })
+      ).toContainText("30 minutes · Wednesday");
+    } finally {
+      await stale.close();
+    }
+
+    await page.reload();
+    await expect(habits).toContainText("30 minutes · Wednesday");
+    await habits
+      .getByRole("link", { name: `View history for ${templateName}` })
+      .click();
+    const yesterday = page.getByRole("region", {
+      name: "2026-11-16",
+      exact: true,
+    });
+    await expect(yesterday).toContainText("40 / 60 minutes");
+    await expect(yesterday).toContainText("Missed");
+
+    await setClock("2026-11-18T00:00:00+07:00");
+    await page.reload();
+    await expect(yesterday).toContainText("40 / 60 minutes");
+    await expect(
+      page.getByRole("region", { name: "2026-11-18", exact: true })
+    ).toContainText("0 / 30 minutes");
+    await page.getByRole("link", { name: "Back to workspace" }).click();
+    await expect(today).toContainText("0 / 30 minutes");
+    await expect(habits).toContainText("Wednesday");
+    await expect(habits.getByText(/Pending settings/u)).toHaveCount(0);
+  } finally {
+    await setClock(null);
     await pool.end();
   }
 });
