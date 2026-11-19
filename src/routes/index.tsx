@@ -25,13 +25,8 @@ const EMPTY_TEMPLATE_PAGE: ActivityTemplatePage = {
 };
 
 const Home = () => {
-  const {
-    identity,
-    templatePage,
-    habitWorkspace,
-    todayWorkspace,
-    refreshInMs,
-  } = Route.useLoaderData();
+  const { identity, templatePage, habitWorkspace, todayWorkspace, rolloverAt } =
+    Route.useLoaderData();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [extraState, setExtraState] = useState<{
@@ -56,15 +51,16 @@ const Home = () => {
       void router.invalidate();
     };
     let rolloverTimer: number | undefined;
-    if (refreshInMs !== null) {
+    if (rolloverAt !== null) {
       window.addEventListener("focus", refreshWorkspace);
-      rolloverTimer = window.setTimeout(refreshWorkspace, refreshInMs);
+      const remaining = Math.max(0, rolloverAt - window.performance.now());
+      rolloverTimer = window.setTimeout(refreshWorkspace, remaining);
     }
     return () => {
       window.removeEventListener("focus", refreshWorkspace);
       window.clearTimeout(rolloverTimer);
     };
-  }, [refreshInMs, router]);
+  }, [rolloverAt, router]);
 
   const activeExtra = extraState?.forPage === templatePage ? extraState : null;
   const templates =
@@ -152,6 +148,9 @@ export const Route = createFileRoute("/")({
   loader: {
     staleReloadMode: "blocking",
     handler: async () => {
+      // Server-rendered data starts from the browser's navigation time origin.
+      const startedAt =
+        typeof window === "undefined" ? 0 : window.performance.now();
       const identity = await getIdentity();
       if (!identity) {
         return {
@@ -159,7 +158,7 @@ export const Route = createFileRoute("/")({
           templatePage: EMPTY_TEMPLATE_PAGE,
           habitWorkspace: null,
           todayWorkspace: null,
-          refreshInMs: null,
+          rolloverAt: null,
         };
       }
       const templatePage = await listTemplates();
@@ -169,11 +168,18 @@ export const Route = createFileRoute("/")({
           templatePage,
           habitWorkspace: null,
           todayWorkspace: null,
-          refreshInMs: null,
+          rolloverAt: null,
         };
       }
-      const trackingWorkspace = await getTrackingWorkspace();
-      return { identity, templatePage, ...trackingWorkspace };
+      const { habitWorkspace, todayWorkspace, refreshInMs } =
+        await getTrackingWorkspace();
+      return {
+        identity,
+        templatePage,
+        habitWorkspace,
+        todayWorkspace,
+        rolloverAt: startedAt + refreshInMs,
+      };
     },
   },
   component: Home,

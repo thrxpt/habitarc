@@ -613,6 +613,33 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
     await expect(today).toContainText("0 / 30 minutes");
     await expect(habits).toContainText("Wednesday");
     await expect(habits.getByText(/Pending settings/u)).toHaveCount(0);
+
+    await setClock("2026-11-18T23:59:30+07:00");
+    let releaseCalendar: (() => void) | undefined;
+    let calendarHeld = false;
+    // eslint-disable-next-line promise/avoid-new -- Hold a pre-midnight response until after the clock advances.
+    const calendarReleased = new Promise<void>((resolve) => {
+      releaseCalendar = resolve;
+    });
+    await page.route("**/_serverFn/*", async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+      if (!calendarHeld && body.includes('"refreshInMs"')) {
+        calendarHeld = true;
+        await calendarReleased;
+      }
+      await route.fulfill({ response });
+    });
+    try {
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      await expect.poll(() => calendarHeld).toBe(true);
+      await setClock("2026-11-19T00:00:01+07:00");
+      await page.clock.fastForward(31_000);
+    } finally {
+      releaseCalendar?.();
+      await page.unrouteAll({ behavior: "wait" });
+    }
+    await expect(today).toContainText("Account date: 2026-11-19");
   } finally {
     await setClock(null);
     await pool.end();
