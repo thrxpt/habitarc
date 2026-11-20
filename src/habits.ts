@@ -194,10 +194,12 @@ const parseHabitMutationTarget = (
   const habitId = "habitId" in record ? record.habitId : undefined;
   const expectedVersion =
     "expectedVersion" in record ? record.expectedVersion : undefined;
-  const date =
-    dateField in record
-      ? Object.getOwnPropertyDescriptor(record, dateField)?.value
-      : undefined;
+  let date: unknown;
+  if (dateField === "effectiveFrom") {
+    date = "effectiveFrom" in record ? record.effectiveFrom : undefined;
+  } else {
+    date = "archivedFrom" in record ? record.archivedFrom : undefined;
+  }
   const requestKey = parseRequestKey(
     "requestKey" in record ? record.requestKey : undefined
   );
