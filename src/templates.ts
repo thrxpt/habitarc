@@ -9,6 +9,7 @@ export const MEASUREMENT_CEILINGS: Record<MeasurementUnit, number> = {
 
 export const TEMPLATE_NAME_MAX_LENGTH = 120;
 export const TEMPLATE_DESCRIPTION_MAX_LENGTH = 500;
+const TEMPLATE_ID_MAX_LENGTH = 200;
 export const DEFAULT_TEMPLATE_PAGE_SIZE = 50;
 export const MAX_TEMPLATE_PAGE_SIZE = 200;
 
@@ -129,7 +130,7 @@ export const parseTemplateReference = (
   if (
     typeof templateId !== "string" ||
     templateId.length === 0 ||
-    templateId.length > 200 ||
+    templateId.length > TEMPLATE_ID_MAX_LENGTH ||
     !isWholePositiveNumber(templateVersion)
   ) {
     return undefined;

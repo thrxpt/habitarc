@@ -123,7 +123,11 @@ export const TemplateForm = ({
     }
 
     if (!onSave) {
-      setSubmitError("Template creation is unavailable right now.");
+      setSubmitError(
+        editing
+          ? "Template editing is unavailable right now."
+          : "Template creation is unavailable right now."
+      );
       return;
     }
 

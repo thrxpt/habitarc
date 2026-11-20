@@ -107,7 +107,7 @@ const Home = () => {
   const refreshAfterMaintenance = async (
     response: TemplateMaintenanceResponse
   ) => {
-    if (response.kind === "saved") {
+    if (response.kind === "saved" || response.kind === "conflict") {
       await router.invalidate({ sync: true });
     }
     return response;

@@ -275,7 +275,15 @@ test("template maintenance persists and archiving preserves existing Habit activ
       "Saved 25 minutes."
     );
 
-    await page.reload();
+    await row
+      .getByRole("button", { name: `Edit ${name}`, exact: true })
+      .click();
+    await edit.getByLabel("Maximum", { exact: true }).fill("31");
+    await edit.getByRole("button", { name: "Save changes" }).click();
+    await expect(edit.getByRole("alert")).toContainText(
+      "This Activity Template is in use."
+    );
+    await edit.getByRole("button", { name: "Cancel" }).click();
     await row
       .getByRole("button", { name: `Edit ${name}`, exact: true })
       .click();
