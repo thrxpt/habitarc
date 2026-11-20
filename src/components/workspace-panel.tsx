@@ -11,10 +11,14 @@ import type {
   HabitWorkspace,
 } from "../habits";
 import type { Identity } from "../identity";
-import type { ActivityTemplate, ActivityTemplateDraft } from "../templates";
+import type {
+  ActivityTemplate,
+  ActivityTemplateDraft,
+  TemplateMaintenanceActions,
+} from "../templates";
 import { HabitList } from "./habit-list";
 import { PageHeading } from "./page-heading";
-import { TemplateCreateForm } from "./template-create-form";
+import { TemplateForm } from "./template-form";
 import { TemplateLibrary } from "./template-library";
 import { TodayPanel } from "./today-panel";
 
@@ -33,6 +37,7 @@ export const WorkspacePanel = ({
   loadMoreTemplatesError = "",
   onCreateTemplate,
   onLoadMoreTemplates,
+  templateMaintenance,
 }: {
   todayWorkspace?: TodayWorkspace;
   onRecordEntry?: (draft: ActivityEntryDraft) => Promise<RecordEntryResponse>;
@@ -48,6 +53,7 @@ export const WorkspacePanel = ({
     draft: ActivityTemplateDraft
   ) => Promise<ActivityTemplate>;
   onLoadMoreTemplates?: () => Promise<void> | void;
+  templateMaintenance?: TemplateMaintenanceActions;
 }) => (
   <>
     <PageHeading>
@@ -97,7 +103,30 @@ export const WorkspacePanel = ({
       </p>
     </section>
     {identity.role === "program-manager" && (
-      <TemplateCreateForm onCreateTemplate={onCreateTemplate} />
+      <section
+        className="border-primary mt-12 max-w-2xl border-t-3 pt-7"
+        aria-labelledby="create-template-heading"
+      >
+        <h2
+          id="create-template-heading"
+          className="mb-3 text-[23px] leading-[1.3] font-[650]"
+        >
+          Create Activity Template
+        </h2>
+        <p className="text-muted-foreground mb-6 max-w-prose leading-[1.65]">
+          Define a shared activity, its Measurement Unit, and valid whole-number
+          entry bounds.
+        </p>
+        <TemplateForm
+          onSave={
+            onCreateTemplate &&
+            (async (draft) => {
+              const template = await onCreateTemplate(draft);
+              return { kind: "saved", template };
+            })
+          }
+        />
+      </section>
     )}
     {identity.role === "participant" && todayWorkspace && (
       <TodayPanel workspace={todayWorkspace} onRecordEntry={onRecordEntry} />
@@ -116,6 +145,7 @@ export const WorkspacePanel = ({
       loadingMore={loadingMoreTemplates}
       loadMoreError={loadMoreTemplatesError}
       onLoadMore={onLoadMoreTemplates}
+      templateMaintenance={templateMaintenance}
     />
   </>
 );

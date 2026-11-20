@@ -1,5 +1,5 @@
 import { cn } from "cn";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Alert, AlertDescription } from "#components/ui/alert.tsx";
 import { Button } from "#components/ui/button.tsx";
@@ -11,12 +11,18 @@ import type {
 } from "../habits";
 import type { Role } from "../identity";
 import { formatTemplateRange } from "../templates";
-import type { ActivityTemplate } from "../templates";
+import type {
+  ActivityTemplate,
+  TemplateMaintenanceActions,
+  TemplateReference,
+} from "../templates";
 import { HabitCreateForm } from "./habit-create-form";
+import { TemplateMaintenance } from "./template-maintenance";
 
 interface TemplateLibraryProps {
   habitWorkspace?: HabitWorkspace;
   onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
+  templateMaintenance?: TemplateMaintenanceActions;
   role: Role;
   templates: ActivityTemplate[];
   hasMore?: boolean;
@@ -51,9 +57,69 @@ const TemplateSummary = ({
   </>
 );
 
+const useTemplateSelection = (
+  templates: ActivityTemplate[],
+  onCreateHabit: TemplateLibraryProps["onCreateHabit"]
+) => {
+  const [selection, setSelection] = useState<TemplateReference | null>(null);
+  const [serverConflict, setServerConflict] = useState("");
+  const conflictNotice = useRef<HTMLDivElement>(null);
+  const selectedTemplate = templates.find(
+    (template) =>
+      template.id === selection?.templateId &&
+      template.version === selection.templateVersion
+  );
+  const selectionChanged = selection !== null && selectedTemplate === undefined;
+  const conflict =
+    serverConflict ||
+    (selectionChanged
+      ? "This Activity Template changed or is no longer available. Choose an active template again."
+      : "");
+
+  useEffect(() => {
+    if (conflict.length > 0) {
+      conflictNotice.current?.focus();
+    }
+  }, [conflict]);
+
+  const selectTemplate = (template: ActivityTemplate) => {
+    setServerConflict("");
+    setSelection((current) =>
+      current?.templateId === template.id &&
+      current.templateVersion === template.version
+        ? null
+        : { templateId: template.id, templateVersion: template.version }
+    );
+  };
+
+  const submitHabit =
+    onCreateHabit &&
+    (async (draft: HabitDraft) => {
+      const result = await onCreateHabit(draft);
+      if (result.kind === "conflict") {
+        setSelection((current) =>
+          current?.templateId === draft.templateId &&
+          current.templateVersion === draft.templateVersion
+            ? null
+            : current
+        );
+        setServerConflict(result.message);
+      }
+      return result;
+    });
+  return {
+    selectedTemplate,
+    conflict,
+    conflictNotice,
+    selectTemplate,
+    submitHabit,
+  };
+};
+
 export const TemplateLibrary = ({
   habitWorkspace,
   onCreateHabit,
+  templateMaintenance,
   role,
   templates,
   hasMore = false,
@@ -61,10 +127,24 @@ export const TemplateLibrary = ({
   loadMoreError = "",
   onLoadMore,
 }: TemplateLibraryProps) => {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedTemplate = templates.find(
-    (template) => template.id === selectedId
-  );
+  const {
+    selectedTemplate,
+    conflict,
+    conflictNotice,
+    selectTemplate,
+    submitHabit,
+  } = useTemplateSelection(templates, onCreateHabit);
+  const [maintenanceStatus, setMaintenanceStatus] = useState<{
+    message: string;
+    focus: boolean;
+  } | null>(null);
+  const maintenanceNotice = useRef<HTMLOutputElement>(null);
+
+  useEffect(() => {
+    if (maintenanceStatus?.focus === true) {
+      maintenanceNotice.current?.focus();
+    }
+  }, [maintenanceStatus]);
 
   return (
     <section
@@ -79,6 +159,25 @@ export const TemplateLibrary = ({
           ? "Activity Template library"
           : "Published Activity Templates"}
       </h2>
+      {conflict.length > 0 && (
+        <Alert
+          ref={conflictNotice}
+          tabIndex={-1}
+          variant="destructive"
+          className="mb-4"
+        >
+          <AlertDescription>{conflict}</AlertDescription>
+        </Alert>
+      )}
+      {templateMaintenance && (
+        <output
+          ref={maintenanceNotice}
+          tabIndex={-1}
+          className="mb-4 block text-sm empty:mb-0"
+        >
+          {maintenanceStatus?.message}
+        </output>
+      )}
       {templates.length === 0 ? (
         <p className="text-muted-foreground leading-[1.65]">
           {role === "participant"
@@ -88,7 +187,7 @@ export const TemplateLibrary = ({
       ) : (
         <ul className="divide-y border-y">
           {templates.map((template) => {
-            const isSelected = template.id === selectedId;
+            const isSelected = template.id === selectedTemplate?.id;
             const range = formatTemplateRange(template);
             return (
               <li key={template.id} className="py-4">
@@ -97,9 +196,7 @@ export const TemplateLibrary = ({
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => {
-                      setSelectedId((previous) =>
-                        previous === template.id ? null : template.id
-                      );
+                      selectTemplate(template);
                     }}
                     className={cn(
                       "hover:bg-muted/50 focus-visible:ring-ring/50 w-full rounded-lg border px-4 py-4 text-left transition-colors outline-none focus-visible:ring-3",
@@ -126,6 +223,15 @@ export const TemplateLibrary = ({
                       range={range}
                       asHeading
                     />
+                    {templateMaintenance && (
+                      <TemplateMaintenance
+                        template={template}
+                        actions={templateMaintenance}
+                        onSaved={(message, focus) => {
+                          setMaintenanceStatus({ message, focus });
+                        }}
+                      />
+                    )}
                   </div>
                 )}
               </li>
@@ -163,7 +269,7 @@ export const TemplateLibrary = ({
       )}
       {role === "participant" && selectedTemplate && habitWorkspace && (
         <HabitCreateForm
-          key={selectedTemplate.id}
+          key={`${selectedTemplate.id}:${selectedTemplate.version}`}
           template={selectedTemplate}
           accountDate={habitWorkspace.accountDate}
           timezone={habitWorkspace.timezone}
@@ -173,7 +279,7 @@ export const TemplateLibrary = ({
               (item.archivedFrom === null ||
                 item.archivedFrom > habitWorkspace.accountDate)
           )}
-          onCreateHabit={onCreateHabit}
+          onCreateHabit={submitHabit}
         />
       )}
     </section>

@@ -47,6 +47,7 @@ export const HabitCreateForm = ({
     const validation = validateHabitInput(
       {
         templateId: template.id,
+        templateVersion: template.version,
         dailyTarget: parseWholeNumberInput(dailyTarget),
         weekdays,
       },
@@ -66,11 +67,11 @@ export const HabitCreateForm = ({
     setPending(true);
     try {
       const response = await onCreateHabit(validation.value);
-      if (response.kind === "invalid") {
+      if ("habit" in response) {
+        setResult(response);
+      } else {
         setFieldErrors(response.fieldErrors);
         setError(response.message);
-      } else {
-        setResult(response);
       }
     } catch (error_) {
       setError(

@@ -11,7 +11,11 @@ import type {
   HabitWorkspace,
 } from "../habits";
 import type { Identity } from "../identity";
-import type { ActivityTemplate, ActivityTemplateDraft } from "../templates";
+import type {
+  ActivityTemplate,
+  ActivityTemplateDraft,
+  TemplateMaintenanceActions,
+} from "../templates";
 import { AccountShell } from "./account-shell";
 import { PageHeading } from "./page-heading";
 import { SignInPanel } from "./sign-in-panel";
@@ -33,6 +37,7 @@ interface AccountScreenProps {
     draft: ActivityTemplateDraft
   ) => Promise<ActivityTemplate>;
   onLoadMoreTemplates?: () => Promise<void> | void;
+  templateMaintenance?: TemplateMaintenanceActions;
 }
 
 const EMPTY_TEMPLATES: ActivityTemplate[] = [];
@@ -51,6 +56,7 @@ export const AccountScreen = ({
   onSessionChanged,
   onCreateTemplate,
   onLoadMoreTemplates,
+  templateMaintenance,
 }: AccountScreenProps) => (
   <AccountShell
     key={identity?.id ?? "signed-out"}
@@ -77,6 +83,7 @@ export const AccountScreen = ({
         loadMoreTemplatesError={loadMoreTemplatesError}
         onCreateTemplate={onCreateTemplate}
         onLoadMoreTemplates={onLoadMoreTemplates}
+        templateMaintenance={templateMaintenance}
       />
     ) : (
       <>

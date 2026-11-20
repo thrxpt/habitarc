@@ -4,15 +4,15 @@ Issue [#6](https://github.com/thrxpt/habitarc/issues/6) implements the [F03 cont
 
 ## Persistence and access
 
-`createHabit` and `listHabits` are TanStack server functions. Both require a Participant session. The session supplies the owner; owner, start-date, and timezone fields sent by callers confer no authority. Reads filter by that owner. Program Managers retain template access without private Habit access. Expected field validation failures return a typed `invalid` result with HTTP 400 so field details survive TanStack serialization; the form associates those details with the inputs. Authentication, eligibility, and unexpected failures remain thrown errors.
+`createHabit` and `listHabits` are TanStack server functions. Both require a Participant session. The session supplies the owner; owner, start-date, and timezone fields sent by callers confer no authority. Reads filter by that owner. Program Managers retain template access without private Habit access. Expected field validation failures return a typed `invalid` result with HTTP 400 so field details survive TanStack serialization; the form associates those details with the inputs. Stale or unavailable Activity Templates return a typed `conflict` result with HTTP 409. Authentication and unexpected failures remain thrown errors.
 
-Habit creation locks the selected Activity Template row before checking eligibility and bounds, then locks the Participant row before checking existing tracking periods. PostgreSQL supplies today's date in the stored Account Timezone after both locks are acquired. One transaction inserts the Habit and its initial Goal Revision, effective from the start date. A failed revision leaves no Habit. The weekday Schedule uses seven bits, Monday first, with 127 meaning every day.
+Habit creation locks the selected Activity Template row before checking eligibility, its displayed version, and bounds, then locks the Participant row before checking existing tracking periods. PostgreSQL supplies today's date in the stored Account Timezone after both locks are acquired. One transaction inserts the Habit and its initial Goal Revision, effective from the start date. A failed revision leaves no Habit. The weekday Schedule uses seven bits, Monday first, with 127 meaning every day.
 
 `archived_from` is the exclusive end of a Habit's tracking period. An archive beginning tomorrow still blocks creation today; a period that ended today permits a fresh Habit with a separate history. An existing active Habit is returned with its actual target and Schedule so concurrent creation or a retry can show the saved commitment.
 
 Migration `0003_habits.sql` uses PostgreSQL's `btree_gist` extension and an exclusion constraint on owner, template, and date range. This prevents overlapping periods even for direct database writes. Run migrations with a role permitted to install the extension; PostgreSQL 17 provides it. The migration is additive and retains existing account/template data. Roll back application traffic to a compatible release if necessary; do not drop Habit tables to roll back an application release.
 
-A template UPDATE/archive takes the same row lock as creation. A database trigger freezes unit and entry bounds once any Habit references the template, including an ended Habit. Description edits and archive remain possible. If an edit/archive wins the lock, creation rechecks the committed definition; if creation wins, a waiting measurement edit is rejected. New manager mutation endpoints and Habit archive controls belong to later work.
+A template UPDATE/archive takes the same row lock as creation. A database trigger freezes unit and entry bounds once any Habit references the template, including an ended Habit. Description edits and archive remain possible. If an edit or archive wins the lock, a stale creation request is rejected. If creation wins, a waiting measurement edit is rejected. The [F08 contract](sprints/sprint-2/f08-template-and-habit-lifecycle.md#activity-template-maintenance) describes the manager controls.
 
 ## Goal revisions
 
@@ -38,7 +38,7 @@ TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/habitarc_auth_test vp te
 | AC-F03-4 | Explicitly blocked edit/archive before creation and blocked measurement edit after creation; used-template freeze with descriptive edits/archive allowed |
 | Privacy and presentation | Anonymous/wrong-role HTTP rejection, forged-owner rejection, another Participant's empty reads, private server rendering, labeled keyboard-operated inputs, every-day display, existing-Habit feedback |
 
-Integration tests create and remove uniquely named disposable databases. Template mutation SQL and test-only barrier/failure triggers simulate later lifecycle operations and storage failures without adding product APIs. Tests observe actual lock waits before releasing barriers.
+Integration tests create and remove uniquely named disposable databases. Test-only barrier and failure triggers exercise actual maintenance calls and simulate storage failures. Tests observe actual lock waits before releasing barriers.
 
 The Vitest checks establish service, HTTP, and rendered-component behavior. The Playwright suite below adds local Chromium E2E coverage. Deployed Cloud Run, independent acceptance, substantive human teammate review, other browser engines, full accessibility, and zoom measurements remain outside this evidence.
 

@@ -9,6 +9,10 @@ import type { GoalRevisionResponse, HabitCreationResponse } from "../habits";
 import { isRole } from "../identity";
 import type { Identity } from "../identity";
 import { validateTemplateListQuery } from "../templates";
+import type {
+  ActivityTemplate,
+  TemplateMaintenanceResponse,
+} from "../templates";
 import { AuthError, authenticationError } from "./auth-error";
 import { EntryError } from "./entries";
 import { HabitError } from "./habits";
@@ -52,7 +56,13 @@ const authorizeParticipant = async () =>
     "participant"
   );
 
-const trackingWriteFailure = <Fields>(
+const authorizeManager = async () =>
+  await getAuthentication().authorizeWorkspace(
+    getRequestHeaders(),
+    "program-manager"
+  );
+
+const writeFailure = <Fields>(
   error: Error & { status: number; fieldErrors: Fields }
 ) => {
   const { status, message, fieldErrors } = error;
@@ -103,12 +113,44 @@ export const createTemplate = createServerFn({ method: "POST" })
   .middleware([applicationErrors])
   .validator((input: unknown) => input)
   .handler(async ({ data }) => {
-    const actor = await getAuthentication().authorizeWorkspace(
-      getRequestHeaders(),
-      "program-manager"
-    );
+    const actor = await authorizeManager();
     return await getTemplateService().createTemplate(actor, data);
   });
+
+const maintainTemplate = async (
+  write: (actor: Identity) => Promise<ActivityTemplate>
+): Promise<TemplateMaintenanceResponse> => {
+  const actor = await authorizeManager();
+  try {
+    const template = await write(actor);
+    return { kind: "saved", template };
+  } catch (error) {
+    if (error instanceof TemplateError) {
+      return writeFailure(error);
+    }
+    throw error;
+  }
+};
+
+export const updateTemplate = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(
+    async ({ data }) =>
+      await maintainTemplate(
+        async (actor) => await getTemplateService().updateTemplate(actor, data)
+      )
+  );
+
+export const archiveTemplate = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(
+    async ({ data }) =>
+      await maintainTemplate(
+        async (actor) => await getTemplateService().archiveTemplate(actor, data)
+      )
+  );
 
 export const listHabits = createServerFn({ method: "GET" })
   .middleware([applicationErrors])
@@ -125,14 +167,8 @@ export const createHabit = createServerFn({ method: "POST" })
     try {
       return await getHabitService().createHabit(actor, data);
     } catch (error) {
-      if (error instanceof HabitError && error.status === 400) {
-        // Expected validation data must survive TanStack's Error serialization.
-        setResponseStatus(error.status);
-        return {
-          kind: "invalid",
-          message: error.message,
-          fieldErrors: error.fieldErrors,
-        };
+      if (error instanceof HabitError) {
+        return writeFailure(error);
       }
       throw error;
     }
@@ -147,7 +183,7 @@ export const reviseGoal = createServerFn({ method: "POST" })
       return await getHabitService().reviseGoal(actor, data);
     } catch (error) {
       if (error instanceof HabitError) {
-        return trackingWriteFailure(error);
+        return writeFailure(error);
       }
       throw error;
     }
@@ -196,7 +232,7 @@ const entryWrite = async <Result>(
     return await write(actor);
   } catch (error) {
     if (error instanceof EntryError) {
-      return trackingWriteFailure(error);
+      return writeFailure(error);
     }
     throw error;
   }

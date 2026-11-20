@@ -5,6 +5,7 @@ import { authClient } from "../auth-client";
 import { AccountScreen } from "../components/account-screen";
 import { PageHeading } from "../components/page-heading";
 import {
+  archiveTemplate,
   createEntry,
   createTemplate,
   createHabit,
@@ -12,11 +13,13 @@ import {
   getTrackingWorkspace,
   listTemplates,
   reviseGoal,
+  updateTemplate,
 } from "../server/functions";
 import type {
   ActivityTemplate,
   ActivityTemplatePage,
   TemplateCursor,
+  TemplateMaintenanceResponse,
 } from "../templates";
 
 const EMPTY_TEMPLATE_PAGE: ActivityTemplatePage = {
@@ -101,6 +104,15 @@ const Home = () => {
     }
   };
 
+  const refreshAfterMaintenance = async (
+    response: TemplateMaintenanceResponse
+  ) => {
+    if (response.kind === "saved" || response.kind === "conflict") {
+      await router.invalidate({ sync: true });
+    }
+    return response;
+  };
+
   return (
     <AccountScreen
       todayWorkspace={todayWorkspace ?? undefined}
@@ -140,6 +152,20 @@ const Home = () => {
         return created;
       }}
       onLoadMoreTemplates={loadMoreTemplates}
+      templateMaintenance={
+        identity?.role === "program-manager"
+          ? {
+              update: async (draft) =>
+                await refreshAfterMaintenance(
+                  await updateTemplate({ data: draft })
+                ),
+              archive: async (draft) =>
+                await refreshAfterMaintenance(
+                  await archiveTemplate({ data: draft })
+                ),
+            }
+          : undefined
+      }
     />
   );
 };

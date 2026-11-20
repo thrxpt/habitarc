@@ -339,6 +339,10 @@ const serverFunctionPatterns = {
   listTemplates: /\blistTemplates\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createTemplate:
     /\bcreateTemplate\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  updateTemplate:
+    /\bupdateTemplate\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  archiveTemplate:
+    /\barchiveTemplate\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   listHabits: /\blistHabits\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createHabit: /\bcreateHabit\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
 };
@@ -681,6 +685,7 @@ test(
       }
       const habitDraft = {
         templateId: template.id,
+        templateVersion: template.version,
         dailyTarget: 60,
         weekdays: [1, 2, 3, 4, 5],
       };
@@ -799,6 +804,91 @@ test(
         headers: { cookie: managerCookie },
       });
       expect(await managerReload.text()).not.toContain("Your Habits");
+
+      const maintenanceDraft = {
+        ...template,
+        templateId: template.id,
+        templateVersion: template.version,
+        name: "Revised Study",
+      };
+      await Promise.all(
+        (["updateTemplate", "archiveTemplate"] as const).map(
+          async (operation) => {
+            const options = { method: "POST", data: maintenanceDraft } as const;
+            expect(await callServerFn(operation, options)).toMatchObject({
+              status: 401,
+            });
+            expect(
+              await callServerFn(operation, {
+                ...options,
+                cookie: participantCookie,
+              })
+            ).toMatchObject({ status: 403 });
+          }
+        )
+      );
+
+      expect(
+        await callServerFn("updateTemplate", {
+          method: "POST",
+          cookie: managerCookie,
+          data: { ...maintenanceDraft, entryMaximum: 40 },
+        })
+      ).toMatchObject({
+        status: 409,
+        body: {
+          result: {
+            kind: "conflict",
+            message:
+              "This Activity Template is in use. Its unit and entry bounds are fixed. Reload to edit its name or description.",
+          },
+        },
+      });
+      expect(
+        await callServerFn("updateTemplate", {
+          method: "POST",
+          cookie: managerCookie,
+          data: maintenanceDraft,
+        })
+      ).toMatchObject({
+        status: 200,
+        body: {
+          result: {
+            kind: "saved",
+            template: { name: "Revised Study", entryMaximum: 45, version: 2 },
+          },
+        },
+      });
+      expect(
+        await callServerFn("archiveTemplate", {
+          method: "POST",
+          cookie: managerCookie,
+          data: maintenanceDraft,
+        })
+      ).toMatchObject({ status: 409, body: { result: { kind: "conflict" } } });
+      expect(
+        await callServerFn("archiveTemplate", {
+          method: "POST",
+          cookie: managerCookie,
+          data: { ...maintenanceDraft, templateVersion: 2 },
+        })
+      ).toMatchObject({ status: 200, body: { result: { kind: "saved" } } });
+      expect(
+        await callServerFn("createHabit", {
+          method: "POST",
+          cookie: otherCookie,
+          data: habitDraft,
+        })
+      ).toMatchObject({
+        status: 409,
+        body: {
+          result: {
+            kind: "conflict",
+            message:
+              "This Activity Template is no longer available. Choose an active template.",
+          },
+        },
+      });
     } finally {
       if (child.pid !== undefined) {
         if (process.platform === "win32") {

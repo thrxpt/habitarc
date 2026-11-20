@@ -27,6 +27,7 @@ const otherPool = new Pool({
 const habits = createHabitService(createDatabase(pool));
 const otherHabits = createHabitService(createDatabase(otherPool));
 const templates = createTemplateService(createDatabase(pool));
+const otherTemplates = createTemplateService(createDatabase(otherPool));
 const participant: Identity = {
   id: "a",
   name: "Participant A",
@@ -101,6 +102,7 @@ test.each([
     await expect(
       habits.createHabit(participant, {
         templateId: template.id,
+        templateVersion: template.version,
         dailyTarget: 60,
         weekdays: [1],
         ...changes,
@@ -129,6 +131,7 @@ test.each([
     expect(
       await habits.createHabit(participant, {
         templateId: template.id,
+        templateVersion: template.version,
         dailyTarget: target,
         weekdays: [1, 2, 3, 4, 5, 6, 7],
       })
@@ -139,6 +142,7 @@ test.each([
     await expect(
       habits.createHabit(otherParticipant, {
         templateId: template.id,
+        templateVersion: template.version,
         dailyTarget: target + 1,
         weekdays: [1],
       })
@@ -148,7 +152,12 @@ test.each([
 
 test("Account Timezones determine start dates across the date line and caller timezone fields are ignored", async () => {
   const template = await studyTemplate();
-  const draft = { templateId: template.id, dailyTarget: 60, weekdays: [1] };
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1],
+  };
   const east = await habits.createHabit(
     { ...eastParticipant, timezone: "UTC" },
     draft
@@ -168,7 +177,12 @@ test("Account Timezones determine start dates across the date line and caller ti
 
 test("only the owner reads a Habit and Program Managers cannot read or create private Habits directly", async () => {
   const template = await studyTemplate();
-  const draft = { templateId: template.id, dailyTarget: 60, weekdays: [1] };
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1],
+  };
   await habits.createHabit(participant, {
     ...draft,
     participantId: otherParticipant.id,
@@ -185,7 +199,12 @@ test("only the owner reads a Habit and Program Managers cannot read or create pr
 
 test("tomorrow's pending archive blocks today, and an ended Habit permits a fresh history", async () => {
   const template = await studyTemplate();
-  const draft = { templateId: template.id, dailyTarget: 60, weekdays: [1] };
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1],
+  };
   const first = await habits.createHabit(participant, draft);
   await pool.query(
     "UPDATE habit SET archived_from = start_date + 1 WHERE id = $1",
@@ -212,7 +231,12 @@ test("tomorrow's pending archive blocks today, and an ended Habit permits a fres
 
 test("a failed initial Goal Revision rolls back the Habit and permits a clean retry", async () => {
   const template = await studyTemplate();
-  const draft = { templateId: template.id, dailyTarget: 60, weekdays: [1] };
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1],
+  };
   await pool.query(
     "CREATE FUNCTION reject_test_goal() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Simulated storage failure'; END; $$; CREATE TRIGGER reject_test_goal BEFORE INSERT ON goal_revision FOR EACH ROW EXECUTE FUNCTION reject_test_goal()"
   );
@@ -273,6 +297,7 @@ test("Habit creation waits for the participant tracking lock after locking its t
     ]);
     const creation = habits.createHabit(participant, {
       templateId: template.id,
+      templateVersion: template.version,
       dailyTarget: 60,
       weekdays: [1],
     });
@@ -286,34 +311,56 @@ test("Habit creation waits for the participant tracking lock after locking its t
 });
 
 test.each(["archive", "measurement"] as const)(
-  "a %s committed before a blocked create is rechecked after the template lock",
+  "a %s committed ahead of first use rejects the stale Habit selection",
   async (operation) => {
     const template = await studyTemplate();
-    const client = await otherPool.connect();
+    const barrier = await pool.connect();
+    const barrierKey = 606_005;
+    await barrier.query("SELECT pg_advisory_lock($1)", [barrierKey]);
     try {
-      await client.query("BEGIN");
-      await client.query(
-        operation === "archive"
-          ? "UPDATE activity_template SET archived_at = now() WHERE id = $1"
-          : "UPDATE activity_template SET entry_minimum = 90, entry_maximum = 120 WHERE id = $1",
-        [template.id]
+      await pool.query(
+        `CREATE FUNCTION wait_for_test_template_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(${barrierKey}); RETURN NEW; END; $$; CREATE TRIGGER wait_for_test_template_update BEFORE UPDATE ON activity_template FOR EACH ROW EXECUTE FUNCTION wait_for_test_template_update()`
       );
-      const creation = habits.createHabit(participant, {
+      const reference = {
         templateId: template.id,
-        dailyTarget: 60,
-        weekdays: [1],
+        templateVersion: template.version,
+      };
+      const maintenance =
+        operation === "archive"
+          ? otherTemplates.archiveTemplate(manager, reference)
+          : otherTemplates.updateTemplate(manager, {
+              ...template,
+              ...reference,
+              unit: "counts",
+            });
+      await waitForBlockedQuery('update "activity_template"');
+      const rejected = expect(
+        habits.createHabit(participant, {
+          ...reference,
+          dailyTarget: 60,
+          weekdays: [1],
+        })
+      ).rejects.toMatchObject({
+        status: 409,
+        message:
+          operation === "archive"
+            ? "This Activity Template is no longer available. Choose an active template."
+            : "This Activity Template changed. Select it again and review the settings before starting your Habit.",
       });
-      const rejected = expect(creation).rejects.toMatchObject({
-        status: operation === "archive" ? 409 : 400,
+      await waitForBlockedQuery('from "activity_template"');
+      await barrier.query("SELECT pg_advisory_unlock($1)", [barrierKey]);
+      expect(await maintenance).toMatchObject({
+        version: template.version + 1,
       });
-      await waitForBlockedQuery("for update");
-      await client.query("COMMIT");
       await rejected;
       const workspace = await otherHabits.listHabits(participant);
       expect(workspace.items).toEqual([]);
     } finally {
-      await client.query("ROLLBACK");
-      client.release();
+      await barrier.query("SELECT pg_advisory_unlock($1)", [barrierKey]);
+      barrier.release();
+      await pool.query(
+        "DROP TRIGGER IF EXISTS wait_for_test_template_update ON activity_template; DROP FUNCTION IF EXISTS wait_for_test_template_update()"
+      );
     }
   }
 );
@@ -329,17 +376,24 @@ test("a measurement edit waiting behind Habit creation cannot change the newly u
   try {
     const creation = habits.createHabit(participant, {
       templateId: template.id,
+      templateVersion: template.version,
       dailyTarget: 60,
       weekdays: [1],
     });
     await waitForBlockedQuery('insert into "goal_revision"');
     const edited = expect(
-      otherPool.query(
-        "UPDATE activity_template SET entry_maximum = 90 WHERE id = $1",
-        [template.id]
-      )
-    ).rejects.toMatchObject({ code: "23514" });
-    await waitForBlockedQuery("UPDATE activity_template");
+      otherTemplates.updateTemplate(manager, {
+        ...template,
+        templateId: template.id,
+        templateVersion: template.version,
+        entryMaximum: 90,
+      })
+    ).rejects.toMatchObject({
+      status: 409,
+      message:
+        "This Activity Template is in use. Its unit and entry bounds are fixed. Reload to edit its name or description.",
+    });
+    await waitForBlockedQuery('from "activity_template"');
     await blocker.query("SELECT pg_advisory_unlock($1)", [barrierKey]);
     expect(await creation).toMatchObject({
       kind: "created",
@@ -361,6 +415,7 @@ test("Participant starts a persisted scheduled Habit with target 60 on a 5–45 
   const template = await studyTemplate();
   const created = await habits.createHabit(participant, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5],
   });
@@ -391,6 +446,7 @@ test("concurrent creates return one active Habit and direct overlapping periods 
   const template = await studyTemplate();
   const draft = {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   };
@@ -416,6 +472,7 @@ test("using a template freezes its measurement meaning but permits descriptive e
   const template = await studyTemplate();
   await habits.createHabit(participant, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1],
   });
@@ -447,6 +504,7 @@ test("using a template freezes its measurement meaning but permits descriptive e
   await expect(
     habits.createHabit(otherParticipant, {
       templateId: template.id,
+      templateVersion: template.version,
       dailyTarget: 60,
       weekdays: [1],
     })

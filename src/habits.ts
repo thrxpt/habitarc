@@ -1,7 +1,7 @@
 import { isValidIsoDate } from "./calendar";
 import { parseRequestKey } from "./mutation-request";
-import { MEASUREMENT_CEILINGS } from "./templates";
-import type { ActivityTemplate } from "./templates";
+import { MEASUREMENT_CEILINGS, parseTemplateReference } from "./templates";
+import type { ActivityTemplate, TemplateReference } from "./templates";
 
 export const WEEKDAYS = [
   { value: 1, label: "Monday" },
@@ -22,9 +22,7 @@ export interface GoalSnapshot extends GoalDraft {
   effectiveFrom: string;
 }
 
-export interface HabitDraft extends GoalDraft {
-  templateId: string;
-}
+export interface HabitDraft extends GoalDraft, TemplateReference {}
 
 export interface GoalRevisionDraft extends GoalSnapshot {
   habitId: string;
@@ -71,7 +69,7 @@ export type GoalRevisionResponse =
 export type HabitCreationResponse =
   | CreateHabitResult
   | {
-      kind: "invalid";
+      kind: "invalid" | "conflict";
       message: string;
       fieldErrors: HabitFieldErrors;
     };
@@ -144,24 +142,20 @@ export const validateHabitInput = (
   | { ok: true; value: HabitDraft }
   | { ok: false; fieldErrors: HabitFieldErrors } => {
   const record = inputRecord(input);
-  const templateId = "templateId" in record ? record.templateId : undefined;
-  const validTemplate =
-    typeof templateId === "string" &&
-    templateId.length > 0 &&
-    templateId.length <= 200;
+  const reference = parseTemplateReference(input);
   const goal = validateGoalInput(record, template);
-  if (!validTemplate || !goal.ok) {
+  if (reference === undefined || !goal.ok) {
     return {
       ok: false,
       fieldErrors: {
         ...(goal.ok ? {} : goal.fieldErrors),
-        ...(validTemplate
-          ? {}
-          : { templateId: "Select an active Activity Template." }),
+        ...(reference === undefined
+          ? { templateId: "Select an active Activity Template." }
+          : {}),
       },
     };
   }
-  return { ok: true, value: { templateId, ...goal.value } };
+  return { ok: true, value: { ...reference, ...goal.value } };
 };
 
 export const validateGoalRevisionInput = (
