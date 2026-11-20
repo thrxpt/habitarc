@@ -369,7 +369,7 @@ test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, f
   const user = userEvent.setup();
   const habitsRegion = screen.getByRole("region", { name: "Your Habits" });
   const archiveTrigger = within(habitsRegion).getByRole("button", {
-    name: "Archive Focused Study",
+    name: "Archive Habit",
   });
 
   await user.click(archiveTrigger);
@@ -433,9 +433,7 @@ test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, f
     within(habitsRegion).queryByRole("button", { name: "Edit goal settings" })
   ).not.toBeInTheDocument();
   expect(
-    within(habitsRegion).queryByRole("button", {
-      name: "Archive Focused Study",
-    })
+    within(habitsRegion).queryByRole("button", { name: "Archive Habit" })
   ).not.toBeInTheDocument();
   expect(
     within(habitsRegion).queryByRole("button", {
@@ -498,7 +496,7 @@ test("AC-F08-3: archive confirmation expires across midnight, retries with the s
   const user = userEvent.setup();
   const habitsRegion = screen.getByRole("region", { name: "Your Habits" });
   await user.click(
-    within(habitsRegion).getByRole("button", { name: "Archive Focused Study" })
+    within(habitsRegion).getByRole("button", { name: "Archive Habit" })
   );
 
   // Midnight rollover expires the open confirmation and disables confirm.
@@ -527,7 +525,7 @@ test("AC-F08-3: archive confirmation expires across midnight, retries with the s
     within(habitsRegion).getByRole("button", { name: "Cancel" })
   );
   await user.click(
-    within(habitsRegion).getByRole("button", { name: "Archive Focused Study" })
+    within(habitsRegion).getByRole("button", { name: "Archive Habit" })
   );
   await user.click(
     within(habitsRegion).getByRole("button", { name: "Confirm archive" })

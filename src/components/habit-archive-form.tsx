@@ -120,7 +120,6 @@ export const HabitArchiveForm = ({
         ref={trigger}
         type="button"
         variant="ghost"
-        aria-label={`Archive ${habit.template.name}`}
         aria-expanded={confirm !== null}
         aria-controls={confirm === null ? undefined : formId}
         disabled={!hydrated || pending}
