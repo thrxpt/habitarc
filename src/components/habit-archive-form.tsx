@@ -5,11 +5,7 @@ import type { SubmitEvent } from "react";
 import { Alert, AlertDescription } from "#components/ui/alert.tsx";
 import { Button } from "#components/ui/button.tsx";
 
-import type {
-  ArchiveHabitDraft,
-  ArchiveHabitResponse,
-  Habit,
-} from "../habits";
+import type { ArchiveHabitDraft, ArchiveHabitResponse, Habit } from "../habits";
 
 interface ArchiveConfirmation {
   archivedFrom: string;

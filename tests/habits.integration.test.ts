@@ -760,12 +760,12 @@ test("AC-F08-3: pending archive blocks duplicates today and concurrent creates o
   });
 
   // Still active today, so creating from the same template returns the existing Habit.
-  expect(await otherClockedHabits.createHabit(participant, draft)).toMatchObject(
-    {
-      kind: "existing",
-      habit: { id: first.habit.id, archivedFrom: "2026-11-17" },
-    }
-  );
+  expect(
+    await otherClockedHabits.createHabit(participant, draft)
+  ).toMatchObject({
+    kind: "existing",
+    habit: { id: first.habit.id, archivedFrom: "2026-11-17" },
+  });
 
   // On 2026-11-17 (the exclusive end date), concurrent creates yield exactly one new Habit.
   fakeNow = new Date("2026-11-17T08:00:00+07:00");

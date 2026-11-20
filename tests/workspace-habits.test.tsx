@@ -354,9 +354,8 @@ test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, f
   const archive = vi
     .fn<(draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>>()
     .mockResolvedValue({ kind: "archived", archivedFrom: "2026-11-16" });
-  const revise = vi.fn<
-    (draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>
-  >();
+  const revise =
+    vi.fn<(draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>>();
   const { rerender } = render(
     <AccountScreen
       identity={participant}
@@ -419,7 +418,9 @@ test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, f
     />
   );
   expect(
-    within(habitsRegion).getByText("Started 2026-11-15 · Archive begins 2026-11-16")
+    within(habitsRegion).getByText(
+      "Started 2026-11-15 · Archive begins 2026-11-16"
+    )
   ).toBeVisible();
   expect(
     within(habitsRegion).queryByRole("button", { name: "Edit goal settings" })
@@ -442,9 +443,7 @@ test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, f
 
   // On 2026-11-15 (today), selecting the template still shows the active Habit.
   await user.click(screen.getByRole("button", { name: /Focused Study/u }));
-  expect(
-    screen.getByText(/You already have an active Habit/u)
-  ).toBeVisible();
+  expect(screen.getByText(/You already have an active Habit/u)).toBeVisible();
   expect(screen.getByText(/Archive begins 2026-11-16/u)).toBeVisible();
 
   // On 2026-11-16 (tomorrow), the ended Habit shows Archived from and allows starting a fresh Habit.
@@ -476,7 +475,8 @@ test("AC-F08-3: archive confirmation expires across midnight, retries with the s
     .mockRejectedValueOnce(new Error("Network error"))
     .mockResolvedValueOnce({
       kind: "conflict",
-      message: "Your Habit settings changed. Reload the workspace before trying again.",
+      message:
+        "Your Habit settings changed. Reload the workspace before trying again.",
       fieldErrors: {},
     });
   const { rerender } = render(
