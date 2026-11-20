@@ -54,13 +54,15 @@ export const HabitList = ({
       <p className="text-muted-foreground mb-6 text-sm">
         Account date: {workspace.accountDate} ({workspace.timezone})
       </p>
-      <output
-        ref={archiveNotice}
-        tabIndex={-1}
-        className="mb-4 block text-sm empty:mb-0"
-      >
-        {archiveStatus}
-      </output>
+      {archiveStatus.length > 0 && (
+        <output
+          ref={archiveNotice}
+          tabIndex={-1}
+          className="mb-4 block text-sm"
+        >
+          {archiveStatus}
+        </output>
+      )}
       {workspace.items.length === 0 ? (
         <p className="text-muted-foreground">
           Choose an Activity Template below to start your first Habit.

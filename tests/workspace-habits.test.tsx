@@ -399,9 +399,11 @@ test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, f
     archivedFrom: "2026-11-16",
   });
   expect(archivedDraft?.requestKey.length).toBeGreaterThan(0);
-  expect(within(habitsRegion).getByRole("status")).toHaveTextContent(
-    "Focused Study is scheduled to end on 2026-11-16 (exclusive). Today remains active."
-  );
+  expect(
+    within(habitsRegion).getByText(
+      "Focused Study is scheduled to end on 2026-11-16 (exclusive). Today remains active."
+    )
+  ).toBeVisible();
 
   // Once archived for tomorrow, edit and archive controls disappear and no reactivation/delete controls exist.
   const pendingArchived: Habit = {
@@ -418,6 +420,9 @@ test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, f
       onReviseGoal={revise}
       onSessionChanged={sessionChanged}
     />
+  );
+  expect(within(habitsRegion).getByRole("status")).toHaveTextContent(
+    "Focused Study is scheduled to end on 2026-11-16 (exclusive). Today remains active."
   );
   expect(
     within(habitsRegion).getByText(
