@@ -22,3 +22,14 @@ Program Managers can edit published templates or confirm permanent archival. The
 `updateTemplate` takes a template ID, the displayed version, and the same fields and validation as `createTemplate`. `archiveTemplate` takes the ID and displayed version. Both POST server functions authorize the Program Manager from the session. HTTP 400 carries field validation and HTTP 409 carries stale, unavailable, or frozen-template feedback. Each successful write increments the version and updates the timestamp. The archive also sets the archive timestamp.
 
 Maintenance and Habit creation acquire the same PostgreSQL row lock. Maintenance checks for any referencing Habit after taking the lock. Habit creation checks the selected version after taking the lock, so a pending request cannot use newly edited measurements. The existing database trigger protects fixed measurements, and existing Habits continue to read their template and validate Activity Entries against the same unit and bounds.
+
+## Issue #12 verification ledger
+
+Local verification passed on disposable PostgreSQL and Chromium. The full Vitest suite passed 107 tests in 11 files, and Playwright passed eight Chromium tests. `vp check`, `vp run typecheck`, and `vp run build` passed.
+
+| Requirement | Feature / AC / STS | Actual test | Status | Commit | Evidence | Tester | Date |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| FR-08, BR-12 | F08 / AC-F08-1 / STS-F08-1 | Invalid unused bounds and used measurement edits fail. Descriptive edits persist. Lock races and refreshed selections require the Participant to use the current definition. Management rejects anonymous and Participant calls. | PASS | `871a352` | [Template HTTP](../../../tests/templates.integration.test.ts), [Habit races](../../../tests/habits.integration.test.ts), [Refreshed form](../../../tests/workspace-habits.test.tsx), [Chromium](../../../e2e/habit-setup.spec.ts) | Codex | 2026-11-20 |
+| FR-08, BR-08, BR-12 | F08 / AC-F08-2 / STS-F08-2 | The archived template disappears on reload and rejects new Habits. An existing Habit retains its original 25-minute entry, rejects 31 minutes, and accepts a 30-minute entry. | PASS | `871a352` | [PostgreSQL integration](../../../tests/entries.integration.test.ts), [Chromium](../../../e2e/habit-setup.spec.ts) | Codex | 2026-11-20 |
+
+Teammate review, sprint integration, deployed verification, and independent acceptance remain pending.
