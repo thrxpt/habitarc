@@ -1619,6 +1619,7 @@ const serverFunctionPatterns = {
   getTrackingWorkspace:
     /\bgetTrackingWorkspace\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   reviseGoal: /\breviseGoal\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  archiveHabit: /\barchiveHabit\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createTemplate:
     /\bcreateTemplate\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createHabit: /\bcreateHabit\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
@@ -2092,6 +2093,100 @@ test(
           })
         )
       );
+
+      // AC-F08-3 / AC-F08-4: archiveHabit HTTP auth, validation, idempotency, and post-archive goal rejection.
+      const tomorrowDate = addCalendarDays(todayDate, 1);
+      const archiveKey = randomUUID();
+      const archivePayload = {
+        habitId,
+        expectedVersion: 1,
+        archivedFrom: tomorrowDate,
+        requestKey: archiveKey,
+      };
+      const [anonArchive, managerArchive, otherArchive, badArchive] =
+        await Promise.all([
+          callServerFn("archiveHabit", {
+            method: "POST",
+            data: archivePayload,
+          }),
+          callServerFn("archiveHabit", {
+            method: "POST",
+            cookie: managerCookie,
+            data: archivePayload,
+          }),
+          callServerFn("archiveHabit", {
+            method: "POST",
+            cookie: otherCookie,
+            data: archivePayload,
+          }),
+          callServerFn("archiveHabit", {
+            method: "POST",
+            cookie: participantCookie,
+            data: { ...archivePayload, expectedVersion: 0 },
+          }),
+        ]);
+      expect(anonArchive.status).toBe(401);
+      expect(managerArchive.status).toBe(403);
+      expect(otherArchive.status).toBe(404);
+      expect(badArchive).toMatchObject({
+        status: 400,
+        body: { result: { kind: "invalid" } },
+      });
+
+      expect(
+        await callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: archivePayload,
+        })
+      ).toMatchObject({
+        status: 200,
+        body: { result: { kind: "archived", archivedFrom: tomorrowDate } },
+      });
+
+      expect(
+        await callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: archivePayload,
+        })
+      ).toMatchObject({
+        status: 200,
+        body: { result: { kind: "replayed", archivedFrom: tomorrowDate } },
+      });
+
+      expect(
+        await callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: {
+            ...archivePayload,
+            expectedVersion: 2,
+            requestKey: randomUUID(),
+          },
+        })
+      ).toMatchObject({
+        status: 409,
+        body: { result: { kind: "conflict" } },
+      });
+
+      expect(
+        await callServerFn("reviseGoal", {
+          method: "POST",
+          cookie: participantCookie,
+          data: {
+            habitId,
+            expectedVersion: 2,
+            effectiveFrom: tomorrowDate,
+            dailyTarget: 30,
+            weekdays: [1, 2, 3, 4, 5],
+            requestKey: randomUUID(),
+          },
+        })
+      ).toMatchObject({
+        status: 409,
+        body: { result: { kind: "conflict" } },
+      });
     } finally {
       if (child.pid !== undefined) {
         if (process.platform === "win32") {
@@ -2110,3 +2205,158 @@ test(
     }
   }
 );
+
+test("AC-F08-3 / AC-F08-4: archiving retains today’s obligation and history, rejects post-archive activity, preserves eligible corrections, and isolates a fresh Habit", async () => {
+  const template = await createStudyTemplate();
+  let fakeNow = new Date("2026-11-16T12:00:00+07:00");
+  const clockedHabits = createHabitService(database, { now: () => fakeNow });
+  const clockedEntries = createEntryService(database, { now: () => fakeNow });
+
+  const { habit: first } = await clockedHabits.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+
+  // Record 40 minutes on Monday 2026-11-16.
+  await clockedEntries.createEntry(participantA, {
+    habitId: first.id,
+    activityDate: "2026-11-16",
+    amount: 40,
+    requestKey: randomUUID(),
+  });
+
+  // On Tuesday 2026-11-17, schedule a goal revision for Wednesday then archive from Wednesday.
+  fakeNow = new Date("2026-11-17T12:00:00+07:00");
+  await clockedHabits.reviseGoal(participantA, {
+    habitId: first.id,
+    expectedVersion: first.version,
+    effectiveFrom: "2026-11-18",
+    dailyTarget: 30,
+    weekdays: [3],
+    requestKey: randomUUID(),
+  });
+  await clockedHabits.archiveHabit(participantA, {
+    habitId: first.id,
+    expectedVersion: first.version + 1,
+    archivedFrom: "2026-11-18",
+    requestKey: randomUUID(),
+  });
+
+  // Tuesday 2026-11-17 remains scheduled and writable under the 60-minute target.
+  const tuesdayBefore = await clockedEntries.getToday(participantA);
+  expect(tuesdayBefore.scheduled).toHaveLength(1);
+  expect(tuesdayBefore.scheduled[0]?.habit.archivedFrom).toBe("2026-11-18");
+  expect(tuesdayBefore.scheduled[0]?.progress.dailyTarget).toBe(60);
+
+  const tuesdayEntry = await clockedEntries.createEntry(participantA, {
+    habitId: first.id,
+    activityDate: "2026-11-17",
+    amount: 25,
+    requestKey: randomUUID(),
+  });
+  expect(tuesdayEntry.dailyTotal).toBe(25);
+
+  // Advance to Wednesday 2026-11-18 (exclusive archive date).
+  fakeNow = new Date("2026-11-18T12:00:00+07:00");
+  const wednesdayToday = await clockedEntries.getToday(participantA);
+  expect(wednesdayToday.scheduled).toEqual([]);
+  expect(wednesdayToday.unscheduled).toEqual([]);
+
+  // New activity on the archive date is rejected.
+  await expect(
+    clockedEntries.createEntry(participantA, {
+      habitId: first.id,
+      activityDate: "2026-11-18",
+      amount: 20,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+
+  // Moving an eligible entry onto the archive date is rejected.
+  await expect(
+    clockedEntries.updateEntry(participantA, {
+      habitId: first.id,
+      entryId: tuesdayEntry.entry.id,
+      expectedVersion: tuesdayEntry.entry.version,
+      activityDate: "2026-11-18",
+      amount: 25,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+
+  // Eligible correction before the archive date succeeds and recalculates completion.
+  expect(
+    await clockedEntries.updateEntry(participantA, {
+      habitId: first.id,
+      entryId: tuesdayEntry.entry.id,
+      expectedVersion: tuesdayEntry.entry.version,
+      activityDate: "2026-11-17",
+      amount: 45,
+      requestKey: randomUUID(),
+    })
+  ).toEqual({ kind: "applied" });
+  await clockedEntries.createEntry(participantA, {
+    habitId: first.id,
+    activityDate: "2026-11-17",
+    amount: 15,
+    requestKey: randomUUID(),
+  });
+
+  const archivedHistory = await clockedEntries.getHistory(participantA, {
+    habitId: first.id,
+  });
+  expect(archivedHistory.writableMaxDate).toBe("2026-11-17");
+  const tuesdayHistory = archivedHistory.days.find(
+    (day) => day.date === "2026-11-17"
+  );
+  expect(tuesdayHistory?.progress).toMatchObject({
+    scheduled: true,
+    dailyTarget: 60,
+    dailyTotal: 60,
+    completed: true,
+  });
+  expect(
+    archivedHistory.days.find((day) => day.date === "2026-11-18")
+  ).toBeUndefined();
+
+  // Starting a fresh Habit from the same template on 2026-11-18 has separate history and zero progress.
+  const fresh = await clockedHabits.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 30,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+  expect(fresh.kind).toBe("created");
+  expect(fresh.habit.id).not.toBe(first.id);
+
+  const freshToday = await clockedEntries.getToday(participantA);
+  expect(freshToday.scheduled).toHaveLength(1);
+  expect(freshToday.scheduled[0]?.habit.id).toBe(fresh.habit.id);
+  expect(freshToday.scheduled[0]?.progress.dailyTotal).toBe(0);
+
+  const freshHistory = await clockedEntries.getHistory(participantA, {
+    habitId: fresh.habit.id,
+  });
+  expect(freshHistory.days.every((day) => day.entries.length === 0)).toBe(true);
+
+  // Advance to Thursday 2026-11-19 (after the archive date): new activity on 2026-11-19 is rejected,
+  // while pre-archive history remains intact and eligible within the 7-day window.
+  fakeNow = new Date("2026-11-19T12:00:00+07:00");
+  await expect(
+    clockedEntries.createEntry(participantA, {
+      habitId: first.id,
+      activityDate: "2026-11-19",
+      amount: 15,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+  const laterArchivedHistory = await clockedEntries.getHistory(participantA, {
+    habitId: first.id,
+  });
+  expect(laterArchivedHistory.writableMaxDate).toBe("2026-11-17");
+  expect(
+    laterArchivedHistory.days.some((day) => day.date === "2026-11-16")
+  ).toBe(true);
+});

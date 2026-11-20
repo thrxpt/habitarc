@@ -30,6 +30,13 @@ export interface GoalRevisionDraft extends GoalSnapshot {
   requestKey: string;
 }
 
+export interface ArchiveHabitDraft {
+  habitId: string;
+  expectedVersion: number;
+  archivedFrom: string;
+  requestKey: string;
+}
+
 export interface Habit {
   id: string;
   template: ActivityTemplate;
@@ -64,6 +71,19 @@ export type GoalRevisionResponse =
       kind: "invalid" | "conflict";
       message: string;
       fieldErrors: GoalFieldErrors;
+    };
+
+export interface ArchiveHabitSuccess {
+  kind: "archived" | "replayed";
+  archivedFrom: string;
+}
+
+export type ArchiveHabitResponse =
+  | ArchiveHabitSuccess
+  | {
+      kind: "invalid" | "conflict";
+      message: string;
+      fieldErrors: HabitFieldErrors;
     };
 
 export type HabitCreationResponse =
@@ -158,30 +178,56 @@ export const validateHabitInput = (
   return { ok: true, value: { ...reference, ...goal.value } };
 };
 
+const MAX_HABIT_ID_LENGTH = 200;
+
+const parseHabitMutationTarget = (
+  record: object,
+  dateField: "effectiveFrom" | "archivedFrom"
+):
+  | {
+      habitId: string;
+      expectedVersion: number;
+      date: string;
+      requestKey: string;
+    }
+  | undefined => {
+  const habitId = "habitId" in record ? record.habitId : undefined;
+  const expectedVersion =
+    "expectedVersion" in record ? record.expectedVersion : undefined;
+  const date =
+    dateField in record
+      ? Object.getOwnPropertyDescriptor(record, dateField)?.value
+      : undefined;
+  const requestKey = parseRequestKey(
+    "requestKey" in record ? record.requestKey : undefined
+  );
+  const validHabitId =
+    typeof habitId === "string" &&
+    habitId.length > 0 &&
+    habitId.length <= MAX_HABIT_ID_LENGTH;
+  const validVersion =
+    typeof expectedVersion === "number" &&
+    Number.isSafeInteger(expectedVersion) &&
+    expectedVersion >= 1;
+  if (
+    !validHabitId ||
+    !validVersion ||
+    !isValidIsoDate(date) ||
+    requestKey === undefined
+  ) {
+    return undefined;
+  }
+  return { habitId, expectedVersion, date, requestKey };
+};
+
 export const validateGoalRevisionInput = (
   input: unknown
 ):
   | { ok: true; value: GoalRevisionDraft }
   | { ok: false; message: string; fieldErrors: GoalFieldErrors } => {
   const record = inputRecord(input);
-  const habitId = "habitId" in record ? record.habitId : undefined;
-  const expectedVersion =
-    "expectedVersion" in record ? record.expectedVersion : undefined;
-  const effectiveFrom =
-    "effectiveFrom" in record ? record.effectiveFrom : undefined;
-  const requestKey = parseRequestKey(
-    "requestKey" in record ? record.requestKey : undefined
-  );
-  if (
-    typeof habitId !== "string" ||
-    habitId.length === 0 ||
-    habitId.length > 200 ||
-    typeof expectedVersion !== "number" ||
-    !Number.isSafeInteger(expectedVersion) ||
-    expectedVersion < 1 ||
-    !isValidIsoDate(effectiveFrom) ||
-    requestKey === undefined
-  ) {
+  const target = parseHabitMutationTarget(record, "effectiveFrom");
+  if (target === undefined) {
     return {
       ok: false,
       message: "Reload your Habit settings and try again.",
@@ -200,10 +246,34 @@ export const validateGoalRevisionInput = (
     ok: true,
     value: {
       ...goal.value,
-      habitId,
-      effectiveFrom,
-      expectedVersion,
-      requestKey,
+      habitId: target.habitId,
+      effectiveFrom: target.date,
+      expectedVersion: target.expectedVersion,
+      requestKey: target.requestKey,
+    },
+  };
+};
+
+export const validateArchiveHabitInput = (
+  input: unknown
+):
+  | { ok: true; value: ArchiveHabitDraft }
+  | { ok: false; message: string; fieldErrors: HabitFieldErrors } => {
+  const target = parseHabitMutationTarget(inputRecord(input), "archivedFrom");
+  if (target === undefined) {
+    return {
+      ok: false,
+      message: "Reload your Habit settings and try again.",
+      fieldErrors: {},
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      habitId: target.habitId,
+      expectedVersion: target.expectedVersion,
+      archivedFrom: target.date,
+      requestKey: target.requestKey,
     },
   };
 };

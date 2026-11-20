@@ -6,7 +6,11 @@ import { afterEach, expect, test, vi } from "vite-plus/test";
 
 import { AccountScreen } from "../src/components/account-screen";
 import type {
+  ArchiveHabitDraft,
+  ArchiveHabitResponse,
   CreateHabitResult,
+  GoalRevisionDraft,
+  GoalRevisionResponse,
   HabitCreationResponse,
   Habit,
   HabitDraft,
@@ -344,4 +348,197 @@ test("a template changed after selection returns the server's new Daily Target b
     /from 90 to 1,440 minutes/u
   );
   expect(screen.getByLabelText("Daily Target")).toHaveValue("60");
+});
+
+test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, focuses Cancel, and hides edit/archive controls once archived", async () => {
+  const archive = vi
+    .fn<(draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>>()
+    .mockResolvedValue({ kind: "archived", archivedFrom: "2026-11-16" });
+  const revise = vi.fn<
+    (draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>
+  >();
+  const { rerender } = render(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{ ...workspace, items: [habit] }}
+      onArchiveHabit={archive}
+      onReviseGoal={revise}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  const user = userEvent.setup();
+  const habitsRegion = screen.getByRole("region", { name: "Your Habits" });
+  const archiveTrigger = within(habitsRegion).getByRole("button", {
+    name: "Archive Focused Study",
+  });
+
+  await user.click(archiveTrigger);
+  const form = within(habitsRegion).getByRole("form", {
+    name: "Archive Focused Study",
+  });
+  expect(form).toHaveTextContent("2026-11-16");
+  expect(form).toHaveTextContent("exclusive");
+  expect(form).toHaveTextContent("Today (2026-11-15) remains active");
+  expect(within(form).getByRole("button", { name: "Cancel" })).toHaveFocus();
+
+  // Canceling returns focus to the trigger without archiving.
+  await user.click(within(form).getByRole("button", { name: "Cancel" }));
+  expect(archiveTrigger).toHaveFocus();
+  expect(archive).not.toHaveBeenCalled();
+
+  // Confirming archives from tomorrow with the Habit's version and a request key.
+  await user.click(archiveTrigger);
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Confirm archive" })
+  );
+  expect(archive).toHaveBeenCalledWith({
+    habitId: "habit-a",
+    expectedVersion: 1,
+    archivedFrom: "2026-11-16",
+    requestKey: expect.any(String),
+  });
+  expect(within(habitsRegion).getByRole("status")).toHaveTextContent(
+    "Focused Study is scheduled to end on 2026-11-16 (exclusive). Today remains active."
+  );
+
+  // Once archived for tomorrow, edit and archive controls disappear and no reactivation/delete controls exist.
+  const pendingArchived: Habit = {
+    ...habit,
+    archivedFrom: "2026-11-16",
+    version: 2,
+  };
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{ ...workspace, items: [pendingArchived] }}
+      onArchiveHabit={archive}
+      onReviseGoal={revise}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  expect(
+    within(habitsRegion).getByText("Started 2026-11-15 · Archive begins 2026-11-16")
+  ).toBeVisible();
+  expect(
+    within(habitsRegion).queryByRole("button", { name: "Edit goal settings" })
+  ).not.toBeInTheDocument();
+  expect(
+    within(habitsRegion).queryByRole("button", {
+      name: "Archive Focused Study",
+    })
+  ).not.toBeInTheDocument();
+  expect(
+    within(habitsRegion).queryByRole("button", {
+      name: /pause|reactivate|resume|delete/iu,
+    })
+  ).not.toBeInTheDocument();
+  expect(
+    within(habitsRegion).getByRole("link", {
+      name: "View history for Focused Study",
+    })
+  ).toBeVisible();
+
+  // On 2026-11-15 (today), selecting the template still shows the active Habit.
+  await user.click(screen.getByRole("button", { name: /Focused Study/u }));
+  expect(
+    screen.getByText(/You already have an active Habit/u)
+  ).toBeVisible();
+  expect(screen.getByText(/Archive begins 2026-11-16/u)).toBeVisible();
+
+  // On 2026-11-16 (tomorrow), the ended Habit shows Archived from and allows starting a fresh Habit.
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{
+        ...workspace,
+        accountDate: "2026-11-16",
+        items: [pendingArchived],
+      }}
+      onArchiveHabit={archive}
+      onReviseGoal={revise}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  expect(
+    within(habitsRegion).getByText(
+      "Started 2026-11-15 · Archived from 2026-11-16"
+    )
+  ).toBeVisible();
+  expect(screen.getByRole("button", { name: "Start Habit" })).toBeVisible();
+});
+
+test("AC-F08-3: archive confirmation expires across midnight, retries with the same request key, and focuses reload on conflict", async () => {
+  const archive = vi
+    .fn<(draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>>()
+    .mockRejectedValueOnce(new Error("Network error"))
+    .mockResolvedValueOnce({
+      kind: "conflict",
+      message: "Your Habit settings changed. Reload the workspace before trying again.",
+      fieldErrors: {},
+    });
+  const { rerender } = render(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{ ...workspace, items: [habit] }}
+      onArchiveHabit={archive}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  const user = userEvent.setup();
+  const habitsRegion = screen.getByRole("region", { name: "Your Habits" });
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Archive Focused Study" })
+  );
+
+  // Midnight rollover expires the open confirmation and disables confirm.
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{
+        ...workspace,
+        accountDate: "2026-11-16",
+        items: [habit],
+      }}
+      onArchiveHabit={archive}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  expect(within(habitsRegion).getByRole("alert")).toHaveTextContent(
+    "This confirmation was for 2026-11-16. Close and reopen archive to end this Habit on 2026-11-17."
+  );
+  expect(
+    within(habitsRegion).getByRole("button", { name: "Confirm archive" })
+  ).toBeDisabled();
+
+  // Close and reopen for 2026-11-17, trigger network failure, then retry with the same requestKey.
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Cancel" })
+  );
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Archive Focused Study" })
+  );
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Confirm archive" })
+  );
+  expect(within(habitsRegion).getByRole("alert")).toHaveTextContent(
+    "We couldn’t confirm whether this Habit was archived."
+  );
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Retry archive" })
+  );
+  expect(archive).toHaveBeenCalledTimes(2);
+  expect(archive.mock.calls[0]?.[0].requestKey).toBe(
+    archive.mock.calls[1]?.[0].requestKey
+  );
+  expect(within(habitsRegion).getByRole("alert")).toHaveTextContent(
+    "Your Habit settings changed."
+  );
+  expect(
+    within(habitsRegion).getByRole("link", { name: "Reload workspace" })
+  ).toHaveFocus();
 });

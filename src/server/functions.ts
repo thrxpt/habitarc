@@ -5,7 +5,11 @@ import {
 } from "@tanstack/react-start/server";
 
 import type { EntryMutationFailure } from "../entries";
-import type { GoalRevisionResponse, HabitCreationResponse } from "../habits";
+import type {
+  ArchiveHabitResponse,
+  GoalRevisionResponse,
+  HabitCreationResponse,
+} from "../habits";
 import { isRole } from "../identity";
 import type { Identity } from "../identity";
 import { validateTemplateListQuery } from "../templates";
@@ -181,6 +185,21 @@ export const reviseGoal = createServerFn({ method: "POST" })
     const actor = await authorizeParticipant();
     try {
       return await getHabitService().reviseGoal(actor, data);
+    } catch (error) {
+      if (error instanceof HabitError) {
+        return writeFailure(error);
+      }
+      throw error;
+    }
+  });
+
+export const archiveHabit = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(async ({ data }): Promise<ArchiveHabitResponse> => {
+    const actor = await authorizeParticipant();
+    try {
+      return await getHabitService().archiveHabit(actor, data);
     } catch (error) {
       if (error instanceof HabitError) {
         return writeFailure(error);

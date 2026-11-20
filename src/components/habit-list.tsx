@@ -1,6 +1,10 @@
+import { useEffect, useRef, useState } from "react";
+
 import { addCalendarDays } from "../calendar";
 import { formatSchedule } from "../habits";
 import type {
+  ArchiveHabitDraft,
+  ArchiveHabitResponse,
   GoalRevisionDraft,
   GoalRevisionResponse,
   Habit,
@@ -8,6 +12,7 @@ import type {
 } from "../habits";
 import { formatTemplateRange } from "../templates";
 import { GoalRevisionForm } from "./goal-revision-form";
+import { HabitArchiveForm } from "./habit-archive-form";
 
 const formatTrackingPeriod = (habit: Habit, accountDate: string): string => {
   const start = `Started ${habit.startDate}`;
@@ -22,11 +27,22 @@ const formatTrackingPeriod = (habit: Habit, accountDate: string): string => {
 export const HabitList = ({
   workspace,
   onReviseGoal,
+  onArchiveHabit,
 }: {
   workspace: HabitWorkspace;
   onReviseGoal?: (draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>;
+  onArchiveHabit?: (draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>;
 }) => {
   const tomorrow = addCalendarDays(workspace.accountDate, 1);
+  const [archiveStatus, setArchiveStatus] = useState("");
+  const archiveNotice = useRef<HTMLOutputElement>(null);
+
+  useEffect(() => {
+    if (archiveStatus.length > 0) {
+      archiveNotice.current?.focus();
+    }
+  }, [archiveStatus]);
+
   return (
     <section className="mt-12 max-w-2xl" aria-labelledby="habit-list-heading">
       <h2
@@ -38,6 +54,13 @@ export const HabitList = ({
       <p className="text-muted-foreground mb-6 text-sm">
         Account date: {workspace.accountDate} ({workspace.timezone})
       </p>
+      <output
+        ref={archiveNotice}
+        tabIndex={-1}
+        className="mb-4 block text-sm empty:mb-0"
+      >
+        {archiveStatus}
+      </output>
       {workspace.items.length === 0 ? (
         <p className="text-muted-foreground">
           Choose an Activity Template below to start your first Habit.
@@ -98,6 +121,18 @@ export const HabitList = ({
                     onReviseGoal={onReviseGoal}
                   />
                 )}
+              {onArchiveHabit !== undefined && habit.archivedFrom === null && (
+                <HabitArchiveForm
+                  habit={habit}
+                  accountDate={workspace.accountDate}
+                  tomorrow={tomorrow}
+                  timezone={workspace.timezone}
+                  onArchiveHabit={onArchiveHabit}
+                  onArchived={(message) => {
+                    setArchiveStatus(message);
+                  }}
+                />
+              )}
               <a
                 href={`/habits/${encodeURIComponent(habit.id)}/history`}
                 className="mt-4 inline-block text-sm underline"
