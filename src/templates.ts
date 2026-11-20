@@ -37,6 +37,7 @@ export interface ActivityTemplate {
   entryMaximum: number;
   archivedAt: string | null;
   version: number;
+  measurementLocked?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +48,27 @@ export interface ActivityTemplateDraft {
   unit: MeasurementUnit;
   entryMinimum: number;
   entryMaximum: number;
+}
+
+export interface TemplateReference {
+  templateId: string;
+  templateVersion: number;
+}
+
+export interface TemplateEditDraft
+  extends TemplateReference, ActivityTemplateDraft {}
+
+export type TemplateMaintenanceResponse =
+  | { kind: "saved"; template: ActivityTemplate }
+  | {
+      kind: "invalid" | "conflict";
+      message: string;
+      fieldErrors: TemplateFieldErrors;
+    };
+
+export interface TemplateMaintenanceActions {
+  update: (draft: TemplateEditDraft) => Promise<TemplateMaintenanceResponse>;
+  archive: (draft: TemplateReference) => Promise<TemplateMaintenanceResponse>;
 }
 
 export type TemplateField = keyof ActivityTemplateDraft;
@@ -96,6 +118,24 @@ const isWholePositiveNumber = (value: unknown): value is number =>
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
+
+export const parseTemplateReference = (
+  input: unknown
+): TemplateReference | undefined => {
+  if (!isRecord(input)) {
+    return undefined;
+  }
+  const { templateId, templateVersion } = input;
+  if (
+    typeof templateId !== "string" ||
+    templateId.length === 0 ||
+    templateId.length > 200 ||
+    !isWholePositiveNumber(templateVersion)
+  ) {
+    return undefined;
+  }
+  return { templateId, templateVersion };
+};
 
 const validateTemplateName = (
   raw: unknown,

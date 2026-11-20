@@ -48,6 +48,7 @@ export const seedEntryHistory = async (database: Database) => {
     database
   ).createHabit(participant, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 40,
     weekdays: [getIsoWeekday(accountDate)],
   });

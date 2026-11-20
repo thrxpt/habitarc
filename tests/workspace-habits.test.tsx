@@ -91,6 +91,7 @@ test("Participant selects a template, starts a weekday Habit above the entry max
   await user.click(screen.getByRole("button", { name: "Start Habit" }));
   expect(create).toHaveBeenCalledWith({
     templateId: "study",
+    templateVersion: 1,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5],
   });
@@ -119,6 +120,41 @@ test("Participant selects a template, starts a weekday Habit above the entry max
   expect(
     screen.queryByRole("button", { name: "Start Habit" })
   ).not.toBeInTheDocument();
+});
+
+test("a refreshed template cannot carry a typed Daily Target into a different Measurement Unit", async () => {
+  const create = vi.fn<(draft: HabitDraft) => Promise<CreateHabitResult>>();
+  const props = {
+    identity: participant,
+    habitWorkspace: workspace,
+    onCreateHabit: create,
+    onSessionChanged: sessionChanged,
+  };
+  const { rerender } = render(
+    <AccountScreen {...props} templates={[template]} />
+  );
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: /Focused Study/u }));
+  await user.type(screen.getByLabelText("Daily Target"), "60");
+  await user.click(screen.getByRole("checkbox", { name: "Monday" }));
+
+  rerender(
+    <AccountScreen
+      {...props}
+      templates={[{ ...template, unit: "counts", version: 2 }]}
+    />
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Choose an active template again."
+  );
+  expect(
+    screen.queryByRole("button", { name: "Start Habit" })
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: /Focused Study/u }));
+  expect(screen.getByLabelText("Daily Target")).toHaveDisplayValue("");
+  expect(screen.getByRole("checkbox", { name: "Monday" })).not.toBeChecked();
+  await user.click(screen.getByRole("button", { name: "Start Habit" }));
+  expect(create).not.toHaveBeenCalled();
 });
 
 test.each(["4", "1.5", "1441", "1e2"])(
@@ -251,6 +287,7 @@ test("all seven selected weekdays are saved and displayed as every day", async (
   await user.click(screen.getByRole("button", { name: "Start Habit" }));
   expect(create).toHaveBeenCalledWith({
     templateId: "study",
+    templateVersion: 1,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });

@@ -143,6 +143,66 @@ const createCountTemplate = async () =>
     entryMaximum: 1_000_000,
   });
 
+test("AC-F08-2: retiring a template blocks new Habits while existing entries and bounds persist", async () => {
+  const activityDate = "2026-11-16";
+  const now = () => new Date(`${activityDate}T12:00:00+07:00`);
+  const creator = createHabitService(database, { now });
+  const activity = createEntryService(otherDatabase, { now });
+  const published = await createStudyTemplate();
+  const edit = {
+    ...published,
+    templateId: published.id,
+    templateVersion: published.version,
+  };
+  await expect(
+    templates.updateTemplate(managerM, { ...edit, entryMaximum: 4 })
+  ).rejects.toMatchObject({ status: 400 });
+  const updated = await templates.updateTemplate(managerM, {
+    ...edit,
+    entryMaximum: 30,
+  });
+  const selection = {
+    templateId: updated.id,
+    templateVersion: updated.version,
+  };
+  const habitDraft = { ...selection, dailyTarget: 60, weekdays: [1] };
+  const { habit } = await creator.createHabit(participantA, habitDraft);
+  const entryDraft = { habitId: habit.id, activityDate };
+  const original = await activity.createEntry(participantA, {
+    ...entryDraft,
+    amount: 25,
+    requestKey: randomUUID(),
+  });
+
+  await templates.archiveTemplate(managerM, selection);
+  await expect(
+    creator.createHabit(participantB, habitDraft)
+  ).rejects.toMatchObject({
+    status: 409,
+  });
+  await expect(
+    activity.createEntry(participantA, {
+      ...entryDraft,
+      amount: 31,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+  await expect(
+    activity.createEntry(participantA, {
+      ...entryDraft,
+      amount: 30,
+      requestKey: randomUUID(),
+    })
+  ).resolves.toMatchObject({ kind: "created", dailyTotal: 55 });
+
+  const history = await activity.getHistory(participantA, {
+    habitId: habit.id,
+  });
+  expect(
+    history.days[0]?.entries.find((entry) => entry.id === original.entry.id)
+  ).toMatchObject({ amount: 25, activityDate });
+});
+
 test("AC-F07-1/3: tomorrow's target and weekdays apply only from their effective date", async () => {
   let instant = new Date("2026-11-15T12:00:00+07:00");
   const now = () => instant;
@@ -151,6 +211,7 @@ test("AC-F07-1/3: tomorrow's target and weekdays apply only from their effective
   const template = await createStudyTemplate();
   const { habit } = await habitService.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2],
   });
@@ -252,6 +313,7 @@ test("AC-F07-2: concurrent edits conflict, same-day edits replace tomorrow's pla
   const template = await createStudyTemplate();
   const { habit } = await writer.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [2, 3],
   });
@@ -375,6 +437,7 @@ test("F07 reads the newly effective revision when a goal save commits across mid
   const template = await createStudyTemplate();
   const { habit } = await writer.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [2, 3],
   });
@@ -439,11 +502,13 @@ test("F07 validates goal bounds and restricts changes to the owner of a Habit tr
   const counts = await createCountTemplate();
   const { habit } = await service.createHabit(participantA, {
     templateId: study.id,
+    templateVersion: study.version,
     dailyTarget: 60,
     weekdays: [2],
   });
   const { habit: countHabit } = await service.createHabit(participantA, {
     templateId: counts.id,
+    templateVersion: counts.version,
     dailyTarget: 20,
     weekdays: [2],
   });
@@ -569,6 +634,7 @@ test("AC-F04-1: multiple deliberate entries accumulate and show overachievement 
   const template = await createStudyTemplate();
   const createdHabit = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -638,6 +704,7 @@ test("AC-F04-2: concurrent idempotent retry counts once, payload mismatch confli
   const template = await createStudyTemplate();
   const { habit } = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -693,11 +760,13 @@ test("AC-F04-2: receipt and entry persist atomically, and auth/ownership run bef
   const template = await createStudyTemplate();
   const habitA = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
   const habitB = await habits.createHabit(participantB, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -769,6 +838,7 @@ test("AC-F04-3: account midnight, 7-day window, pre-start, post-archive, off-sch
   const template = await createStudyTemplate();
   const { habit: habitA } = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     // Monday through Friday only (Saturday=6, Sunday=7 unscheduled).
     weekdays: [1, 2, 3, 4, 5],
@@ -909,6 +979,7 @@ test("AC-F04-3: account midnight, 7-day window, pre-start, post-archive, off-sch
   fakeNow = new Date("2026-11-01T07:30:00Z");
   const { habit: habitB } = await habits.createHabit(participantB, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -936,6 +1007,7 @@ const createHistoryHabit = async () => {
   const template = await createCountTemplate();
   const { habit } = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1],
   });
@@ -1396,6 +1468,7 @@ test("AC-F04-4: concurrent ceiling writes cannot exceed 1,440 minutes or 1,000,0
   const study = await createStudyTemplate();
   const { habit: minuteHabit } = await habits.createHabit(participantA, {
     templateId: study.id,
+    templateVersion: study.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -1478,6 +1551,7 @@ test("AC-F04-4: concurrent ceiling writes cannot exceed 1,440 minutes or 1,000,0
   const countTemplate = await createCountTemplate();
   const { habit: countHabit } = await habits.createHabit(participantB, {
     templateId: countTemplate.id,
+    templateVersion: countTemplate.version,
     dailyTarget: 100,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -1519,6 +1593,7 @@ test("Program Managers cannot read Today or record Activity Entries", async () =
   const template = await createStudyTemplate();
   const { habit } = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -1726,6 +1801,10 @@ test(
           entryMaximum: 45,
         },
       });
+      expect(createdTemplate).toMatchObject({
+        status: 200,
+        body: { result: { version: 1 } },
+      });
       const templateId = readStringAt(createdTemplate.body, ["result", "id"]);
 
       const createdHabit = await callServerFn("createHabit", {
@@ -1733,6 +1812,7 @@ test(
         cookie: participantCookie,
         data: {
           templateId,
+          templateVersion: 1,
           dailyTarget: 60,
           weekdays: [1, 2, 3, 4, 5, 6, 7],
         },

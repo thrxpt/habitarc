@@ -23,7 +23,7 @@ import { AuthError } from "./auth-error";
 import type { Database, Transaction } from "./database";
 import { readMutationReceipt, saveMutationReceipt } from "./mutation-receipts";
 import { activityTemplate, goalRevision, habit, user } from "./schema";
-import { toActivityTemplate } from "./templates";
+import { lockActivityTemplate, toActivityTemplate } from "./templates";
 import {
   accountDateExpression,
   lockOwnedHabit,
@@ -153,17 +153,20 @@ export const createHabitService = (
       );
     }
     return await database.transaction(async (transaction) => {
-      // Template UPDATE/archival takes the same lock. Validate only after it is held.
-      const rows = await transaction
-        .select()
-        .from(activityTemplate)
-        .where(eq(activityTemplate.id, validation.value.templateId))
-        .for("update");
-      const row = rows.at(0);
+      const row = await lockActivityTemplate(
+        transaction,
+        validation.value.templateId
+      );
       if (row === undefined || row.archivedAt !== null) {
         throw new HabitError(
           409,
           "This Activity Template is no longer available. Choose an active template."
+        );
+      }
+      if (row.version !== validation.value.templateVersion) {
+        throw new HabitError(
+          409,
+          "This Activity Template changed. Select it again and review the settings before starting your Habit."
         );
       }
       const template = toActivityTemplate(row);
