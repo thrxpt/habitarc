@@ -443,15 +443,15 @@ test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, f
     })
   ).not.toBeInTheDocument();
   expect(
-    within(habitsRegion).getByRole("link", {
-      name: "View history for Focused Study",
-    })
-  ).toBeVisible();
+    within(habitsRegion).getByRole("link", { name: /View history/u })
+  ).toHaveAttribute("href", "/habits/habit-a/history");
 
   // On 2026-11-15 (today), selecting the template still shows the active Habit.
   await user.click(screen.getByRole("button", { name: /Focused Study/u }));
   expect(screen.getByText(/You already have an active Habit/u)).toBeVisible();
-  expect(screen.getByText(/Archive begins 2026-11-16/u)).toBeVisible();
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Archive begins 2026-11-16."
+  );
 
   // On 2026-11-16 (tomorrow), the ended Habit shows Archived from and allows starting a fresh Habit.
   rerender(
