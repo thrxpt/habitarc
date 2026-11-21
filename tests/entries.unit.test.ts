@@ -7,6 +7,7 @@ import {
 } from "../src/calendar";
 import {
   calculateDayProgress,
+  calculateStreaks,
   checkEntryDateEligibility,
   getWritableDateBounds,
   resolveGoalForDate,
@@ -26,6 +27,76 @@ const studyTemplate: ActivityTemplate = {
   createdAt: "2026-11-15T00:00:00.000Z",
   updatedAt: "2026-11-15T00:00:00.000Z",
 };
+
+const weekdayGoal = {
+  effectiveFrom: "2026-11-13",
+  dailyTarget: 60,
+  weekdays: [1, 2, 3, 4, 5],
+};
+
+test("AC-F09-1: Friday and Monday form a Streak across a weekend with off-schedule activity", () => {
+  expect(
+    calculateStreaks({
+      startDate: "2026-11-13",
+      accountDate: "2026-11-16",
+      archivedFrom: null,
+      revisions: [weekdayGoal],
+      dailyTotals: new Map([
+        ["2026-11-13", 60],
+        ["2026-11-14", 90],
+        ["2026-11-16", 75],
+      ]),
+    })
+  ).toEqual({ current: 2, longest: 2 });
+});
+
+test("AC-F09-2: an unfinished scheduled day breaks a Streak only when the account date ends", () => {
+  const revisions = [weekdayGoal];
+  const streaks = (
+    accountDate: string,
+    dailyTotals: ReadonlyMap<string, number>
+  ) =>
+    calculateStreaks({
+      startDate: "2026-11-13",
+      accountDate,
+      archivedFrom: null,
+      revisions,
+      dailyTotals,
+    });
+  const friday = new Map([["2026-11-13", 60]]);
+  expect(streaks("2026-11-13", new Map())).toEqual({ current: 0, longest: 0 });
+  expect(streaks("2026-11-16", friday)).toEqual({ current: 1, longest: 1 });
+  expect(streaks("2026-11-17", friday)).toEqual({ current: 0, longest: 1 });
+  expect(
+    streaks("2026-11-17", new Map([...friday, ["2026-11-16", 60]]))
+  ).toEqual({
+    current: 2,
+    longest: 2,
+  });
+});
+
+test("AC-F09-3: Streaks apply historical targets and Schedules and stop at the archive boundary", () => {
+  const dailyTotals = new Map([
+    ["2026-11-12", 100],
+    ["2026-11-13", 60],
+    ["2026-11-18", 75],
+    ["2026-11-19", 90],
+  ]);
+  const streaks = (accountDate: string) =>
+    calculateStreaks({
+      startDate: "2026-11-13",
+      accountDate,
+      archivedFrom: "2026-11-19",
+      revisions: [
+        { effectiveFrom: "2026-11-14", dailyTarget: 75, weekdays: [3, 4] },
+        { effectiveFrom: "2026-11-13", dailyTarget: 60, weekdays: [5] },
+      ],
+      dailyTotals,
+    });
+
+  expect(streaks("2026-11-18")).toEqual({ current: 2, longest: 2 });
+  expect(streaks("2026-11-19")).toEqual({ current: null, longest: 2 });
+});
 
 test("calendar date utilities handle leap years, month boundaries, and ISO weekdays", () => {
   expect(isValidIsoDate("2026-11-15")).toBe(true);

@@ -34,6 +34,13 @@ type SubmitCorrection = (
   draft: EntryCorrectionTarget | UpdateEntryDraft
 ) => Promise<EntryCorrectionResponse>;
 
+const formatStreak = (days: number | null) => {
+  if (days === null) {
+    return "Not applicable";
+  }
+  return `${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}`;
+};
+
 const EntryCorrectionForm = ({
   history,
   correction,
@@ -328,6 +335,29 @@ export const HistoryPanel = ({
       <p className="text-muted-foreground mb-6 text-sm">
         Account date {history.accountDate} ({history.timezone})
       </p>
+      <section
+        aria-labelledby="history-streaks-heading"
+        aria-busy={refreshState === "loading"}
+        className="mb-6 rounded-lg border p-4"
+      >
+        <h2 id="history-streaks-heading" className="text-lg font-semibold">
+          Lifetime Streaks
+        </h2>
+        <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-3" aria-live="polite">
+          <div>
+            <dt className="text-muted-foreground text-sm">Current Streak</dt>
+            <dd className="font-medium">
+              {formatStreak(history.streaks.current)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground text-sm">Longest Streak</dt>
+            <dd className="font-medium">
+              {formatStreak(history.streaks.longest)}
+            </dd>
+          </div>
+        </dl>
+      </section>
       {history.writableMinDate !== null && history.writableMaxDate !== null && (
         <p className="mb-6 text-sm">
           You can change entries dated {history.writableMinDate} through{" "}
@@ -340,7 +370,7 @@ export const HistoryPanel = ({
       {refreshState === "failed" && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>
-            History couldn’t reload. Refresh to see the latest totals.
+            History couldn’t reload. Refresh to see the latest results.
           </AlertDescription>
           <Button
             type="button"

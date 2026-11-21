@@ -7,6 +7,20 @@ import { AccountShell } from "../components/account-shell";
 import { HistoryPanel } from "../components/history-panel";
 import { PageHeading } from "../components/page-heading";
 import { deleteEntry, getHistory, updateEntry } from "../server/functions";
+import {
+  getNavigationElapsedTime,
+  useAccountDateRefresh,
+} from "../use-account-date-refresh";
+
+const loadHistory = async (query: { habitId: string; before?: string }) => {
+  const startedAt = getNavigationElapsedTime();
+  const result = await getHistory({ data: query });
+  return {
+    result,
+    startedAt,
+    rolloverAt: result === null ? null : startedAt + result.history.refreshInMs,
+  };
+};
 
 const HistoryUnavailable = () => (
   <main className="compact:px-6 compact:py-10 mx-auto max-w-[1240px] px-12 py-16">
@@ -19,14 +33,16 @@ const HistoryUnavailable = () => (
 
 const HistoryPage = () => {
   const loaded = Route.useLoaderData();
-  const [refresh, setRefresh] = useState<{
-    from: typeof loaded;
-    result: typeof loaded;
-  } | null>(null);
-  const data = refresh?.from === loaded ? refresh.result : loaded;
+  const [refresh, setRefresh] = useState<typeof loaded | null>(null);
+  const { result: data, rolloverAt } =
+    refresh !== null && refresh.startedAt >= loaded.startedAt
+      ? refresh
+      : loaded;
   const { before } = Route.useSearch();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
+
+  useAccountDateRefresh(rolloverAt);
 
   if (data === null || (!isPending && session?.user.id !== data.viewer.id)) {
     return <HistoryUnavailable />;
@@ -49,7 +65,7 @@ const HistoryPage = () => {
         Signed in as {viewer.name}
       </p>
       <HistoryPanel
-        key={JSON.stringify([viewer.id, history.habitId, before])}
+        key={viewer.id}
         history={history}
         onSubmit={async (draft) => {
           if ("amount" in draft) {
@@ -58,8 +74,12 @@ const HistoryPage = () => {
           return await deleteEntry({ data: draft });
         }}
         onRefresh={async () => {
-          const result = await getHistory({ data: { ...params, before } });
-          setRefresh({ from: loaded, result });
+          const result = await loadHistory({ ...params, before });
+          setRefresh((previous) =>
+            previous === null || result.startedAt >= previous.startedAt
+              ? result
+              : previous
+          );
         }}
       />
       {(before !== undefined || history.nextBefore !== null) && (
@@ -97,8 +117,9 @@ export const Route = createFileRoute("/habits/$habitId/history")({
   validateSearch: (search: Record<string, unknown>): { before?: string } =>
     isValidIsoDate(search.before) ? { before: search.before } : {},
   loaderDeps: ({ search: { before } }) => ({ before }),
+  remountDeps: ({ params, loaderDeps }) => [params.habitId, loaderDeps.before],
   loader: async ({ params: { habitId }, deps: { before } }) =>
-    await getHistory({ data: { habitId, before } }),
+    await loadHistory({ habitId, before }),
   component: HistoryPage,
   errorComponent: HistoryUnavailable,
 });

@@ -1083,6 +1083,81 @@ test("AC-F06-1: history shows dated scheduled and off-schedule amounts, with old
 
 const historyMondayNoon = () => new Date("2026-11-16T12:00:00+07:00");
 
+test("AC-F09-2/3: Habit History derives Streaks across account midnight, Goal Revisions, and eligible corrections", async () => {
+  let instant = new Date("2026-11-13T12:00:00+07:00");
+  const now = () => instant;
+  const organizer = createHabitService(database, { now });
+  const activity = createEntryService(database, { now });
+  const observer = createEntryService(otherDatabase, { now });
+  const template = await createCountTemplate();
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  };
+  const { habit } = await organizer.createHabit(participantA, draft);
+  const log = async (activityDate: string, amount: number) =>
+    await activity.createEntry(participantA, {
+      habitId: habit.id,
+      activityDate,
+      amount,
+      requestKey: randomUUID(),
+    });
+  const history = async (before?: string) =>
+    await observer.getHistory(participantA, { habitId: habit.id, before });
+
+  await log("2026-11-13", 30);
+  await log("2026-11-13", 30);
+  instant = new Date("2026-11-16T23:59:59+07:00");
+  await log("2026-11-14", 90);
+  const { entry } = await log("2026-11-16", 40);
+  await organizer.reviseGoal(participantA, {
+    habitId: habit.id,
+    expectedVersion: habit.version,
+    effectiveFrom: "2026-11-17",
+    dailyTarget: 75,
+    weekdays: [3],
+    requestKey: randomUUID(),
+  });
+  expect(await history()).toMatchObject({
+    accountDate: "2026-11-16",
+    streaks: { current: 1, longest: 1 },
+  });
+
+  instant = new Date("2026-11-17T00:00:00+07:00");
+  expect(await history()).toMatchObject({
+    accountDate: "2026-11-17",
+    streaks: { current: 0, longest: 1 },
+  });
+  await activity.updateEntry(participantA, {
+    habitId: habit.id,
+    entryId: entry.id,
+    expectedVersion: entry.version,
+    activityDate: entry.activityDate,
+    amount: 60,
+    requestKey: randomUUID(),
+  });
+  expect(await history("2026-11-16")).toMatchObject({
+    streaks: { current: 2, longest: 2 },
+  });
+
+  instant = new Date("2026-11-18T12:00:00+07:00");
+  await log("2026-11-18", 75);
+  expect(await history()).toMatchObject({
+    streaks: { current: 3, longest: 3 },
+  });
+  await activity.deleteEntry(participantA, {
+    habitId: habit.id,
+    entryId: entry.id,
+    expectedVersion: entry.version + 1,
+    requestKey: randomUUID(),
+  });
+  expect(await history()).toMatchObject({
+    streaks: { current: 1, longest: 1 },
+  });
+});
+
 test("History pages keep entries from the same date together and reach older records", async () => {
   const { id: habitId } = await createHistoryHabit();
   const clocked = createEntryService(database, { now: historyMondayNoon });
