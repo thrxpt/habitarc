@@ -2103,32 +2103,56 @@ test(
         archivedFrom: tomorrowDate,
         requestKey: archiveKey,
       };
-      const [anonArchive, managerArchive, otherArchive, badArchive] =
-        await Promise.all([
-          callServerFn("archiveHabit", {
-            method: "POST",
-            data: archivePayload,
-          }),
-          callServerFn("archiveHabit", {
-            method: "POST",
-            cookie: managerCookie,
-            data: archivePayload,
-          }),
-          callServerFn("archiveHabit", {
-            method: "POST",
-            cookie: otherCookie,
-            data: archivePayload,
-          }),
-          callServerFn("archiveHabit", {
-            method: "POST",
-            cookie: participantCookie,
-            data: { ...archivePayload, expectedVersion: 0 },
-          }),
-        ]);
+      const [
+        anonArchive,
+        managerArchive,
+        otherArchive,
+        badArchive,
+        nulHabitArchive,
+        nulKeyArchive,
+      ] = await Promise.all([
+        callServerFn("archiveHabit", {
+          method: "POST",
+          data: archivePayload,
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: managerCookie,
+          data: archivePayload,
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: otherCookie,
+          data: archivePayload,
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: { ...archivePayload, expectedVersion: 0 },
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: { ...archivePayload, habitId: `${habitId}\u0000` },
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: { ...archivePayload, requestKey: `${archiveKey}\u0000` },
+        }),
+      ]);
       expect(anonArchive.status).toBe(401);
       expect(managerArchive.status).toBe(403);
       expect(otherArchive.status).toBe(404);
       expect(badArchive).toMatchObject({
+        status: 400,
+        body: { result: { kind: "invalid" } },
+      });
+      expect(nulHabitArchive).toMatchObject({
+        status: 400,
+        body: { result: { kind: "invalid" } },
+      });
+      expect(nulKeyArchive).toMatchObject({
         status: 400,
         body: { result: { kind: "invalid" } },
       });

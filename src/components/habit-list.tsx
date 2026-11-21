@@ -24,6 +24,19 @@ const formatTrackingPeriod = (habit: Habit, accountDate: string): string => {
   return `${start} · ${label} ${habit.archivedFrom}`;
 };
 
+interface ArchiveNotice {
+  templateName: string;
+  archivedFrom: string;
+}
+
+const formatArchiveNotice = (
+  notice: ArchiveNotice,
+  accountDate: string
+): string =>
+  notice.archivedFrom > accountDate
+    ? `${notice.templateName} is scheduled to end on ${notice.archivedFrom} (exclusive). Today remains active.`
+    : `${notice.templateName} was archived from ${notice.archivedFrom} (exclusive). Its history remains available.`;
+
 export const HabitList = ({
   workspace,
   onReviseGoal,
@@ -34,11 +47,13 @@ export const HabitList = ({
   onArchiveHabit?: (draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>;
 }) => {
   const tomorrow = addCalendarDays(workspace.accountDate, 1);
-  const [archiveStatus, setArchiveStatus] = useState("");
+  const [archiveStatus, setArchiveStatus] = useState<ArchiveNotice | null>(
+    null
+  );
   const archiveNotice = useRef<HTMLOutputElement>(null);
 
   useEffect(() => {
-    if (archiveStatus.length > 0) {
+    if (archiveStatus !== null) {
       archiveNotice.current?.focus();
     }
   }, [archiveStatus]);
@@ -54,13 +69,13 @@ export const HabitList = ({
       <p className="text-muted-foreground mb-6 text-sm">
         Account date: {workspace.accountDate} ({workspace.timezone})
       </p>
-      {archiveStatus.length > 0 && (
+      {archiveStatus !== null && (
         <output
           ref={archiveNotice}
           tabIndex={-1}
           className="mb-4 block text-sm"
         >
-          {archiveStatus}
+          {formatArchiveNotice(archiveStatus, workspace.accountDate)}
         </output>
       )}
       {workspace.items.length === 0 ? (
@@ -130,8 +145,11 @@ export const HabitList = ({
                   tomorrow={tomorrow}
                   timezone={workspace.timezone}
                   onArchiveHabit={onArchiveHabit}
-                  onArchived={(message) => {
-                    setArchiveStatus(message);
+                  onArchived={(archivedFrom) => {
+                    setArchiveStatus({
+                      templateName: habit.template.name,
+                      archivedFrom,
+                    });
                   }}
                 />
               )}

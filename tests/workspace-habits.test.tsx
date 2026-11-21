@@ -471,6 +471,12 @@ test("AC-F08-3: archive confirmation shows tomorrow as the exclusive end date, f
       "Started 2026-11-15 · Archived from 2026-11-16"
     )
   ).toBeVisible();
+  expect(within(habitsRegion).getByRole("status")).toHaveTextContent(
+    "Focused Study was archived from 2026-11-16 (exclusive). Its history remains available."
+  );
+  expect(within(habitsRegion).getByRole("status")).not.toHaveTextContent(
+    "Today remains active"
+  );
   expect(screen.getByRole("button", { name: "Start Habit" })).toBeVisible();
 });
 

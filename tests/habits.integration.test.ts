@@ -559,6 +559,24 @@ test("AC-F08-3 / AC-F08-4: archiving sets tomorrow as exclusive end date and enf
 
   await expect(
     clockedHabits.archiveHabit(participant, {
+      habitId: `${created.id}\u0000`,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-17",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-17",
+      requestKey: `${randomUUID()}\u0000`,
+    })
+  ).rejects.toMatchObject({ status: 400 });
+
+  await expect(
+    clockedHabits.archiveHabit(participant, {
       habitId: created.id,
       expectedVersion: created.version,
       archivedFrom: "2026-11-16",

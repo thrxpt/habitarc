@@ -25,7 +25,7 @@ export const HabitArchiveForm = ({
   tomorrow: string;
   timezone: string;
   onArchiveHabit: (draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>;
-  onArchived?: (message: string) => void;
+  onArchived?: (archivedFrom: string) => void;
 }) => {
   const hydrated = useHydrated();
   const formId = useId();
@@ -96,9 +96,7 @@ export const HabitArchiveForm = ({
         setConflict(result.kind === "conflict");
       } else {
         setConfirm(null);
-        onArchived?.(
-          `${habit.template.name} is scheduled to end on ${result.archivedFrom} (exclusive). Today remains active.`
-        );
+        onArchived?.(result.archivedFrom);
       }
     } catch {
       setRetry(draft);

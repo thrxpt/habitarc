@@ -206,7 +206,8 @@ const parseHabitMutationTarget = (
   const validHabitId =
     typeof habitId === "string" &&
     habitId.length > 0 &&
-    habitId.length <= MAX_HABIT_ID_LENGTH;
+    habitId.length <= MAX_HABIT_ID_LENGTH &&
+    !habitId.includes("\u0000");
   const validVersion =
     typeof expectedVersion === "number" &&
     Number.isSafeInteger(expectedVersion) &&
