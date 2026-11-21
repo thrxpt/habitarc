@@ -4,6 +4,8 @@ import type {
   TodayWorkspace,
 } from "../entries";
 import type {
+  ArchiveHabitDraft,
+  ArchiveHabitResponse,
   GoalRevisionDraft,
   GoalRevisionResponse,
   HabitCreationResponse,
@@ -27,6 +29,7 @@ interface AccountScreenProps {
   habitWorkspace?: HabitWorkspace;
   onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
   onReviseGoal?: (draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>;
+  onArchiveHabit?: (draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>;
   identity: Identity | null;
   templates?: ActivityTemplate[];
   hasMoreTemplates?: boolean;
@@ -48,6 +51,7 @@ export const AccountScreen = ({
   habitWorkspace,
   onCreateHabit,
   onReviseGoal,
+  onArchiveHabit,
   identity,
   templates = EMPTY_TEMPLATES,
   hasMoreTemplates = false,
@@ -76,6 +80,7 @@ export const AccountScreen = ({
         habitWorkspace={habitWorkspace}
         onCreateHabit={onCreateHabit}
         onReviseGoal={onReviseGoal}
+        onArchiveHabit={onArchiveHabit}
         identity={identity}
         templates={templates}
         hasMoreTemplates={hasMoreTemplates}

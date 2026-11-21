@@ -651,3 +651,119 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
     await pool.end();
   }
 });
+
+test("AC-F08-3: a Participant archives a Habit from tomorrow, logs today, corrects history after rollover, and starts a fresh Habit", async ({
+  page,
+}) => {
+  const templateName = "Archive Lifecycle E2E";
+  await page.setViewportSize({ width: 390, height: 844 });
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  const setClock = async (instant: string | null) =>
+    await pool.query("UPDATE e2e_clock.override SET instant = $1", [instant]);
+  try {
+    await setClock("2026-11-16T12:00:00+07:00");
+    await page.goto("/");
+    await publishTemplate(page, templateName);
+    await signIn(page, "b@example.test");
+
+    const library = page.getByRole("region", {
+      name: "Activity Template library",
+      exact: true,
+    });
+    await library
+      .getByRole("button", { name: new RegExp(templateName, "u") })
+      .click();
+    const start = page.getByRole("form", {
+      name: `Start ${templateName} Habit`,
+    });
+    await start.getByLabel("Daily Target").fill("50");
+    for (const weekday of [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+    ]) {
+      // eslint-disable-next-line no-await-in-loop -- Browser interactions must complete in order.
+      await start.getByRole("checkbox", { name: weekday, exact: true }).check();
+    }
+    await start.getByRole("button", { name: "Start Habit" }).click();
+    const today = page.getByRole("region", { name: "Today", exact: true });
+    await expect(today).toContainText("0 / 50 minutes");
+
+    await setClock("2026-11-17T12:00:00+07:00");
+    await page.reload();
+    const habits = page.getByRole("region", {
+      name: "Your Habits",
+      exact: true,
+    });
+    const habitItem = habits
+      .getByRole("listitem")
+      .filter({ hasText: templateName });
+    await habitItem.getByRole("button", { name: "Archive Habit" }).click();
+    const archiveForm = habitItem.getByRole("form", {
+      name: `Archive ${templateName}`,
+    });
+    await expect(archiveForm).toContainText("2026-11-18");
+    await expect(archiveForm).toContainText("exclusive");
+    await expect(
+      archiveForm.getByRole("button", { name: "Cancel" })
+    ).toBeFocused();
+    await archiveForm.getByRole("button", { name: "Confirm archive" }).click();
+
+    await expect(
+      habits.getByText(
+        `${templateName} is scheduled to end on 2026-11-18 (exclusive). Today remains active.`
+      )
+    ).toBeVisible();
+    await expect(habitItem).toContainText("Archive begins 2026-11-18");
+    await expect(
+      habitItem.getByRole("button", { name: "Archive Habit" })
+    ).toHaveCount(0);
+
+    // Today (2026-11-17) remains active and writable.
+    const todayCard = today
+      .getByRole("listitem")
+      .filter({ hasText: templateName });
+    await todayCard.getByRole("button", { name: "Add entry" }).click();
+    await todayCard.getByLabel("Amount (minutes)").fill("40");
+    await todayCard.getByRole("button", { name: "Save entry" }).click();
+    await expect(todayCard).toContainText("40 / 50 minutes");
+
+    // Advance to 2026-11-18 (exclusive archive date).
+    await setClock("2026-11-18T12:00:00+07:00");
+    await page.reload();
+    await expect(today).not.toContainText(templateName);
+    await expect(habitItem).toContainText("Archived from 2026-11-18");
+
+    // History remains accessible and 2026-11-17 is still eligible for correction.
+    await habitItem
+      .getByRole("link", { name: `View history for ${templateName}` })
+      .click();
+    const tuesday = page.getByRole("region", {
+      name: "2026-11-17",
+      exact: true,
+    });
+    await expect(tuesday).toContainText("40 / 50 minutes");
+    await tuesday.getByRole("button", { name: /^Edit entry/u }).click();
+    await tuesday.getByLabel("Amount (minutes)").fill("45");
+    await tuesday.getByRole("button", { name: "Save changes" }).click();
+    await expect(tuesday).toContainText("45 / 50 minutes");
+
+    // Return to workspace and start a fresh Habit from the same template.
+    await page.getByRole("link", { name: "Back to workspace" }).click();
+    await library
+      .getByRole("button", { name: new RegExp(templateName, "u") })
+      .click();
+    const restart = page.getByRole("form", {
+      name: `Start ${templateName} Habit`,
+    });
+    await restart.getByLabel("Daily Target").fill("30");
+    await restart.getByRole("checkbox", { name: "Wednesday" }).check();
+    await restart.getByRole("button", { name: "Start Habit" }).click();
+    await expect(today).toContainText("0 / 30 minutes");
+  } finally {
+    await setClock(null);
+    await pool.end();
+  }
+});

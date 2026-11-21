@@ -5,12 +5,14 @@ import { and, asc, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 
 import { addCalendarDays } from "../calendar";
 import {
+  validateArchiveHabitInput,
   validateGoalInput,
   validateGoalRevisionInput,
   validateHabitInput,
   WEEKDAYS,
 } from "../habits";
 import type {
+  ArchiveHabitSuccess,
   CreateHabitResult,
   GoalRevisionSuccess,
   GoalSnapshot,
@@ -33,7 +35,7 @@ import {
 } from "./tracking";
 import type { AccountCalendar, TrackingServiceOptions } from "./tracking";
 
-const STALE_GOAL_MESSAGE =
+const STALE_HABIT_MESSAGE =
   "Your Habit settings changed. Reload the workspace before trying again.";
 
 export class HabitError extends Error {
@@ -266,7 +268,7 @@ export const createHabitService = (
         );
       }
       if (owned.version !== draft.expectedVersion) {
-        throw new HabitError(409, STALE_GOAL_MESSAGE);
+        throw new HabitError(409, STALE_HABIT_MESSAGE);
       }
       const [template] = await transaction
         .select()
@@ -356,5 +358,84 @@ export const createHabitService = (
     });
   };
 
-  return { listHabits, createHabit, reviseGoal };
+  const archiveHabit = async (
+    actor: Identity,
+    input: unknown
+  ): Promise<ArchiveHabitSuccess> => {
+    if (actor.role !== "participant") {
+      throw new AuthError(403, "Forbidden");
+    }
+    const validation = validateArchiveHabitInput(input);
+    if (!validation.ok) {
+      throw new HabitError(400, validation.message, validation.fieldErrors);
+    }
+    const { requestKey, ...draft } = validation.value;
+    return await database.transaction(async (transaction) => {
+      const owned = await lockOwnedHabit(transaction, actor, draft.habitId);
+      if (owned === undefined) {
+        throw new HabitError(404, "Habit not found.");
+      }
+      const request = {
+        actorId: actor.id,
+        requestKey,
+        operation: "archiveHabit",
+        payloadFingerprint: JSON.stringify(draft),
+      };
+      const receipt = await readMutationReceipt(transaction, request);
+      if (receipt.kind === "applied") {
+        return { kind: "replayed", archivedFrom: draft.archivedFrom };
+      }
+      if (receipt.kind === "conflict") {
+        throw new HabitError(
+          409,
+          "This request key was already used for a different change."
+        );
+      }
+      if (owned.archivedFrom !== null) {
+        throw new HabitError(
+          409,
+          `This Habit is already scheduled to end on ${owned.archivedFrom}.`
+        );
+      }
+      if (owned.version !== draft.expectedVersion) {
+        throw new HabitError(409, STALE_HABIT_MESSAGE);
+      }
+      if (owned.startDate >= draft.archivedFrom) {
+        throw new HabitError(
+          409,
+          "This Habit can only be archived starting tomorrow."
+        );
+      }
+      const [archived] = await transaction
+        .update(habit)
+        .set({
+          archivedFrom: draft.archivedFrom,
+          version: owned.version + 1,
+        })
+        .where(
+          and(
+            eq(habit.id, owned.id),
+            eq(habit.participantId, actor.id),
+            eq(habit.version, draft.expectedVersion),
+            isNull(habit.archivedFrom),
+            sql`exists (
+              select 1 from ${user}
+              where ${user.id} = ${actor.id}
+                and ${accountDateExpression(options.now)} = ${addCalendarDays(draft.archivedFrom, -1)}
+            )`
+          )
+        )
+        .returning({ id: habit.id, archivedFrom: habit.archivedFrom });
+      if (archived === undefined) {
+        throw new HabitError(
+          409,
+          "The account date or Habit settings changed. Reload the workspace before archiving."
+        );
+      }
+      await saveMutationReceipt(transaction, request, owned.id);
+      return { kind: "archived", archivedFrom: draft.archivedFrom };
+    });
+  };
+
+  return { listHabits, createHabit, reviseGoal, archiveHabit };
 };

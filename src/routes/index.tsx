@@ -5,6 +5,7 @@ import { authClient } from "../auth-client";
 import { AccountScreen } from "../components/account-screen";
 import { PageHeading } from "../components/page-heading";
 import {
+  archiveHabit,
   archiveTemplate,
   createEntry,
   createTemplate,
@@ -134,6 +135,13 @@ const Home = () => {
       onReviseGoal={async (draft) => {
         const result = await reviseGoal({ data: draft });
         if (result.kind === "saved" || result.kind === "replayed") {
+          await router.invalidate({ sync: true });
+        }
+        return result;
+      }}
+      onArchiveHabit={async (draft) => {
+        const result = await archiveHabit({ data: draft });
+        if (result.kind === "archived" || result.kind === "replayed") {
           await router.invalidate({ sync: true });
         }
         return result;
