@@ -576,6 +576,7 @@ test("AC-F10-1/2: Participant configures, retries, and disables a local Reminder
 
   const habitsRegion = screen.getByRole("region", { name: "Your Habits" });
   expect(within(habitsRegion).getByText("Off")).toBeVisible();
+  expect(within(habitsRegion).getByRole("status")).toBeEmptyDOMElement();
 
   const user = userEvent.setup();
   await user.click(

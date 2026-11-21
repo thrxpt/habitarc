@@ -540,9 +540,9 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
         releaseRefresh?.();
         await page.unrouteAll({ behavior: "wait" });
       }
-      await expect(habits.getByRole("status")).toContainText(
-        "Goal settings saved for 2026-11-18."
-      );
+      await expect(
+        habits.getByRole("status").filter({ hasText: "Goal settings saved" })
+      ).toContainText("Goal settings saved for 2026-11-18.");
       await edit.click();
       await expect(form.getByLabel("Daily Target")).toHaveValue("35");
       await form.getByLabel("Daily Target").fill("30");
@@ -885,14 +885,14 @@ test("AC-F10-1: a Participant sets a local Reminder and sees the Today due indic
     await expect(todayCard).toContainText(
       "In-app Reminder set for 18:00 (Asia/Bangkok)"
     );
-    await expect(todayCard).not.toContainText("Reminder due");
+    await expect(todayCard.getByRole("status")).toHaveText("");
 
     // Advance past 18:00 and trigger window focus to re-evaluate while the app stays open.
     await setClock("2026-11-16T18:00:00+07:00");
     await page.evaluate(() => {
       window.dispatchEvent(new Event("focus"));
     });
-    await expect(todayCard).toContainText(
+    await expect(todayCard.getByRole("status")).toHaveText(
       "Reminder due · 18:00 (Asia/Bangkok)"
     );
 
@@ -901,6 +901,7 @@ test("AC-F10-1: a Participant sets a local Reminder and sees the Today due indic
     await todayCard.getByLabel("Amount (minutes)").fill("40");
     await todayCard.getByRole("button", { name: "Save entry" }).click();
     await expect(todayCard).toContainText("40 / 40 minutes");
+    await expect(todayCard.getByRole("status").first()).toHaveText("");
     await expect(todayCard).not.toContainText("Reminder due");
   } finally {
     await setClock(null);

@@ -196,9 +196,7 @@ export const HabitReminderForm = ({
       >
         {toggleLabel}
       </Button>
-      {notice.length > 0 && (
-        <output className="mt-3 block text-sm">{notice}</output>
-      )}
+      <output className="block text-sm not-empty:mt-3">{notice}</output>
       {edit !== null && (
         <form
           id={formId}
