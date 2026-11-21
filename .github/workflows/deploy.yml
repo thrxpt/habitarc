@@ -16,10 +16,21 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-demo
+  group: deploy-demo-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  reject-non-main:
+    name: Reject deploy outside main
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Require the main branch
+        run: |
+          echo '::error::Deploy demo must be run from the main branch.'
+          exit 1
+
   test:
     if: github.ref == 'refs/heads/main' && !inputs.rollback_revision
     uses: ./.github/workflows/ci-docker.yml
@@ -50,8 +61,7 @@ jobs:
           persist-credentials: false
 
       - name: Check Portal settings and independent reviewer requirement
-        env:
-          GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           [[ "$GCP_PROJECT_ID" == cpe-se-course-2026 && "$GCP_REGION" == asia-southeast1 ]]
           [[ -n "$WIF_PROVIDER" && -n "$WIF_SERVICE_ACCOUNT" ]]
@@ -61,8 +71,14 @@ jobs:
           if [[ -z "$ROLLBACK_REVISION" ]]; then
             [[ "$HABITARC_AUTH_SECRET_VERSION" =~ ^[1-9][0-9]*$ ]]
           fi
-          gh api "repos/$GITHUB_REPOSITORY/environments/demo" |
-            jq -e '.protection_rules | any(.type == "required_reviewers" and .prevent_self_review == true and (.reviewers | length) > 0)'
+          # GitHub exposes environment protection rules for this public repository.
+          if ! curl --fail --silent --show-error --retry 3 --max-time 15 \
+            -H 'Cache-Control: no-cache' \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/environments/demo" |
+            jq -e '.can_admins_bypass == false and any(.protection_rules[]; .type == "required_reviewers" and .prevent_self_review == true and (.reviewers | length) > 0)' > /dev/null; then
+            echo '::error::The demo environment must require an independent reviewer, prevent self-review, and disable administrator bypass.'
+            exit 1
+          fi
 
       - name: Download the tested release image
         if: inputs.rollback_revision == ''

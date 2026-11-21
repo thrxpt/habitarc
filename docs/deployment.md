@@ -5,7 +5,7 @@ The Lab 5 release uses the resources the TA assigned to team `sd31d6c61` in `cpe
 ## Portal and GitHub setup
 
 1. Open **Team resources** in the Portal and confirm service `sd31d6c61`, job `sd31d6c61-migrate`, registry `sd31d6c61` and SQL instance `sd31d6c61-pg`. Use the Gmail registered in the Portal for CLI access. Confirm backup configuration, quota and access through grading with the TA.
-2. Create the GitHub environment **`demo`** with `main` as the deployment branch. Add a teammate as a required reviewer and enable **Prevent self-review**. Copy `GCP_PROJECT_ID`, `GCP_REGION`, `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` from the Portal into its **Environment variables**.
+2. Create the GitHub environment **`demo`** with `main` as the deployment branch. Add a teammate as a required reviewer, enable **Prevent self-review** and disable administrator bypass. Copy `GCP_PROJECT_ID`, `GCP_REGION`, `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` from the Portal into its **Environment variables**.
 3. Add a generated Better Auth secret to Portal slot `sd31d6c61-app-secret-1`. Set `HABITARC_AUTH_SECRET_VERSION` in GitHub to the enabled version number. Keep that version stable across releases to preserve existing sessions.
 4. For first-run account setup, prepare a private JSON file outside the repository with two Participants and one Program Manager. Add its contents to Portal slot `sd31d6c61-app-secret-2` and set `HABITARC_ACCOUNTS_SECRET_VERSION` in GitHub to that version number. See the [account input contract](auth.md#provision-synthetic-accounts-privately).
 
@@ -29,10 +29,16 @@ The preview prints the release commands with placeholder image and revision valu
 
 After review and integration into `main`, open **Actions → Deploy demo → Run workflow** and have the `demo` reviewer approve. Select `provision_accounts` on the first release to create the synthetic accounts. Provisioning skips existing accounts and preserves their passwords. A routine release detaches the provisioning file from the job.
 
+Dispatching from any branch other than `main` fails before testing or authenticating to GCP. GitHub pauses the deploy job for the `demo` reviewer. Before requesting an OIDC credential, the job also reads the public environment policy and verifies that it requires review and prevents self-review.
+
 1. Lab 5's `test-and-docker` invokes `Validate` and uploads the tested image archive for the same commit.
 2. The deploy job authenticates through Portal OIDC, publishes the tested image and resolves its registry digest.
 3. `deploy/release.sh` updates the assigned migration job to run `node dist/operators/migrate.mjs` using that digest, with one task and zero retries. The job must succeed before the service update. Optional provisioning runs `node dist/operators/provision.mjs` in that job.
 4. The assigned service listens on port 8080 using the image's default command. It derives `BETTER_AUTH_URL` from the existing service URL. It uses up to one instance per revision with five PostgreSQL connections per app process. It stages a candidate and verifies the Habitarc sign-in page and anonymous session response before promoting that revision.
+
+### Cloud SQL connection headroom
+
+Budget up to **10 connections** for the current and candidate revisions together (one instance per revision, five connections per instance). Reserve **5 more** for the single migration or provisioning task, even though the job finishes before the candidate starts. Plan for **15 connections for Habitarc**, plus room for TA and operator connections and any brief Cloud Run scaling above the configured limit. Confirm available capacity with the TA before the first release. These figures are planning estimates for the Portal database.
 
 Keep the commit, workflow URL, image digest, revision and live URL from the summary. Verify login, identity, logout and retrieval of the same saved Activity Entries and account data after a revision change using the synthetic accounts. Record the TA's backup and retention configuration. The earlier [required-check failure](https://github.com/thrxpt/habitarc/actions/runs/43592070147) and [production image CI run](https://github.com/thrxpt/habitarc/actions/runs/43735877612) remain available as prior evidence. Live Portal release and persistence verification are pending.
 
