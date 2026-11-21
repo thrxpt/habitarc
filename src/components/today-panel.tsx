@@ -295,20 +295,27 @@ const EntryRecordForm = ({
 const TodayHabitCard = ({
   item,
   accountDate,
+  timezone,
   isFormOpen,
   onToggleForm,
   onRecordEntry,
 }: {
   item: TodayHabitItem;
   accountDate: string;
+  timezone: string;
   isFormOpen: boolean;
   onToggleForm: () => void;
   onRecordEntry?: (draft: ActivityEntryDraft) => Promise<RecordEntryResponse>;
 }) => {
   const hydrated = useHydrated();
-  const { habit, progress, entries } = item;
+  const { habit, progress, entries, reminderDue } = item;
   const { template } = habit;
   const { unit } = template;
+  const showUpcomingReminder =
+    !reminderDue &&
+    progress.scheduled &&
+    !progress.completed &&
+    habit.reminderTime !== null;
 
   return (
     <li id={`today-habit-${habit.id}`} className="py-5">
@@ -318,6 +325,17 @@ const TodayHabitCard = ({
           {formatTemplateRange(template)}
         </span>
       </div>
+
+      {reminderDue && habit.reminderTime !== null && (
+        <output className="bg-secondary text-foreground mt-2 inline-flex items-center rounded-md border px-2.5 py-1 text-sm font-medium">
+          Reminder due · {habit.reminderTime} ({timezone})
+        </output>
+      )}
+      {showUpcomingReminder && (
+        <p className="text-muted-foreground mt-2 text-sm">
+          In-app Reminder set for {habit.reminderTime} ({timezone})
+        </p>
+      )}
 
       {progress.scheduled && progress.dailyTarget !== null ? (
         <div className="mt-2">
@@ -441,6 +459,7 @@ export const TodayPanel = ({
                     key={item.habit.id}
                     item={item}
                     accountDate={workspace.accountDate}
+                    timezone={workspace.timezone}
                     isFormOpen={openHabitId === item.habit.id}
                     onToggleForm={() => {
                       setOpenHabitId((previous) =>
@@ -463,6 +482,7 @@ export const TodayPanel = ({
                     key={item.habit.id}
                     item={item}
                     accountDate={workspace.accountDate}
+                    timezone={workspace.timezone}
                     isFormOpen={openHabitId === item.habit.id}
                     onToggleForm={() => {
                       setOpenHabitId((previous) =>

@@ -15,6 +15,8 @@ import type {
   Habit,
   HabitDraft,
   HabitWorkspace,
+  ReminderDraft,
+  SetReminderResponse,
 } from "../src/habits";
 import type { Identity } from "../src/identity";
 import type { ActivityTemplate } from "../src/templates";
@@ -43,6 +45,7 @@ const habit: Habit = {
   template,
   startDate: "2026-11-15",
   archivedFrom: null,
+  reminderTime: null,
   version: 1,
   pendingGoal: null,
   goal: {
@@ -552,4 +555,118 @@ test("AC-F08-3: archive confirmation expires across midnight, retries with the s
   expect(
     within(habitsRegion).getByRole("link", { name: "Reload workspace" })
   ).toHaveFocus();
+});
+
+test("AC-F10-1/2: Participant configures, retries, and disables a local Reminder with explicit Account Timezone and in-app-only wording", async () => {
+  const saveReminder = vi
+    .fn<(draft: ReminderDraft) => Promise<SetReminderResponse>>()
+    .mockRejectedValueOnce(new Error("Lost response"))
+    .mockResolvedValueOnce({ kind: "saved", reminderTime: "18:00" })
+    .mockResolvedValueOnce({ kind: "saved", reminderTime: null });
+
+  const { container, rerender } = render(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{ ...workspace, items: [habit] }}
+      onSetReminder={saveReminder}
+      onSessionChanged={sessionChanged}
+    />
+  );
+
+  const habitsRegion = screen.getByRole("region", { name: "Your Habits" });
+  expect(within(habitsRegion).getByText("Off")).toBeVisible();
+
+  const user = userEvent.setup();
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Set Reminder" })
+  );
+  expect(findMissingDescriptionTargets(container)).toEqual([]);
+
+  const form = within(habitsRegion).getByRole("form", {
+    name: "Reminder settings for Focused Study",
+  });
+  expect(form).toHaveTextContent("Asia/Bangkok");
+  expect(form).toHaveTextContent(
+    "no email, push, background delivery, or snooze"
+  );
+
+  // Submitting empty time shows accessible validation error without calling server
+  await user.click(within(form).getByRole("button", { name: "Save Reminder" }));
+  expect(saveReminder).not.toHaveBeenCalled();
+  expect(
+    within(form).getByLabelText("Reminder time (Asia/Bangkok)")
+  ).toHaveAttribute("aria-invalid", "true");
+  expect(findMissingDescriptionTargets(container)).toEqual([]);
+
+  // Set 18:00, recover from transient failure with unchanged requestKey
+  await user.type(
+    within(form).getByLabelText("Reminder time (Asia/Bangkok)"),
+    "18:00"
+  );
+  await user.click(within(form).getByRole("button", { name: "Save Reminder" }));
+  expect(within(form).getByRole("alert")).toHaveTextContent(
+    "We couldn’t confirm whether your Reminder was saved."
+  );
+  await user.click(within(form).getByRole("button", { name: "Retry save" }));
+  expect(saveReminder).toHaveBeenCalledTimes(2);
+  expect(saveReminder.mock.calls[0]?.[0]).toEqual(
+    saveReminder.mock.calls[1]?.[0]
+  );
+  expect(saveReminder.mock.calls[0]?.[0]).toMatchObject({
+    habitId: habit.id,
+    expectedVersion: 1,
+    reminderTime: "18:00",
+  });
+  expect(within(habitsRegion).getByRole("status")).toHaveTextContent(
+    "Reminder saved for 18:00 (Asia/Bangkok)."
+  );
+
+  // Rerender with persisted reminder, then disable it
+  const withReminder: Habit = { ...habit, reminderTime: "18:00", version: 2 };
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{ ...workspace, items: [withReminder] }}
+      onSetReminder={saveReminder}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  expect(
+    within(habitsRegion).getByText("18:00 (Asia/Bangkok) · In-app only")
+  ).toBeVisible();
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Edit Reminder" })
+  );
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Disable Reminder" })
+  );
+  expect(saveReminder).toHaveBeenCalledTimes(3);
+  expect(saveReminder.mock.calls[2]?.[0]).toMatchObject({
+    habitId: habit.id,
+    expectedVersion: 2,
+    reminderTime: null,
+  });
+  expect(within(habitsRegion).getByRole("status")).toHaveTextContent(
+    "Reminder disabled."
+  );
+
+  // Archived Habit hides Reminder settings
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{
+        ...workspace,
+        accountDate: "2026-11-16",
+        items: [{ ...withReminder, archivedFrom: "2026-11-16" }],
+      }}
+      onSetReminder={saveReminder}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  expect(
+    within(habitsRegion).queryByRole("button", { name: /Reminder/u })
+  ).not.toBeInTheDocument();
 });

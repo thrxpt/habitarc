@@ -801,3 +801,129 @@ test("AC-F08-3: pending archive blocks duplicates today and concurrent creates o
   const workspace = await clockedHabits.listHabits(participant);
   expect(workspace.items).toHaveLength(2);
 });
+
+test("AC-F10-1/2: setReminder persists, updates, replays, disables, enforces ownership/role, and rejects archived Habits", async () => {
+  const template = await studyTemplate();
+  let fakeNow = new Date("2026-11-16T12:00:00+07:00");
+  const clockedHabits = createHabitService(createDatabase(pool), {
+    now: () => fakeNow,
+  });
+  const { habit: created } = await clockedHabits.createHabit(participant, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+  expect(created.reminderTime).toBeNull();
+
+  // Direct ownership and role restrictions
+  await expect(
+    clockedHabits.setReminder(manager, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "18:00",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 403 });
+  await expect(
+    clockedHabits.setReminder(otherParticipant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "18:00",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 404 });
+
+  // Invalid local time is rejected with 400 and leaves database unchanged
+  await expect(
+    clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "25:00",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({
+    status: 400,
+    fieldErrors: {
+      reminderTime: "Enter a valid local time (HH:MM, 00:00 to 23:59).",
+    },
+  });
+
+  // Database CHECK constraint also rejects malformed values
+  await expect(
+    pool.query("UPDATE habit SET reminder_time = $1 WHERE id = $2", [
+      "9:00",
+      created.id,
+    ])
+  ).rejects.toThrow();
+
+  // Set reminder to 18:00 and replay with same requestKey
+  const setKey = randomUUID();
+  expect(
+    await clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "18:00",
+      requestKey: setKey,
+    })
+  ).toEqual({ kind: "saved", reminderTime: "18:00" });
+  expect(
+    await clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "18:00",
+      requestKey: setKey,
+    })
+  ).toEqual({ kind: "replayed", reminderTime: "18:00" });
+
+  // Stale version fails with 409
+  await expect(
+    clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "19:00",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 409 });
+
+  const afterSet = await clockedHabits.listHabits(participant);
+  expect(afterSet.items[0]).toMatchObject({
+    id: created.id,
+    reminderTime: "18:00",
+    version: 2,
+  });
+
+  // Disable reminder
+  expect(
+    await clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: 2,
+      reminderTime: null,
+      requestKey: randomUUID(),
+    })
+  ).toEqual({ kind: "saved", reminderTime: null });
+
+  const afterDisable = await clockedHabits.listHabits(participant);
+  expect(afterDisable.items[0]).toMatchObject({
+    id: created.id,
+    reminderTime: null,
+    version: 3,
+  });
+
+  // Archive from tomorrow: today is still active, tomorrow rejects reminder edits
+  await clockedHabits.archiveHabit(participant, {
+    habitId: created.id,
+    expectedVersion: 3,
+    archivedFrom: "2026-11-17",
+    requestKey: randomUUID(),
+  });
+  fakeNow = new Date("2026-11-17T08:00:00+07:00");
+  await expect(
+    clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: 4,
+      reminderTime: "18:00",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 409 });
+});

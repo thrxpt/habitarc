@@ -11,6 +11,8 @@ import type {
   HabitCreationResponse,
   HabitDraft,
   HabitWorkspace,
+  ReminderDraft,
+  SetReminderResponse,
 } from "../habits";
 import type { Identity } from "../identity";
 import type {
@@ -33,6 +35,7 @@ export const WorkspacePanel = ({
   onCreateHabit,
   onReviseGoal,
   onArchiveHabit,
+  onSetReminder,
   identity,
   templates = EMPTY_TEMPLATES,
   hasMoreTemplates = false,
@@ -48,6 +51,7 @@ export const WorkspacePanel = ({
   onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
   onReviseGoal?: (draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>;
   onArchiveHabit?: (draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>;
+  onSetReminder?: (draft: ReminderDraft) => Promise<SetReminderResponse>;
   identity: Identity;
   templates?: ActivityTemplate[];
   hasMoreTemplates?: boolean;
@@ -140,6 +144,7 @@ export const WorkspacePanel = ({
         workspace={habitWorkspace}
         onReviseGoal={onReviseGoal}
         onArchiveHabit={onArchiveHabit}
+        onSetReminder={onSetReminder}
       />
     )}
     <TemplateLibrary

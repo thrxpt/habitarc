@@ -50,6 +50,7 @@ import type { MutationRequest } from "./mutation-receipts";
 import { activityEntry, activityTemplate, goalRevision, habit } from "./schema";
 import { toActivityTemplate } from "./templates";
 import {
+  evaluateReminder,
   getAccountDateRefreshDelay,
   lockOwnedHabit,
   readAccountCalendar,
@@ -236,7 +237,7 @@ const findReceipt = async (
 export const readTodayWorkspace = async (
   database: Database | Transaction,
   participantId: string,
-  { accountDate, timezone }: AccountCalendar
+  { accountDate, timezone, observedAt }: AccountCalendar
 ): Promise<TodayWorkspace> => {
   const habitRows = await database
     .select()
@@ -307,6 +308,15 @@ export const readTodayWorkspace = async (
     }
     const entries = entriesByHabit.get(row.habit.id) ?? [];
     const progress = progressForEntries(accountDate, entries, goal, row.habit);
+    const reminder = evaluateReminder({
+      accountDate,
+      timezone,
+      observedAt,
+      reminderTime: row.habit.reminderTime,
+      active: true,
+      scheduled: progress.scheduled,
+      completed: progress.completed,
+    });
     const bounds = getWritableDateBounds({
       accountDate,
       startDate: row.habit.startDate,
@@ -318,9 +328,11 @@ export const readTodayWorkspace = async (
         template: toActivityTemplate(row.activity_template),
         startDate: row.habit.startDate,
         archivedFrom: row.habit.archivedFrom,
+        reminderTime: row.habit.reminderTime,
         goal,
       },
       progress,
+      reminderDue: reminder.due,
       entries,
       writableMinDate: bounds.writable ? bounds.minDate : null,
       writableMaxDate: bounds.writable ? bounds.maxDate : null,

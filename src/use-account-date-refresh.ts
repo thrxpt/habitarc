@@ -10,14 +10,24 @@ export const useAccountDateRefresh = (rolloverAt: number | null) => {
 
   useEffect(() => {
     let timer: number | undefined;
+    const refresh = () => {
+      void router.invalidate();
+    };
+    const refreshOnVisible = () => {
+      if (document.visibilityState === "visible") {
+        void router.invalidate();
+      }
+    };
     if (rolloverAt !== null) {
       const remaining = Math.max(0, rolloverAt - getNavigationElapsedTime());
-      timer = window.setTimeout(() => {
-        void router.invalidate();
-      }, remaining);
+      timer = window.setTimeout(refresh, remaining);
+      window.addEventListener("focus", refresh);
+      document.addEventListener("visibilitychange", refreshOnVisible);
     }
     return () => {
       window.clearTimeout(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refreshOnVisible);
     };
   }, [rolloverAt, router]);
 };

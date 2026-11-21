@@ -9,6 +9,7 @@ import type {
   ArchiveHabitResponse,
   GoalRevisionResponse,
   HabitCreationResponse,
+  SetReminderResponse,
 } from "../habits";
 import { isRole } from "../identity";
 import type { Identity } from "../identity";
@@ -200,6 +201,21 @@ export const archiveHabit = createServerFn({ method: "POST" })
     const actor = await authorizeParticipant();
     try {
       return await getHabitService().archiveHabit(actor, data);
+    } catch (error) {
+      if (error instanceof HabitError) {
+        return writeFailure(error);
+      }
+      throw error;
+    }
+  });
+
+export const setReminder = createServerFn({ method: "POST" })
+  .middleware([applicationErrors])
+  .validator((input: unknown) => input)
+  .handler(async ({ data }): Promise<SetReminderResponse> => {
+    const actor = await authorizeParticipant();
+    try {
+      return await getHabitService().setReminder(actor, data);
     } catch (error) {
       if (error instanceof HabitError) {
         return writeFailure(error);

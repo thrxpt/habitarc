@@ -11,6 +11,8 @@ import type {
   HabitCreationResponse,
   HabitDraft,
   HabitWorkspace,
+  ReminderDraft,
+  SetReminderResponse,
 } from "../habits";
 import type { Identity } from "../identity";
 import type {
@@ -30,6 +32,7 @@ interface AccountScreenProps {
   onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
   onReviseGoal?: (draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>;
   onArchiveHabit?: (draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>;
+  onSetReminder?: (draft: ReminderDraft) => Promise<SetReminderResponse>;
   identity: Identity | null;
   templates?: ActivityTemplate[];
   hasMoreTemplates?: boolean;
@@ -52,6 +55,7 @@ export const AccountScreen = ({
   onCreateHabit,
   onReviseGoal,
   onArchiveHabit,
+  onSetReminder,
   identity,
   templates = EMPTY_TEMPLATES,
   hasMoreTemplates = false,
@@ -81,6 +85,7 @@ export const AccountScreen = ({
         onCreateHabit={onCreateHabit}
         onReviseGoal={onReviseGoal}
         onArchiveHabit={onArchiveHabit}
+        onSetReminder={onSetReminder}
         identity={identity}
         templates={templates}
         hasMoreTemplates={hasMoreTemplates}
