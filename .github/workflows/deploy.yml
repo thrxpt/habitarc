@@ -1,73 +1,86 @@
-name: Release
+name: Deploy demo
 
 on:
   workflow_dispatch:
+    inputs:
+      provision_accounts:
+        description: Run private synthetic account setup from the configured Portal secret slot
+        type: boolean
+        default: false
+      rollback_revision:
+        description: Ready, schema-compatible Cloud Run revision to restore
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
 concurrency:
-  group: production-release
+  group: deploy-demo
   cancel-in-progress: false
 
 jobs:
-  validate:
-    if: github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/ci.yml
-    with:
-      upload-image: true
+  test:
+    if: github.ref == 'refs/heads/main' && !inputs.rollback_revision
+    uses: ./.github/workflows/ci-docker.yml
 
   deploy:
-    name: Deploy reviewed main
-    needs: validate
+    needs: test
+    if: >-
+      always() && !cancelled() && github.ref == 'refs/heads/main' && (needs.test.result == 'success' ||
+       (inputs.rollback_revision != '' && needs.test.result == 'skipped'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    environment: production
+    timeout-minutes: 30
+    environment: demo
     permissions:
       contents: read
       id-token: write
     env:
-      GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       GCP_REGION: ${{ vars.GCP_REGION }}
-      ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REPOSITORY }}
-      RUN_SERVICE: ${{ vars.RUN_SERVICE }}
-      RUNTIME_SERVICE_ACCOUNT: ${{ vars.RUNTIME_SERVICE_ACCOUNT }}
-      MIGRATION_SERVICE_ACCOUNT: ${{ vars.MIGRATION_SERVICE_ACCOUNT }}
-      CLOUD_SQL_INSTANCE: ${{ vars.CLOUD_SQL_INSTANCE }}
-      AUTH_ORIGIN: ${{ vars.AUTH_ORIGIN }}
-      DATABASE_SECRET_VERSION: ${{ vars.DATABASE_SECRET_VERSION }}
-      MIGRATION_SECRET_VERSION: ${{ vars.MIGRATION_SECRET_VERSION }}
-      AUTH_SECRET_VERSION: ${{ vars.AUTH_SECRET_VERSION }}
+      WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
+      HABITARC_AUTH_SECRET_VERSION: ${{ vars.HABITARC_AUTH_SECRET_VERSION }}
+      HABITARC_ACCOUNTS_SECRET_VERSION: ${{ inputs.provision_accounts && vars.HABITARC_ACCOUNTS_SECRET_VERSION || '' }}
+      PROVISION_ACCOUNTS: ${{ inputs.provision_accounts }}
+      ROLLBACK_REVISION: ${{ inputs.rollback_revision }}
     steps:
-      - name: Check out release source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Download tested image
+      - name: Check Portal settings and independent reviewer requirement
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$GCP_PROJECT_ID" == cpe-se-course-2026 && "$GCP_REGION" == asia-southeast1 ]]
+          [[ -n "$WIF_PROVIDER" && -n "$WIF_SERVICE_ACCOUNT" ]]
+          if [[ "$PROVISION_ACCOUNTS" == true ]]; then
+            [[ -z "$ROLLBACK_REVISION" && "$HABITARC_ACCOUNTS_SECRET_VERSION" =~ ^[1-9][0-9]*$ ]]
+          fi
+          if [[ -z "$ROLLBACK_REVISION" ]]; then
+            [[ "$HABITARC_AUTH_SECRET_VERSION" =~ ^[1-9][0-9]*$ ]]
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/environments/demo" |
+            jq -e '.protection_rules | any(.type == "required_reviewers" and .prevent_self_review == true and (.reviewers | length) > 0)'
+
+      - name: Download the tested release image
+        if: inputs.rollback_revision == ''
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: image-${{ github.sha }}
           path: ${{ runner.temp }}/release-image
 
-      - name: Require an independently approved production environment
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api "repos/$GITHUB_REPOSITORY/environments/production" |
-            jq -e '.protection_rules | any(.type == "required_reviewers" and .prevent_self_review == true and (.reviewers | length) > 0)'
-
-      - name: Authenticate through GitHub OIDC
+      - name: Authenticate with the Portal's GitHub OIDC identity
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
-          project_id: ${{ vars.GCP_PROJECT }}
-          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
 
-      - name: Set up pinned Google Cloud CLI
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
         with:
           version: 548.0.0
 
-      - name: Publish, migrate, stage, and promote tested image
-        run: bash scripts/deploy.sh "$RUNNER_TEMP/release-image/habitarc-image.tar"
+      - name: Release Habitarc on the assigned service
+        run: bash deploy/release.sh "$RUNNER_TEMP/release-image/habitarc-image.tar"

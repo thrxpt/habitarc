@@ -5,6 +5,7 @@ gha-creds-*.json
 **/*.key
 .git
 .github
+.local
 .agents
 .claude
 node_modules

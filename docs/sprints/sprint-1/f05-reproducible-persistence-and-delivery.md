@@ -1,6 +1,6 @@
 # F05 — Reproducible persistence and delivery
 
-Status: accepted contract baseline following Q25. The CI portion is implemented, and AC-F05-2 / STS-F05-2 required-check blocking is verified through an actual deliberately failed check; see [CI evidence](../../auth.md#github-ci-evidence). Production image creation, isolated image verification, and a gated OIDC release workflow are implemented; see [deployment preparation and evidence](../../deployment.md). GCP provisioning/deployment and live system/operational verification remain INCOMPLETE pending project, trial, access and regional cost review. Local image proof does not establish release acceptance.
+Status: accepted contract baseline following Q25. The CI portion is implemented, and AC-F05-2 / STS-F05-2 required-check blocking is verified through an actual deliberately failed check; see [CI evidence](../../auth.md#github-ci-evidence). Production image creation, isolated image verification, and a gated OIDC release workflow are implemented; see [deployment preparation and evidence](../../deployment.md). Lab 5 releases use the resources assigned by the Student Cloud Portal. Live deployment and operational verification remain incomplete pending the Portal setup and release checks in the runbook. Local image proof does not establish release acceptance.
 
 Sprint 1 and Lab 5, with Lab 5 submission extended to **November 22, 2026**, as confirmed by the user on November 15. Deliverable 1 remains due November 15; F05 acceptance criteria remain unchanged. FR-12, NFR-06–08. Infrastructure work begins alongside F01; release acceptance depends on F01–F04. Owner B for deployment, A for migrations/verification; each reviews the other's work.
 
@@ -13,7 +13,7 @@ Read the [SRS](../../srs.md), [System-Level SDS](../../system-sds.md), [feature 
 | AC-F05-1 / STS-F05-1 | System | Teammate follows clean README setup, migration, synthetic account seed, build, and tests | Working local critical journey with real PostgreSQL; repeat setup preserves existing records; secrets absent from Git/output |
 | AC-F05-2 / STS-F05-2 | CI/system | Open temporary branch with a deliberate required-check failure; attempt integration | Required check fails and blocks integration/release; preserve actual run evidence before removing the deliberate failure |
 | AC-F05-3 / STS-F05-3 | Deployment/E2E | Release reviewed main image to GCP, record IDs/amounts, restart/redeploy the app, retrieve them | Durable records survive; deployed commit/image matches release evidence; backup configuration is recorded |
-| AC-F05-4 / STS-F05-4 | Operational review | Inspect remaining credit, expiry, regional estimate, limits, secrets/IAM, migration job, and rollback procedure | Supported trial resources with budget runway; least-privilege identities; no paid upgrade; one controlled migration runner and documented recovery path |
+| AC-F05-4 / STS-F05-4 | Operational review | Confirm the team assignment, access, Portal limits and retention with the TA. Review secret bindings, IAM, the migration job and rollback | Assigned resources with sufficient availability for grading, scoped identities, one controlled migration runner and documented recovery path |
 
 ## Checkpoint boundary and design
 
