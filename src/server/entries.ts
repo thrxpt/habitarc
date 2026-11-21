@@ -5,6 +5,7 @@ import {
   asc,
   desc,
   eq,
+  gte,
   gt,
   inArray,
   isNull,
@@ -13,11 +14,13 @@ import {
   ne,
   or,
   sql,
+  sum,
 } from "drizzle-orm";
 
 import { addCalendarDays } from "../calendar";
 import {
   calculateDayProgress,
+  calculateStreaks,
   checkEntryDateEligibility,
   getWritableDateBounds,
   resolveGoalForDate,
@@ -46,7 +49,12 @@ import { readMutationReceipt, saveMutationReceipt } from "./mutation-receipts";
 import type { MutationRequest } from "./mutation-receipts";
 import { activityEntry, activityTemplate, goalRevision, habit } from "./schema";
 import { toActivityTemplate } from "./templates";
-import { lockOwnedHabit, readAccountCalendar, readTracking } from "./tracking";
+import {
+  getAccountDateRefreshDelay,
+  lockOwnedHabit,
+  readAccountCalendar,
+  readTracking,
+} from "./tracking";
 import type { AccountCalendar, TrackingServiceOptions } from "./tracking";
 
 const CREATE_ENTRY_OPERATION = "createEntry";
@@ -405,6 +413,23 @@ export const createEntryService = (
           .select()
           .from(goalRevision)
           .where(eq(goalRevision.habitId, habitId));
+        const dailyTotals = await transaction
+          .select({
+            date: activityEntry.activityDate,
+            total: sum(activityEntry.amount).mapWith(Number),
+          })
+          .from(activityEntry)
+          .where(
+            and(
+              eq(activityEntry.habitId, habitId),
+              gte(activityEntry.activityDate, row.habit.startDate),
+              lte(activityEntry.activityDate, calendar.accountDate),
+              row.habit.archivedFrom === null
+                ? undefined
+                : lt(activityEntry.activityDate, row.habit.archivedFrom)
+            )
+          )
+          .groupBy(activityEntry.activityDate);
 
         const entriesByDate = new Map<string, ActivityEntry[]>();
         for (const entry of entryRows) {
@@ -442,6 +467,15 @@ export const createEntryService = (
           template: toActivityTemplate(row.activity_template),
           writableMinDate,
           writableMaxDate,
+          streaks: calculateStreaks({
+            ...row.habit,
+            accountDate: calendar.accountDate,
+            revisions,
+            dailyTotals: new Map(
+              dailyTotals.map(({ date, total }) => [date, total])
+            ),
+          }),
+          refreshInMs: getAccountDateRefreshDelay(calendar),
           nextBefore,
           days: [...displayedDates].map((date) => {
             const entries = entriesByDate.get(date) ?? [];

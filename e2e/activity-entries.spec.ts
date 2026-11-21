@@ -652,7 +652,7 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
   }
 });
 
-test("AC-F08-3: a Participant archives a Habit from tomorrow, logs today, corrects history after rollover, and starts a fresh Habit", async ({
+test("AC-F08-3/F09-3: a Participant archives a Habit, corrects its Streak after rollover, and starts a fresh Habit", async ({
   page,
 }) => {
   const templateName = "Archive Lifecycle E2E";
@@ -676,23 +676,20 @@ test("AC-F08-3: a Participant archives a Habit from tomorrow, logs today, correc
     const start = page.getByRole("form", {
       name: `Start ${templateName} Habit`,
     });
-    await start.getByLabel("Daily Target").fill("50");
-    for (const weekday of [
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-    ]) {
-      // eslint-disable-next-line no-await-in-loop -- Browser interactions must complete in order.
-      await start.getByRole("checkbox", { name: weekday, exact: true }).check();
-    }
+    await start.getByLabel("Daily Target").fill("40");
+    await start.getByRole("checkbox", { name: "Monday" }).check();
+    await start.getByRole("checkbox", { name: "Tuesday" }).check();
     await start.getByRole("button", { name: "Start Habit" }).click();
     const today = page.getByRole("region", { name: "Today", exact: true });
-    await expect(today).toContainText("0 / 50 minutes");
+    const todayCard = today
+      .getByRole("listitem")
+      .filter({ hasText: templateName });
+    await expect(todayCard).toContainText("0 / 40 minutes");
+    await todayCard.getByRole("button", { name: "Add entry" }).click();
+    await todayCard.getByLabel("Amount (minutes)").fill("40");
+    await todayCard.getByRole("button", { name: "Save entry" }).click();
+    await expect(todayCard).toContainText("40 / 40 minutes");
 
-    await setClock("2026-11-17T12:00:00+07:00");
-    await page.reload();
     const habits = page.getByRole("region", {
       name: "Your Habits",
       exact: true,
@@ -700,6 +697,19 @@ test("AC-F08-3: a Participant archives a Habit from tomorrow, logs today, correc
     const habitItem = habits
       .getByRole("listitem")
       .filter({ hasText: templateName });
+    await habitItem.getByRole("button", { name: "Edit goal settings" }).click();
+    const goal = habitItem.getByRole("form", {
+      name: `Edit goal settings for ${templateName}`,
+    });
+    await goal.getByLabel("Daily Target").fill("45");
+    await goal.getByRole("checkbox", { name: "Monday" }).uncheck();
+    await goal
+      .getByRole("button", { name: "Save tomorrow’s settings" })
+      .click();
+    await expect(habitItem).toContainText("45 minutes · Tuesday");
+
+    await setClock("2026-11-17T23:59:30+07:00");
+    await page.reload();
     await habitItem.getByRole("button", { name: "Archive Habit" }).click();
     const archiveForm = habitItem.getByRole("form", {
       name: `Archive ${templateName}`,
@@ -722,36 +732,80 @@ test("AC-F08-3: a Participant archives a Habit from tomorrow, logs today, correc
     ).toHaveCount(0);
 
     // Today (2026-11-17) remains active and writable.
-    const todayCard = today
-      .getByRole("listitem")
-      .filter({ hasText: templateName });
     await todayCard.getByRole("button", { name: "Add entry" }).click();
     await todayCard.getByLabel("Amount (minutes)").fill("40");
     await todayCard.getByRole("button", { name: "Save entry" }).click();
-    await expect(todayCard).toContainText("40 / 50 minutes");
+    await expect(todayCard).toContainText("40 / 45 minutes");
 
-    // Advance to 2026-11-18 (exclusive archive date).
-    await setClock("2026-11-18T12:00:00+07:00");
-    await page.reload();
-    await expect(today).not.toContainText(templateName);
-    await expect(habitItem).toContainText("Archived from 2026-11-18");
+    const historyLink = habitItem.getByRole("link", {
+      name: `View history for ${templateName}`,
+    });
+    await page.clock.install();
+    await historyLink.click();
+    const streaks = page.getByRole("region", { name: "Lifetime Streaks" });
+    await expect(streaks.getByRole("definition")).toHaveText([
+      "1 day",
+      "1 day",
+    ]);
 
-    // History remains accessible and 2026-11-17 is still eligible for correction.
-    await habitItem
-      .getByRole("link", { name: `View history for ${templateName}` })
-      .click();
     const tuesday = page.getByRole("region", {
       name: "2026-11-17",
       exact: true,
     });
-    await expect(tuesday).toContainText("40 / 50 minutes");
+    await expect(tuesday).toContainText("40 / 45 minutes");
     await tuesday.getByRole("button", { name: /^Edit entry/u }).click();
     await tuesday.getByLabel("Amount (minutes)").fill("45");
-    await tuesday.getByRole("button", { name: "Save changes" }).click();
-    await expect(tuesday).toContainText("45 / 50 minutes");
+
+    let historyReads = 0;
+    let releaseRollover: (() => void) | undefined;
+    let releaseCorrection: (() => void) | undefined;
+    // eslint-disable-next-line promise/avoid-new -- Control the relative arrival of the two HTTP responses.
+    const rolloverReleased = new Promise<void>((resolve) => {
+      releaseRollover = resolve;
+    });
+    // eslint-disable-next-line promise/avoid-new -- Control the relative arrival of the two HTTP responses.
+    const correctionReleased = new Promise<void>((resolve) => {
+      releaseCorrection = resolve;
+    });
+    await page.route("**/_serverFn/*", async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      historyReads += 1;
+      await (historyReads === 1 ? rolloverReleased : correctionReleased);
+      await route.fulfill({ response });
+    });
+    try {
+      await setClock("2026-11-18T00:00:01+07:00");
+      const elapsedAcrossMidnightMs = 31_000;
+      await page.clock.fastForward(elapsedAcrossMidnightMs);
+      await expect.poll(() => historyReads).toBe(1);
+
+      await tuesday.getByRole("button", { name: "Save changes" }).click();
+      await expect.poll(() => historyReads).toBe(2);
+      releaseRollover?.();
+      await expect(streaks.getByRole("definition")).toHaveText([
+        "Not applicable",
+        "1 day",
+      ]);
+      releaseCorrection?.();
+    } finally {
+      releaseRollover?.();
+      releaseCorrection?.();
+      await page.unrouteAll({ behavior: "wait" });
+    }
+    await expect(tuesday).toContainText("45 / 45 minutes");
+    await expect(streaks.getByRole("definition")).toHaveText([
+      "Not applicable",
+      "2 days",
+    ]);
 
     // Return to workspace and start a fresh Habit from the same template.
     await page.getByRole("link", { name: "Back to workspace" }).click();
+    await expect(today).not.toContainText(templateName);
+    await expect(habitItem).toContainText("Archived from 2026-11-18");
     await library
       .getByRole("button", { name: new RegExp(templateName, "u") })
       .click();
@@ -762,6 +816,16 @@ test("AC-F08-3: a Participant archives a Habit from tomorrow, logs today, correc
     await restart.getByRole("checkbox", { name: "Wednesday" }).check();
     await restart.getByRole("button", { name: "Start Habit" }).click();
     await expect(today).toContainText("0 / 30 minutes");
+    await habitItem
+      .filter({ hasText: "30 minutes" })
+      .getByRole("link", {
+        name: `View history for ${templateName}`,
+      })
+      .click();
+    await expect(streaks.getByRole("definition")).toHaveText([
+      "0 days",
+      "0 days",
+    ]);
   } finally {
     await setClock(null);
     await pool.end();

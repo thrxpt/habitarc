@@ -22,6 +22,10 @@ import type {
   TemplateCursor,
   TemplateMaintenanceResponse,
 } from "../templates";
+import {
+  getNavigationElapsedTime,
+  useAccountDateRefresh,
+} from "../use-account-date-refresh";
 
 const EMPTY_TEMPLATE_PAGE: ActivityTemplatePage = {
   items: [],
@@ -50,21 +54,19 @@ const Home = () => {
     }
   }, [identity?.id, session?.user.id, isPending, router]);
 
+  useAccountDateRefresh(rolloverAt);
+  const refreshOnFocus = rolloverAt !== null;
   useEffect(() => {
     const refreshWorkspace = () => {
       void router.invalidate();
     };
-    let rolloverTimer: number | undefined;
-    if (rolloverAt !== null) {
+    if (refreshOnFocus) {
       window.addEventListener("focus", refreshWorkspace);
-      const remaining = Math.max(0, rolloverAt - window.performance.now());
-      rolloverTimer = window.setTimeout(refreshWorkspace, remaining);
     }
     return () => {
       window.removeEventListener("focus", refreshWorkspace);
-      window.clearTimeout(rolloverTimer);
     };
-  }, [rolloverAt, router]);
+  }, [refreshOnFocus, router]);
 
   const activeExtra = extraState?.forPage === templatePage ? extraState : null;
   const templates =
@@ -182,9 +184,7 @@ export const Route = createFileRoute("/")({
   loader: {
     staleReloadMode: "blocking",
     handler: async () => {
-      // Server-rendered data starts from the browser's navigation time origin.
-      const startedAt =
-        typeof window === "undefined" ? 0 : window.performance.now();
+      const startedAt = getNavigationElapsedTime();
       const identity = await getIdentity();
       if (!identity) {
         return {

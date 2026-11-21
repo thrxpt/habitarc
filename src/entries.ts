@@ -97,6 +97,17 @@ export interface HistoryDay {
   entries: ActivityEntry[];
 }
 
+interface HabitStreaks {
+  current: number | null;
+  longest: number;
+}
+
+interface HabitTrackingDates {
+  accountDate: string;
+  startDate: string;
+  archivedFrom: string | null;
+}
+
 export interface HabitHistory {
   habitId: string;
   template: ActivityTemplate;
@@ -104,6 +115,8 @@ export interface HabitHistory {
   timezone: string;
   writableMinDate: string | null;
   writableMaxDate: string | null;
+  streaks: HabitStreaks;
+  refreshInMs: number;
   days: HistoryDay[];
   nextBefore: string | null;
 }
@@ -112,11 +125,11 @@ export const getWritableDateBounds = ({
   accountDate,
   startDate,
   archivedFrom,
-}: {
-  accountDate: string;
-  startDate: string;
-  archivedFrom: string | null;
-}): { minDate: string; maxDate: string; writable: boolean } => {
+}: HabitTrackingDates): {
+  minDate: string;
+  maxDate: string;
+  writable: boolean;
+} => {
   const windowStart = addCalendarDays(accountDate, -ENTRY_WINDOW_DAYS);
   const minDate = windowStart > startDate ? windowStart : startDate;
   const periodEnd =
@@ -134,11 +147,8 @@ export const checkEntryDateEligibility = ({
   accountDate,
   startDate,
   archivedFrom,
-}: {
+}: HabitTrackingDates & {
   activityDate: string;
-  accountDate: string;
-  startDate: string;
-  archivedFrom: string | null;
 }): { ok: true } | { ok: false; message: string } => {
   if (activityDate > accountDate) {
     return {
@@ -223,6 +233,56 @@ export const calculateDayProgress = ({
     visualFillPercent: Math.min(100, percentage),
     completed: dailyTotal >= goal.dailyTarget,
   };
+};
+
+export const calculateStreaks = ({
+  startDate,
+  accountDate,
+  archivedFrom,
+  revisions,
+  dailyTotals,
+}: HabitTrackingDates & {
+  revisions: readonly GoalSnapshot[];
+  dailyTotals: ReadonlyMap<string, number>;
+}): HabitStreaks => {
+  const sortedRevisions = [...revisions];
+  // eslint-disable-next-line unicorn/no-array-sort -- The ES2022 target has no toSorted; this array is a local copy.
+  sortedRevisions.sort((a, b) =>
+    a.effectiveFrom.localeCompare(b.effectiveFrom)
+  );
+  const goals = sortedRevisions.values();
+  const archived = archivedFrom !== null && archivedFrom <= accountDate;
+  const lastDate = archived ? addCalendarDays(archivedFrom, -1) : accountDate;
+  let nextGoal = goals.next().value;
+  let goal: GoalSnapshot | undefined;
+  let current = 0;
+  let longest = 0;
+
+  for (
+    let date = startDate;
+    date <= lastDate;
+    date = addCalendarDays(date, 1)
+  ) {
+    while (nextGoal !== undefined && nextGoal.effectiveFrom <= date) {
+      goal = nextGoal;
+      nextGoal = goals.next().value;
+    }
+    const progress = calculateDayProgress({
+      date,
+      goal,
+      dailyTotal: dailyTotals.get(date) ?? 0,
+      startDate,
+      archivedFrom,
+    });
+    if (progress.completed) {
+      current += 1;
+      longest = Math.max(longest, current);
+    } else if (progress.scheduled && date < accountDate) {
+      current = 0;
+    }
+  }
+
+  return { current: archived ? null : current, longest };
 };
 
 const isWholePositiveAmount = (
