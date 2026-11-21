@@ -2459,3 +2459,121 @@ test("AC-F08-3 / AC-F08-4: archiving retains today’s obligation and history, r
     laterArchivedHistory.days.some((day) => day.date === "2026-11-16")
   ).toBe(true);
 });
+
+test("AC-F10-1/2: Today evaluates Reminder due state across local time, completion, disable, Goal Revision, midnight, and archive", async () => {
+  const template = await createStudyTemplate();
+  // Monday 2026-11-16 at 17:59 Asia/Bangkok
+  let fakeNow = new Date("2026-11-16T17:59:00+07:00");
+  const clockedHabits = createHabitService(database, { now: () => fakeNow });
+  const clockedEntries = createEntryService(database, { now: () => fakeNow });
+
+  const { habit } = await clockedHabits.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+  await clockedHabits.setReminder(participantA, {
+    habitId: habit.id,
+    expectedVersion: habit.version,
+    reminderTime: "18:00",
+    requestKey: randomUUID(),
+  });
+
+  // Before 18:00: not due
+  const beforeDue = await clockedEntries.getToday(participantA);
+  expect(beforeDue.scheduled[0]).toMatchObject({
+    habit: { id: habit.id, reminderTime: "18:00" },
+    reminderDue: false,
+  });
+
+  // At 18:00 with unmet target: due
+  fakeNow = new Date("2026-11-16T18:00:00+07:00");
+  const atDue = await clockedEntries.getToday(participantA);
+  expect(atDue.scheduled[0]).toMatchObject({
+    habit: { id: habit.id, reminderTime: "18:00" },
+    reminderDue: true,
+  });
+
+  // Partial entry still unmet: still due
+  await clockedEntries.createEntry(participantA, {
+    habitId: habit.id,
+    activityDate: "2026-11-16",
+    amount: 30,
+    requestKey: randomUUID(),
+  });
+  const afterPartial = await clockedEntries.getToday(participantA);
+  expect(afterPartial.scheduled[0]).toMatchObject({
+    progress: { dailyTotal: 30, completed: false },
+    reminderDue: true,
+  });
+
+  // Completing the target clears the due indicator
+  await clockedEntries.createEntry(participantA, {
+    habitId: habit.id,
+    activityDate: "2026-11-16",
+    amount: 30,
+    requestKey: randomUUID(),
+  });
+  const afterComplete = await clockedEntries.getToday(participantA);
+  expect(afterComplete.scheduled[0]).toMatchObject({
+    progress: { dailyTotal: 60, completed: true },
+    reminderDue: false,
+  });
+
+  // Revise schedule for tomorrow (Tuesday 2026-11-17) so Tuesday is unscheduled (only Wednesday)
+  await clockedHabits.reviseGoal(participantA, {
+    habitId: habit.id,
+    expectedVersion: 2,
+    effectiveFrom: "2026-11-17",
+    dailyTarget: 60,
+    weekdays: [3],
+    requestKey: randomUUID(),
+  });
+
+  // Advance across midnight to Tuesday 2026-11-17 at 19:00: unscheduled -> no due indicator
+  fakeNow = new Date("2026-11-17T19:00:00+07:00");
+  const unscheduledDay = await clockedEntries.getToday(participantA);
+  expect(unscheduledDay.scheduled).toHaveLength(0);
+  expect(unscheduledDay.unscheduled[0]).toMatchObject({
+    habit: { id: habit.id, reminderTime: "18:00" },
+    progress: { scheduled: false },
+    reminderDue: false,
+  });
+
+  // Advance to Wednesday 2026-11-18 at 19:00: scheduled & unmet -> due again, then disable clears it
+  fakeNow = new Date("2026-11-18T19:00:00+07:00");
+  const wednesdayDue = await clockedEntries.getToday(participantA);
+  expect(wednesdayDue.scheduled[0]).toMatchObject({
+    reminderDue: true,
+  });
+  await clockedHabits.setReminder(participantA, {
+    habitId: habit.id,
+    expectedVersion: 3,
+    reminderTime: null,
+    requestKey: randomUUID(),
+  });
+  const afterDisable = await clockedEntries.getToday(participantA);
+  expect(afterDisable.scheduled[0]).toMatchObject({
+    habit: { reminderTime: null },
+    reminderDue: false,
+  });
+
+  // Re-enable reminder and archive from tomorrow (2026-11-19): archived date has no Today item/indicator
+  await clockedHabits.setReminder(participantA, {
+    habitId: habit.id,
+    expectedVersion: 4,
+    reminderTime: "18:00",
+    requestKey: randomUUID(),
+  });
+  await clockedHabits.archiveHabit(participantA, {
+    habitId: habit.id,
+    expectedVersion: 5,
+    archivedFrom: "2026-11-19",
+    requestKey: randomUUID(),
+  });
+  fakeNow = new Date("2026-11-19T19:00:00+07:00");
+  const archivedDay = await clockedEntries.getToday(participantA);
+  expect(archivedDay.scheduled).toHaveLength(0);
+  expect(archivedDay.unscheduled).toHaveLength(0);
+});

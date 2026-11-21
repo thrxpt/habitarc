@@ -9,10 +9,13 @@ import type {
   GoalRevisionResponse,
   Habit,
   HabitWorkspace,
+  ReminderDraft,
+  SetReminderResponse,
 } from "../habits";
 import { formatTemplateRange } from "../templates";
 import { GoalRevisionForm } from "./goal-revision-form";
 import { HabitArchiveForm } from "./habit-archive-form";
+import { HabitReminderForm } from "./habit-reminder-form";
 
 const formatTrackingPeriod = (habit: Habit, accountDate: string): string => {
   const start = `Started ${habit.startDate}`;
@@ -41,10 +44,12 @@ export const HabitList = ({
   workspace,
   onReviseGoal,
   onArchiveHabit,
+  onSetReminder,
 }: {
   workspace: HabitWorkspace;
   onReviseGoal?: (draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>;
   onArchiveHabit?: (draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>;
+  onSetReminder?: (draft: ReminderDraft) => Promise<SetReminderResponse>;
 }) => {
   const tomorrow = addCalendarDays(workspace.accountDate, 1);
   const [archiveStatus, setArchiveStatus] = useState<ArchiveNotice | null>(
@@ -84,53 +89,69 @@ export const HabitList = ({
         </p>
       ) : (
         <ul className="divide-y border-y">
-          {workspace.items.map((habit) => (
-            <li id={`habit-${habit.id}`} key={habit.id} className="py-5">
-              <h3 className="mb-2 text-lg font-[650]">{habit.template.name}</h3>
-              <dl className="flex flex-col gap-3">
-                <div>
-                  <dt className="text-muted-foreground text-sm">
-                    Current Daily Target
-                  </dt>
-                  <dd>
-                    {habit.goal.dailyTarget.toLocaleString("en-US")}{" "}
-                    {habit.template.unit}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground text-sm">
-                    Current Schedule
-                  </dt>
-                  <dd>{formatSchedule(habit.goal.weekdays)}</dd>
-                </div>
-                {habit.pendingGoal !== null && (
+          {workspace.items.map((habit) => {
+            const activeToday =
+              habit.archivedFrom === null ||
+              habit.archivedFrom > workspace.accountDate;
+            const activeTomorrow =
+              habit.archivedFrom === null || habit.archivedFrom > tomorrow;
+            return (
+              <li id={`habit-${habit.id}`} key={habit.id} className="py-5">
+                <h3 className="mb-2 text-lg font-[650]">
+                  {habit.template.name}
+                </h3>
+                <dl className="flex flex-col gap-3">
                   <div>
                     <dt className="text-muted-foreground text-sm">
-                      Pending settings from {habit.pendingGoal.effectiveFrom}
+                      Current Daily Target
                     </dt>
                     <dd>
-                      {habit.pendingGoal.dailyTarget.toLocaleString("en-US")}{" "}
-                      {habit.template.unit} ·{" "}
-                      {formatSchedule(habit.pendingGoal.weekdays)}
+                      {habit.goal.dailyTarget.toLocaleString("en-US")}{" "}
+                      {habit.template.unit}
                     </dd>
                   </div>
-                )}
-                <div>
-                  <dt className="text-muted-foreground text-sm">
-                    Per-entry range
-                  </dt>
-                  <dd>{formatTemplateRange(habit.template)}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground text-sm">
-                    Tracking period
-                  </dt>
-                  <dd>{formatTrackingPeriod(habit, workspace.accountDate)}</dd>
-                </div>
-              </dl>
-              {onReviseGoal !== undefined &&
-                (habit.archivedFrom === null ||
-                  habit.archivedFrom > tomorrow) && (
+                  <div>
+                    <dt className="text-muted-foreground text-sm">
+                      Current Schedule
+                    </dt>
+                    <dd>{formatSchedule(habit.goal.weekdays)}</dd>
+                  </div>
+                  {habit.pendingGoal !== null && (
+                    <div>
+                      <dt className="text-muted-foreground text-sm">
+                        Pending settings from {habit.pendingGoal.effectiveFrom}
+                      </dt>
+                      <dd>
+                        {habit.pendingGoal.dailyTarget.toLocaleString("en-US")}{" "}
+                        {habit.template.unit} ·{" "}
+                        {formatSchedule(habit.pendingGoal.weekdays)}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-muted-foreground text-sm">
+                      Per-entry range
+                    </dt>
+                    <dd>{formatTemplateRange(habit.template)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground text-sm">
+                      Tracking period
+                    </dt>
+                    <dd>
+                      {formatTrackingPeriod(habit, workspace.accountDate)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground text-sm">Reminder</dt>
+                    <dd>
+                      {habit.reminderTime === null
+                        ? "Off"
+                        : `${habit.reminderTime} (${workspace.timezone}) · In-app only`}
+                    </dd>
+                  </div>
+                </dl>
+                {onReviseGoal !== undefined && activeTomorrow && (
                   <GoalRevisionForm
                     habit={habit}
                     tomorrow={tomorrow}
@@ -138,30 +159,39 @@ export const HabitList = ({
                     onReviseGoal={onReviseGoal}
                   />
                 )}
-              {onArchiveHabit !== undefined && habit.archivedFrom === null && (
-                <HabitArchiveForm
-                  habit={habit}
-                  accountDate={workspace.accountDate}
-                  tomorrow={tomorrow}
-                  timezone={workspace.timezone}
-                  onArchiveHabit={onArchiveHabit}
-                  onArchived={(archivedFrom) => {
-                    setArchiveStatus({
-                      templateName: habit.template.name,
-                      archivedFrom,
-                    });
-                  }}
-                />
-              )}
-              <a
-                href={`/habits/${encodeURIComponent(habit.id)}/history`}
-                className="mt-4 inline-block text-sm underline"
-              >
-                View history
-                <span className="sr-only"> for {habit.template.name}</span>
-              </a>
-            </li>
-          ))}
+                {onSetReminder !== undefined && activeToday && (
+                  <HabitReminderForm
+                    habit={habit}
+                    timezone={workspace.timezone}
+                    onSetReminder={onSetReminder}
+                  />
+                )}
+                {onArchiveHabit !== undefined &&
+                  habit.archivedFrom === null && (
+                    <HabitArchiveForm
+                      habit={habit}
+                      accountDate={workspace.accountDate}
+                      tomorrow={tomorrow}
+                      timezone={workspace.timezone}
+                      onArchiveHabit={onArchiveHabit}
+                      onArchived={(archivedFrom) => {
+                        setArchiveStatus({
+                          templateName: habit.template.name,
+                          archivedFrom,
+                        });
+                      }}
+                    />
+                  )}
+                <a
+                  href={`/habits/${encodeURIComponent(habit.id)}/history`}
+                  className="mt-4 inline-block text-sm underline"
+                >
+                  View history
+                  <span className="sr-only"> for {habit.template.name}</span>
+                </a>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

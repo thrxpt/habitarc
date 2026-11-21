@@ -18,7 +18,48 @@ export interface AccountCalendar {
   observedAt: number;
 }
 
+export interface ReminderEvaluationInput extends AccountCalendar {
+  reminderTime: string | null;
+  active: boolean;
+  scheduled: boolean;
+  completed: boolean;
+}
+
+export interface ReminderEvaluation {
+  due: boolean;
+  nextDueAt: number | null;
+}
+
 const MIN_REFRESH_DELAY_MS = 1000;
+
+export const getReminderInstantMs = (
+  accountDate: string,
+  timezone: string,
+  reminderTime: string
+): number =>
+  Temporal.PlainDate.from(accountDate).toZonedDateTime({
+    timeZone: timezone,
+    plainTime: Temporal.PlainTime.from(reminderTime),
+  }).epochMilliseconds;
+
+export const evaluateReminder = ({
+  accountDate,
+  timezone,
+  observedAt,
+  reminderTime,
+  active,
+  scheduled,
+  completed,
+}: ReminderEvaluationInput): ReminderEvaluation => {
+  if (!active || !scheduled || completed || reminderTime === null) {
+    return { due: false, nextDueAt: null };
+  }
+  const dueAt = getReminderInstantMs(accountDate, timezone, reminderTime);
+  if (observedAt >= dueAt) {
+    return { due: true, nextDueAt: null };
+  }
+  return { due: false, nextDueAt: dueAt };
+};
 
 export const getAccountDateRefreshDelay = ({
   accountDate,
@@ -32,6 +73,22 @@ export const getAccountDateRefreshDelay = ({
     MIN_REFRESH_DELAY_MS,
     tomorrow.epochMilliseconds - observedAt
   );
+};
+
+export const getWorkspaceRefreshDelay = (
+  calendar: AccountCalendar,
+  upcomingReminderInstants: readonly number[] = []
+): number => {
+  let delay = getAccountDateRefreshDelay(calendar);
+  for (const instant of upcomingReminderInstants) {
+    if (instant > calendar.observedAt) {
+      delay = Math.min(
+        delay,
+        Math.max(MIN_REFRESH_DELAY_MS, instant - calendar.observedAt)
+      );
+    }
+  }
+  return delay;
 };
 
 const accountInstant = (now?: () => Date) =>

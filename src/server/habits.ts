@@ -9,6 +9,7 @@ import {
   validateGoalInput,
   validateGoalRevisionInput,
   validateHabitInput,
+  validateReminderInput,
   WEEKDAYS,
 } from "../habits";
 import type {
@@ -19,6 +20,8 @@ import type {
   Habit,
   HabitFieldErrors,
   HabitWorkspace,
+  ReminderFieldErrors,
+  SetReminderSuccess,
 } from "../habits";
 import type { Identity } from "../identity";
 import { AuthError } from "./auth-error";
@@ -40,12 +43,12 @@ const STALE_HABIT_MESSAGE =
 
 export class HabitError extends Error {
   readonly status: number;
-  readonly fieldErrors: HabitFieldErrors;
+  readonly fieldErrors: HabitFieldErrors & ReminderFieldErrors;
 
   constructor(
     status: number,
     message: string,
-    fieldErrors: HabitFieldErrors = {}
+    fieldErrors: HabitFieldErrors & ReminderFieldErrors = {}
   ) {
     super(message);
     this.name = "HabitError";
@@ -109,6 +112,7 @@ const readHabits = async (
     template: toActivityTemplate(row.activity_template),
     startDate: row.habit.startDate,
     archivedFrom: row.habit.archivedFrom,
+    reminderTime: row.habit.reminderTime,
     version: row.habit.version,
     goal: toGoalSnapshot(row.current_goal),
     pendingGoal:
@@ -223,6 +227,7 @@ export const createHabitService = (
           template,
           startDate: accountDate,
           archivedFrom: null,
+          reminderTime: null,
           version: created.version,
           pendingGoal: null,
           goal: {
@@ -437,5 +442,79 @@ export const createHabitService = (
     });
   };
 
-  return { listHabits, createHabit, reviseGoal, archiveHabit };
+  const setReminder = async (
+    actor: Identity,
+    input: unknown
+  ): Promise<SetReminderSuccess> => {
+    if (actor.role !== "participant") {
+      throw new AuthError(403, "Forbidden");
+    }
+    const validation = validateReminderInput(input);
+    if (!validation.ok) {
+      throw new HabitError(400, validation.message, validation.fieldErrors);
+    }
+    const { requestKey, ...draft } = validation.value;
+    return await database.transaction(async (transaction) => {
+      const owned = await lockOwnedHabit(transaction, actor, draft.habitId);
+      if (owned === undefined) {
+        throw new HabitError(404, "Habit not found.");
+      }
+      const request = {
+        actorId: actor.id,
+        requestKey,
+        operation: "setReminder",
+        payloadFingerprint: JSON.stringify(draft),
+      };
+      const receipt = await readMutationReceipt(transaction, request);
+      if (receipt.kind === "applied") {
+        return { kind: "replayed", reminderTime: draft.reminderTime };
+      }
+      if (receipt.kind === "conflict") {
+        throw new HabitError(
+          409,
+          "This request key was already used for a different change."
+        );
+      }
+      if (owned.version !== draft.expectedVersion) {
+        throw new HabitError(409, STALE_HABIT_MESSAGE);
+      }
+      const { accountDate } = await readAccountCalendar(
+        transaction,
+        actor,
+        options.now
+      );
+      if (owned.archivedFrom !== null && owned.archivedFrom <= accountDate) {
+        throw new HabitError(
+          409,
+          "Reminders can only be changed for active Habits."
+        );
+      }
+      const [updated] = await transaction
+        .update(habit)
+        .set({
+          reminderTime: draft.reminderTime,
+          version: owned.version + 1,
+        })
+        .where(
+          and(
+            eq(habit.id, owned.id),
+            eq(habit.participantId, actor.id),
+            eq(habit.version, draft.expectedVersion),
+            sql`exists (
+              select 1 from ${user}
+              where ${user.id} = ${actor.id}
+                and (${habit.archivedFrom} is null or ${habit.archivedFrom} > (${accountDateExpression(options.now)})::date)
+            )`
+          )
+        )
+        .returning({ id: habit.id });
+      if (updated === undefined) {
+        throw new HabitError(409, STALE_HABIT_MESSAGE);
+      }
+      await saveMutationReceipt(transaction, request, owned.id);
+      return { kind: "saved", reminderTime: draft.reminderTime };
+    });
+  };
+
+  return { listHabits, createHabit, reviseGoal, archiveHabit, setReminder };
 };

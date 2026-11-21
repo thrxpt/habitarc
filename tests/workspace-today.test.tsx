@@ -53,6 +53,7 @@ const scheduledHabit = {
   template: studyTemplate,
   startDate: "2026-11-01",
   archivedFrom: null,
+  reminderTime: null,
   goal: {
     effectiveFrom: "2026-11-01",
     dailyTarget: 60,
@@ -65,6 +66,7 @@ const unscheduledHabit = {
   template: stretchTemplate,
   startDate: "2026-11-01",
   archivedFrom: null,
+  reminderTime: null,
   goal: {
     effectiveFrom: "2026-11-01",
     dailyTarget: 20,
@@ -143,6 +145,7 @@ test("scheduled Today shows accumulated entries, overachievement percentage with
           visualFillPercent: 100,
           completed: true,
         },
+        reminderDue: false,
         entries: [
           {
             id: "e1",
@@ -187,6 +190,7 @@ test("scheduled Today shows accumulated entries, overachievement percentage with
           visualFillPercent: null,
           completed: false,
         },
+        reminderDue: false,
         entries: [
           {
             id: "e4",
@@ -298,6 +302,7 @@ test("pending, lost-response failure, safe retry with unchanged requestKey, and 
           visualFillPercent: 0,
           completed: false,
         },
+        reminderDue: false,
         entries: [],
         writableMinDate: "2026-11-09",
         writableMaxDate: "2026-11-15",
@@ -402,6 +407,7 @@ test("switching Habits preserves an uncertain entry and its retry key", async ()
       visualFillPercent: 0,
       completed: false,
     },
+    reminderDue: false,
     entries: [],
     writableMinDate: "2026-11-09",
     writableMaxDate: "2026-11-15",
@@ -472,6 +478,7 @@ test("invalid entry amounts and ineligible dates show accessible field errors wi
           visualFillPercent: 0,
           completed: false,
         },
+        reminderDue: false,
         entries: [],
         writableMinDate: "2026-11-09",
         writableMaxDate: "2026-11-15",
@@ -507,4 +514,123 @@ test("invalid entry amounts and ineligible dates show accessible field errors wi
   expect(dateInput).toHaveAttribute("aria-invalid", "true");
   expect(dateInput).toHaveAccessibleDescription(/Future dates cannot/u);
   expect(findMissingDescriptionTargets(container)).toEqual([]);
+});
+
+test("AC-F10-1/2: Today displays the Reminder due indicator only when due and clears it on completion or disable", () => {
+  const scheduledWithReminder: TodayHabitItem = {
+    habit: { ...scheduledHabit, reminderTime: "18:00" },
+    progress: {
+      scheduled: true,
+      dailyTarget: 60,
+      dailyTotal: 20,
+      percentage: 33,
+      visualFillPercent: 33,
+      completed: false,
+    },
+    reminderDue: false,
+    entries: [],
+    writableMinDate: "2026-11-09",
+    writableMaxDate: "2026-11-15",
+  };
+  const unscheduledWithReminder: TodayHabitItem = {
+    habit: { ...unscheduledHabit, reminderTime: "18:00" },
+    progress: {
+      scheduled: false,
+      dailyTarget: null,
+      dailyTotal: 0,
+      percentage: null,
+      visualFillPercent: null,
+      completed: false,
+    },
+    reminderDue: false,
+    entries: [],
+    writableMinDate: "2026-11-09",
+    writableMaxDate: "2026-11-15",
+  };
+
+  // Before reminder time: scheduled item shows configured time but no due status; unscheduled shows neither.
+  const { rerender } = render(
+    <AccountScreen
+      identity={participant}
+      templates={[studyTemplate, stretchTemplate]}
+      todayWorkspace={{
+        ...emptyToday,
+        scheduled: [scheduledWithReminder],
+        unscheduled: [unscheduledWithReminder],
+      }}
+      onSessionChanged={sessionChanged}
+    />
+  );
+
+  expect(
+    screen.getByText("In-app Reminder set for 18:00 (Asia/Bangkok)")
+  ).toBeVisible();
+  expect(screen.queryByText(/Reminder due/u)).not.toBeInTheDocument();
+
+  // After reminder time while unmet: due indicator appears with local time and Account Timezone.
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[studyTemplate, stretchTemplate]}
+      todayWorkspace={{
+        ...emptyToday,
+        scheduled: [{ ...scheduledWithReminder, reminderDue: true }],
+        unscheduled: [unscheduledWithReminder],
+      }}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Reminder due · 18:00 (Asia/Bangkok)"
+  );
+
+  // After target completion: due indicator clears.
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[studyTemplate, stretchTemplate]}
+      todayWorkspace={{
+        ...emptyToday,
+        scheduled: [
+          {
+            ...scheduledWithReminder,
+            progress: {
+              ...scheduledWithReminder.progress,
+              dailyTotal: 60,
+              percentage: 100,
+              visualFillPercent: 100,
+              completed: true,
+            },
+            reminderDue: false,
+          },
+        ],
+        unscheduled: [unscheduledWithReminder],
+      }}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  expect(screen.queryByText(/Reminder due/u)).not.toBeInTheDocument();
+  expect(screen.queryByText(/In-app Reminder set/u)).not.toBeInTheDocument();
+
+  // After disabling the Reminder on an unmet scheduled Habit: due indicator and Reminder text are absent.
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[studyTemplate, stretchTemplate]}
+      todayWorkspace={{
+        ...emptyToday,
+        scheduled: [
+          {
+            ...scheduledWithReminder,
+            habit: { ...scheduledWithReminder.habit, reminderTime: null },
+            reminderDue: false,
+          },
+        ],
+        unscheduled: [unscheduledWithReminder],
+      }}
+      onSessionChanged={sessionChanged}
+    />
+  );
+  expect(screen.queryByText(/Reminder due/u)).not.toBeInTheDocument();
+  expect(screen.queryByText(/In-app Reminder set/u)).not.toBeInTheDocument();
 });

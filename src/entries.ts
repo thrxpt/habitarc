@@ -76,9 +76,11 @@ export interface TodayHabitItem {
     template: ActivityTemplate;
     startDate: string;
     archivedFrom: string | null;
+    reminderTime: string | null;
     goal: GoalSnapshot;
   };
   progress: DayProgress;
+  reminderDue: boolean;
   entries: ActivityEntry[];
   writableMinDate: string | null;
   writableMaxDate: string | null;

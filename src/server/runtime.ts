@@ -11,7 +11,11 @@ import { createEntryService, readTodayWorkspace } from "./entries";
 import { createHabitService, readHabitWorkspace } from "./habits";
 import { isLoopbackHost } from "./loopback";
 import { createTemplateService } from "./templates";
-import { getAccountDateRefreshDelay, readTracking } from "./tracking";
+import {
+  evaluateReminder,
+  getWorkspaceRefreshDelay,
+  readTracking,
+} from "./tracking";
 
 // Node loads private local configuration without publishing it through Vite's client env.
 if (existsSync(".env.local")) {
@@ -108,6 +112,16 @@ export const readTrackingWorkspace = async (actor: Identity) =>
       actor.id,
       calendar
     );
-    const refreshInMs = getAccountDateRefreshDelay(calendar);
+    const upcomingReminders = todayWorkspace.scheduled.flatMap((item) => {
+      const { nextDueAt } = evaluateReminder({
+        ...calendar,
+        reminderTime: item.habit.reminderTime,
+        active: true,
+        scheduled: item.progress.scheduled,
+        completed: item.progress.completed,
+      });
+      return nextDueAt === null ? [] : [nextDueAt];
+    });
+    const refreshInMs = getWorkspaceRefreshDelay(calendar, upcomingReminders);
     return { habitWorkspace, todayWorkspace, refreshInMs };
   });
