@@ -158,7 +158,9 @@ export const HabitReminderForm = ({
           return habit.reminderTime === null ? "Set Reminder" : "Edit Reminder";
         })()}
       </Button>
-      <output className="block text-sm not-empty:mt-3">{notice}</output>
+      {notice.length > 0 && (
+        <output className="mt-3 block text-sm">{notice}</output>
+      )}
       {edit !== null && (
         <form
           id={formId}
