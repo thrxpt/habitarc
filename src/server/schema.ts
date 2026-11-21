@@ -188,6 +188,8 @@ export const habit = pgTable(
     startDate: date("start_date").notNull(),
     // Exclusive end: an archive beginning tomorrow still leaves today's Habit active.
     archivedFrom: date("archived_from"),
+    reminderTime: text("reminder_time"),
+    version: integer("version").default(1).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -197,6 +199,11 @@ export const habit = pgTable(
       "habit_tracking_period_check",
       sql`${table.archivedFrom} is null or ${table.archivedFrom} > ${table.startDate}`
     ),
+    check(
+      "habit_reminder_time_check",
+      sql`${table.reminderTime} is null or ${table.reminderTime} ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'`
+    ),
+    check("habit_version_positive", sql`${table.version} >= 1`),
     index("habit_participant_idx").on(table.participantId),
     index("habit_template_idx").on(table.templateId),
   ]

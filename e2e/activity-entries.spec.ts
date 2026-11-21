@@ -1,7 +1,19 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { Pool } from "pg";
 
-import { e2ePassword } from "./accounts";
+import { addCalendarDays } from "../src/calendar";
+import { e2eDatabaseURL, e2ePassword } from "./accounts";
+
+test.beforeEach(async () => {
+  // Browser scenarios share the same loopback IP and disposable database.
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  try {
+    await pool.query('TRUNCATE "rateLimit"');
+  } finally {
+    await pool.end();
+  }
+});
 
 const signIn = async (page: Page, email: string) => {
   await page.getByLabel("Email", { exact: true }).fill(email);
@@ -251,5 +263,648 @@ test("Participant records durable progress and safely retries lost responses and
     ).toBeDisabled();
   } finally {
     await staticContext.close();
+  }
+});
+
+const openFixtureHistory = async (page: Page) => {
+  await page.goto("/");
+  await signIn(page, "history@example.test");
+  const today = page.getByRole("region", { name: "Today", exact: true });
+  const dateLabel = await today.getByText(/Account date:/u).textContent();
+  const todayDate = dateLabel?.match(/\d{4}-\d{2}-\d{2}/u)?.[0];
+  if (todayDate === undefined) {
+    throw new Error("Expected Today’s account date.");
+  }
+  await page
+    .getByRole("link", { name: "View history for History Study E2E" })
+    .click();
+  return { today, todayDate };
+};
+
+test("Participant corrects private dated history, rejects stale edits, and retries a confirmed deletion", async ({
+  page,
+  browser,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  const { today, todayDate } = await openFixtureHistory(page);
+  const yesterday = addCalendarDays(todayDate, -1);
+  const olderDate = addCalendarDays(todayDate, -7);
+  const source = page.getByRole("region", { name: todayDate, exact: true });
+  const destination = page.getByRole("region", {
+    name: yesterday,
+    exact: true,
+  });
+  const older = page.getByRole("region", { name: olderDate, exact: true });
+  await expect(source).toContainText("45 / 40 minutes");
+  await expect(source).toContainText("Completed");
+  await expect(destination).toContainText("10 minutes recorded");
+  await expect(destination).toContainText("Off schedule");
+  await expect(older).toContainText("Read-only");
+  await expect(older.getByRole("button")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    360
+  );
+
+  const secondTab = await page.context().newPage();
+  await secondTab.goto(page.url());
+  const secondSource = secondTab.getByRole("region", {
+    name: todayDate,
+    exact: true,
+  });
+  await secondSource.getByRole("button", { name: /^Edit entry/u }).click();
+  await secondSource.getByLabel("Amount (minutes)").fill("35");
+
+  await source.getByRole("button", { name: /^Edit entry/u }).click();
+  await source.getByLabel("Amount (minutes)").fill("30");
+  await source.getByLabel("Activity date").fill(yesterday);
+  let moveStatus: number | undefined;
+  let correctionWrites = 0;
+  let historyReadFailed = false;
+  await page.route("**/_serverFn/*", async (route) => {
+    if (route.request().method() === "POST") {
+      correctionWrites += 1;
+      const response = await route.fetch();
+      moveStatus = response.status();
+      await route.fulfill({ response });
+      return;
+    }
+    if (moveStatus === 200 && !historyReadFailed) {
+      historyReadFailed = true;
+      await route.abort("failed");
+      return;
+    }
+    await route.continue();
+  });
+  await source.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("status")).toContainText("Entry updated");
+  await expect(page.getByRole("alert")).toContainText(
+    "History couldn’t reload"
+  );
+  await expect(
+    page.getByRole("button", { name: "Refresh history" })
+  ).toBeFocused();
+  await page.getByRole("button", { name: "Refresh history" }).click();
+  await expect(source).toContainText("0 / 40 minutes");
+  expect(moveStatus).toBe(200);
+  expect(historyReadFailed).toBe(true);
+  expect(correctionWrites).toBe(1);
+  await expect(source.getByRole("heading")).toBeFocused();
+  await page.unroute("**/_serverFn/*");
+  await expect(source).toContainText("In progress");
+  await expect(destination).toContainText("40 minutes recorded");
+
+  await secondSource.getByRole("button", { name: "Save changes" }).click();
+  await expect(secondTab.getByRole("alert")).toContainText(
+    "This entry changed"
+  );
+  await expect(secondSource.getByLabel("Amount (minutes)")).toHaveValue("35");
+  await secondSource.getByRole("button", { name: "Refresh history" }).click();
+  await expect(secondSource).toContainText("0 / 40 minutes");
+  const staleMoved = secondTab
+    .getByRole("region", { name: yesterday, exact: true })
+    .getByRole("listitem")
+    .filter({ hasText: "30 minutes" });
+  await staleMoved.getByRole("button", { name: /^Edit entry/u }).click();
+
+  const moved = destination
+    .getByRole("listitem")
+    .filter({ hasText: "30 minutes" });
+  await moved.getByRole("button", { name: /^Delete entry/u }).click();
+  await expect(destination).toContainText("40 minutes recorded");
+  await moved.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(
+    moved.getByRole("button", { name: /^Delete entry/u })
+  ).toBeFocused();
+  await moved.getByRole("button", { name: /^Delete entry/u }).click();
+  let deletionStatus: number | undefined;
+  await page.route("**/_serverFn/*", async (route) => {
+    if (deletionStatus === undefined && route.request().method() === "POST") {
+      const response = await route.fetch();
+      deletionStatus = response.status();
+      await route.abort("failed");
+      return;
+    }
+    await route.continue();
+  });
+  await moved.getByRole("button", { name: "Confirm deletion" }).click();
+  await expect(destination.getByRole("alert")).toContainText(
+    "couldn’t confirm"
+  );
+  expect(deletionStatus).toBe(200);
+  await moved.getByRole("button", { name: "Retry deletion" }).click();
+  await expect(destination).toContainText("10 minutes recorded");
+  await expect(page.getByRole("status")).toContainText("Entry deleted");
+  await expect(moved).toHaveCount(0);
+  await staleMoved.getByRole("button", { name: "Save changes" }).click();
+  await expect(secondTab.getByRole("alert")).toContainText(
+    "This entry is no longer available. Refresh history"
+  );
+  await secondTab.close();
+
+  const otherPage = await browser.newPage();
+  try {
+    await otherPage.goto("/");
+    await signIn(otherPage, "b@example.test");
+    await otherPage.goto(page.url());
+    await expect(
+      otherPage.getByRole("heading", { name: "History unavailable" })
+    ).toBeVisible();
+    await expect(otherPage.getByText("10 minutes recorded")).toHaveCount(0);
+  } finally {
+    await otherPage.close();
+  }
+
+  await page.getByRole("link", { name: "Back to workspace" }).click();
+  await expect(today).toContainText("0 / 40 minutes");
+});
+
+test("An open correction becomes read-only after account midnight", async ({
+  page,
+}) => {
+  const { todayDate } = await openFixtureHistory(page);
+  const edgeDate = addCalendarDays(todayDate, -6);
+  const nextDate = addCalendarDays(todayDate, 1);
+  const edge = page.getByRole("region", { name: edgeDate, exact: true });
+  await edge.getByRole("button", { name: /^Edit entry/u }).click();
+  await edge.getByLabel("Amount (minutes)").fill("25");
+  const chosenDate = edge.getByLabel("Activity date");
+  await chosenDate.fill(todayDate);
+
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  try {
+    await pool.query("UPDATE e2e_clock.override SET instant = $1", [
+      `${nextDate}T00:00:10+07:00`,
+    ]);
+    await edge.getByRole("button", { name: "Save changes" }).click();
+    await expect(edge.getByRole("alert")).toContainText(
+      `The entry from ${edgeDate} is now read-only.`
+    );
+    await expect(chosenDate).toHaveAttribute("aria-invalid", "false");
+    await edge.getByRole("button", { name: "Refresh history" }).click();
+    await expect(edge).toContainText("5 minutes recorded");
+    await expect(edge).toContainText("Read-only");
+    await expect(edge.getByRole("button")).toHaveCount(0);
+    await expect(
+      page.getByText("Signed in as History Participant")
+    ).toBeVisible();
+    await signOut(page);
+  } finally {
+    await pool.query("UPDATE e2e_clock.override SET instant = NULL");
+    await pool.end();
+  }
+});
+
+test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps the original target", async ({
+  page,
+}) => {
+  const templateName = "Goal Revisions E2E";
+  await page.setViewportSize({ width: 360, height: 800 });
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  const setClock = async (instant: string | null) =>
+    await pool.query("UPDATE e2e_clock.override SET instant = $1", [instant]);
+  try {
+    await setClock("2026-11-16T12:00:00+07:00");
+    await page.goto("/");
+    await publishTemplate(page, templateName);
+    await signIn(page, "b@example.test");
+
+    await page.getByRole("button", { name: templateName }).click();
+    const start = page.getByRole("form", {
+      name: `Start ${templateName} Habit`,
+    });
+    await start.getByLabel("Daily Target").fill("60");
+    await start.getByRole("checkbox", { name: "Monday" }).check();
+    await start.getByRole("checkbox", { name: "Tuesday" }).check();
+    await start.getByRole("button", { name: "Start Habit" }).click();
+    const today = page.getByRole("region", { name: "Today", exact: true });
+    await expect(today).toContainText("0 / 60 minutes");
+    await today.getByRole("button", { name: "Add entry" }).click();
+    await today.getByLabel("Amount (minutes)").fill("40");
+    await today.getByRole("button", { name: "Save entry" }).click();
+    await expect(today).toContainText("40 / 60 minutes");
+
+    await setClock("2026-11-17T12:00:00+07:00");
+    await page.reload();
+    const habits = page.getByRole("region", { name: "Your Habits" });
+    const edit = habits.getByRole("button", { name: "Edit goal settings" });
+    await edit.click();
+    const form = habits.getByRole("form", {
+      name: `Edit goal settings for ${templateName}`,
+    });
+    const save = form.getByRole("button", { name: "Save tomorrow’s settings" });
+    await expect(form).toContainText("2026-11-18");
+    await form.getByRole("checkbox", { name: "Monday" }).uncheck();
+    await form.getByRole("checkbox", { name: "Tuesday" }).uncheck();
+    await form.getByLabel("Daily Target").fill("35");
+    await save.click();
+    await expect(
+      form.getByText("Choose at least one weekday, with no duplicates.")
+    ).toBeVisible();
+    await form.getByRole("checkbox", { name: "Wednesday" }).check();
+
+    const stale = await page.context().newPage();
+    try {
+      await stale.goto("/");
+      await stale.getByRole("button", { name: "Edit goal settings" }).click();
+      await stale
+        .getByRole("form", { name: `Edit goal settings for ${templateName}` })
+        .getByLabel("Daily Target")
+        .fill("45");
+
+      let releaseRefresh: (() => void) | undefined;
+      let heldRefreshes = 0;
+      // eslint-disable-next-line promise/avoid-new -- The test controls when the refresh may continue.
+      const refreshReleased = new Promise<void>((resolve) => {
+        releaseRefresh = resolve;
+      });
+      let holdReads = false;
+      await page.route("**/_serverFn/*", async (route) => {
+        if (route.request().method() === "POST") {
+          holdReads = true;
+        } else if (holdReads) {
+          heldRefreshes += 1;
+          await refreshReleased;
+        }
+        await route.continue();
+      });
+      try {
+        await save.click();
+        await expect.poll(() => heldRefreshes).toBe(1);
+        await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+        await expect.poll(() => heldRefreshes).toBeGreaterThan(1);
+        await expect(
+          habits.getByRole("button", { name: "Close goal settings" })
+        ).toBeDisabled();
+        await expect(edit).toHaveCount(0);
+      } finally {
+        releaseRefresh?.();
+        await page.unrouteAll({ behavior: "wait" });
+      }
+      await expect(
+        habits.getByRole("status").filter({ hasText: "Goal settings saved" })
+      ).toContainText("Goal settings saved for 2026-11-18.");
+      await edit.click();
+      await expect(form.getByLabel("Daily Target")).toHaveValue("35");
+      await form.getByLabel("Daily Target").fill("30");
+      await save.click();
+      await expect(habits).toContainText("Pending settings from 2026-11-18");
+      await expect(habits).toContainText("30 minutes · Wednesday");
+      await expect(today).toContainText("0 / 60 minutes");
+
+      await stale
+        .getByRole("button", { name: "Save tomorrow’s settings" })
+        .press("Enter");
+      await expect(stale.getByRole("alert")).toContainText(
+        "Your Habit settings changed."
+      );
+      await expect(
+        stale.getByRole("link", { name: "Reload workspace" })
+      ).toBeFocused();
+      await stale.keyboard.press("Enter");
+      await expect(
+        stale.getByRole("region", { name: "Your Habits" })
+      ).toContainText("30 minutes · Wednesday");
+    } finally {
+      await stale.close();
+    }
+
+    await page.reload();
+    await expect(habits).toContainText("30 minutes · Wednesday");
+    await habits
+      .getByRole("link", { name: `View history for ${templateName}` })
+      .click();
+    const yesterday = page.getByRole("region", {
+      name: "2026-11-16",
+      exact: true,
+    });
+    await expect(yesterday).toContainText("40 / 60 minutes");
+    await expect(yesterday).toContainText("Missed");
+
+    await setClock("2026-11-17T23:59:30+07:00");
+    await page.clock.install();
+    await page.getByRole("link", { name: "Back to workspace" }).click();
+    await edit.click();
+    await expect(form).toContainText("2026-11-18");
+    await form.getByLabel("Daily Target").fill("35");
+    await expect(form.getByLabel("Daily Target")).toBeFocused();
+    await setClock("2026-11-18T00:00:00+07:00");
+    await page.clock.fastForward(31_000);
+    await expect(today).toContainText("0 / 30 minutes");
+    await expect(habits.getByText(/Pending settings/u)).toHaveCount(0);
+    await expect(form.getByLabel("Daily Target")).toHaveValue("35");
+    await expect(form.getByRole("alert")).toContainText("This draft was for");
+    await expect(save).toBeDisabled();
+    await expect(
+      habits.getByRole("button", { name: "Close goal settings" })
+    ).toBeFocused();
+    await page.keyboard.press("Enter");
+    await edit.click();
+    await expect(form).toContainText("2026-11-19");
+    await expect(form.getByLabel("Daily Target")).toHaveValue("30");
+
+    await habits
+      .getByRole("link", { name: `View history for ${templateName}` })
+      .click();
+    await expect(yesterday).toContainText("40 / 60 minutes");
+    await expect(
+      page.getByRole("region", { name: "2026-11-18", exact: true })
+    ).toContainText("0 / 30 minutes");
+    await page.getByRole("link", { name: "Back to workspace" }).click();
+    await expect(today).toContainText("0 / 30 minutes");
+    await expect(habits).toContainText("Wednesday");
+    await expect(habits.getByText(/Pending settings/u)).toHaveCount(0);
+
+    await setClock("2026-11-18T23:59:30+07:00");
+    let releaseCalendar: (() => void) | undefined;
+    let calendarHeld = false;
+    // eslint-disable-next-line promise/avoid-new -- Hold a pre-midnight response until after the clock advances.
+    const calendarReleased = new Promise<void>((resolve) => {
+      releaseCalendar = resolve;
+    });
+    await page.route("**/_serverFn/*", async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+      if (!calendarHeld && body.includes('"refreshInMs"')) {
+        calendarHeld = true;
+        await calendarReleased;
+      }
+      await route.fulfill({ response });
+    });
+    try {
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      await expect.poll(() => calendarHeld).toBe(true);
+      await setClock("2026-11-19T00:00:01+07:00");
+      await page.clock.fastForward(31_000);
+    } finally {
+      releaseCalendar?.();
+      await page.unrouteAll({ behavior: "wait" });
+    }
+    await expect(today).toContainText("Account date: 2026-11-19");
+    await setClock("2026-11-20T00:00:01+07:00");
+    await page.clock.fastForward("24:00:00");
+    await expect(today).toContainText("Account date: 2026-11-20");
+    await setClock("2026-11-21T00:00:01+07:00");
+    await page.clock.fastForward("24:00:00");
+    await expect(today).toContainText("Account date: 2026-11-21");
+  } finally {
+    await setClock(null);
+    await pool.end();
+  }
+});
+
+test("AC-F08-3/F09-3: a Participant archives a Habit, corrects its Streak after rollover, and starts a fresh Habit", async ({
+  page,
+}) => {
+  const templateName = "Archive Lifecycle E2E";
+  await page.setViewportSize({ width: 390, height: 844 });
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  const setClock = async (instant: string | null) =>
+    await pool.query("UPDATE e2e_clock.override SET instant = $1", [instant]);
+  try {
+    await setClock("2026-11-16T12:00:00+07:00");
+    await page.goto("/");
+    await publishTemplate(page, templateName);
+    await signIn(page, "b@example.test");
+
+    const library = page.getByRole("region", {
+      name: "Activity Template library",
+      exact: true,
+    });
+    await library
+      .getByRole("button", { name: new RegExp(templateName, "u") })
+      .click();
+    const start = page.getByRole("form", {
+      name: `Start ${templateName} Habit`,
+    });
+    await start.getByLabel("Daily Target").fill("40");
+    await start.getByRole("checkbox", { name: "Monday" }).check();
+    await start.getByRole("checkbox", { name: "Tuesday" }).check();
+    await start.getByRole("button", { name: "Start Habit" }).click();
+    const today = page.getByRole("region", { name: "Today", exact: true });
+    const todayCard = today
+      .getByRole("listitem")
+      .filter({ hasText: templateName });
+    await expect(todayCard).toContainText("0 / 40 minutes");
+    await todayCard.getByRole("button", { name: "Add entry" }).click();
+    await todayCard.getByLabel("Amount (minutes)").fill("40");
+    await todayCard.getByRole("button", { name: "Save entry" }).click();
+    await expect(todayCard).toContainText("40 / 40 minutes");
+
+    const habits = page.getByRole("region", {
+      name: "Your Habits",
+      exact: true,
+    });
+    const habitItem = habits
+      .getByRole("listitem")
+      .filter({ hasText: templateName });
+    await habitItem.getByRole("button", { name: "Edit goal settings" }).click();
+    const goal = habitItem.getByRole("form", {
+      name: `Edit goal settings for ${templateName}`,
+    });
+    await goal.getByLabel("Daily Target").fill("45");
+    await goal.getByRole("checkbox", { name: "Monday" }).uncheck();
+    await goal
+      .getByRole("button", { name: "Save tomorrow’s settings" })
+      .click();
+    await expect(habitItem).toContainText("45 minutes · Tuesday");
+
+    await setClock("2026-11-17T23:59:30+07:00");
+    await page.reload();
+    await habitItem.getByRole("button", { name: "Archive Habit" }).click();
+    const archiveForm = habitItem.getByRole("form", {
+      name: `Archive ${templateName}`,
+    });
+    await expect(archiveForm).toContainText("2026-11-18");
+    await expect(archiveForm).toContainText("exclusive");
+    await expect(
+      archiveForm.getByRole("button", { name: "Cancel" })
+    ).toBeFocused();
+    await archiveForm.getByRole("button", { name: "Confirm archive" }).click();
+
+    await expect(
+      habits.getByText(
+        `${templateName} is scheduled to end on 2026-11-18 (exclusive). Today remains active.`
+      )
+    ).toBeVisible();
+    await expect(habitItem).toContainText("Archive begins 2026-11-18");
+    await expect(
+      habitItem.getByRole("button", { name: "Archive Habit" })
+    ).toHaveCount(0);
+
+    // Today (2026-11-17) remains active and writable.
+    await todayCard.getByRole("button", { name: "Add entry" }).click();
+    await todayCard.getByLabel("Amount (minutes)").fill("40");
+    await todayCard.getByRole("button", { name: "Save entry" }).click();
+    await expect(todayCard).toContainText("40 / 45 minutes");
+
+    const historyLink = habitItem.getByRole("link", {
+      name: `View history for ${templateName}`,
+    });
+    await page.clock.install();
+    await historyLink.click();
+    const streaks = page.getByRole("region", { name: "Lifetime Streaks" });
+    await expect(streaks.getByRole("definition")).toHaveText([
+      "1 day",
+      "1 day",
+    ]);
+
+    const tuesday = page.getByRole("region", {
+      name: "2026-11-17",
+      exact: true,
+    });
+    await expect(tuesday).toContainText("40 / 45 minutes");
+    await tuesday.getByRole("button", { name: /^Edit entry/u }).click();
+    await tuesday.getByLabel("Amount (minutes)").fill("45");
+
+    let historyReads = 0;
+    let releaseRollover: (() => void) | undefined;
+    let releaseCorrection: (() => void) | undefined;
+    // eslint-disable-next-line promise/avoid-new -- Control the relative arrival of the two HTTP responses.
+    const rolloverReleased = new Promise<void>((resolve) => {
+      releaseRollover = resolve;
+    });
+    // eslint-disable-next-line promise/avoid-new -- Control the relative arrival of the two HTTP responses.
+    const correctionReleased = new Promise<void>((resolve) => {
+      releaseCorrection = resolve;
+    });
+    await page.route("**/_serverFn/*", async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      historyReads += 1;
+      await (historyReads === 1 ? rolloverReleased : correctionReleased);
+      await route.fulfill({ response });
+    });
+    try {
+      await setClock("2026-11-18T00:00:01+07:00");
+      const elapsedAcrossMidnightMs = 31_000;
+      await page.clock.fastForward(elapsedAcrossMidnightMs);
+      await expect.poll(() => historyReads).toBe(1);
+
+      await tuesday.getByRole("button", { name: "Save changes" }).click();
+      await expect.poll(() => historyReads).toBe(2);
+      releaseRollover?.();
+      await expect(streaks.getByRole("definition")).toHaveText([
+        "Not applicable",
+        "1 day",
+      ]);
+      releaseCorrection?.();
+    } finally {
+      releaseRollover?.();
+      releaseCorrection?.();
+      await page.unrouteAll({ behavior: "wait" });
+    }
+    await expect(tuesday).toContainText("45 / 45 minutes");
+    await expect(streaks.getByRole("definition")).toHaveText([
+      "Not applicable",
+      "2 days",
+    ]);
+
+    // Return to workspace and start a fresh Habit from the same template.
+    await page.getByRole("link", { name: "Back to workspace" }).click();
+    await expect(today).not.toContainText(templateName);
+    await expect(habitItem).toContainText("Archived from 2026-11-18");
+    await library
+      .getByRole("button", { name: new RegExp(templateName, "u") })
+      .click();
+    const restart = page.getByRole("form", {
+      name: `Start ${templateName} Habit`,
+    });
+    await restart.getByLabel("Daily Target").fill("30");
+    await restart.getByRole("checkbox", { name: "Wednesday" }).check();
+    await restart.getByRole("button", { name: "Start Habit" }).click();
+    await expect(today).toContainText("0 / 30 minutes");
+    await habitItem
+      .filter({ hasText: "30 minutes" })
+      .getByRole("link", {
+        name: `View history for ${templateName}`,
+      })
+      .click();
+    await expect(streaks.getByRole("definition")).toHaveText([
+      "0 days",
+      "0 days",
+    ]);
+  } finally {
+    await setClock(null);
+    await pool.end();
+  }
+});
+
+test("AC-F10-1: a Participant sets a local Reminder and sees the Today due indicator appear on focus and clear after completion", async ({
+  page,
+}) => {
+  const templateName = "Reminder E2E Study";
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  const setClock = async (instant: string | null) =>
+    await pool.query("UPDATE e2e_clock.override SET instant = $1", [instant]);
+  try {
+    await setClock("2026-11-16T17:59:00+07:00");
+    await page.goto("/");
+    await publishTemplate(page, templateName);
+    await signIn(page, "b@example.test");
+
+    const library = page.getByRole("region", {
+      name: "Activity Template library",
+      exact: true,
+    });
+    await library
+      .getByRole("button", { name: new RegExp(templateName, "u") })
+      .click();
+    const start = page.getByRole("form", {
+      name: `Start ${templateName} Habit`,
+    });
+    await start.getByLabel("Daily Target").fill("40");
+    await start.getByRole("checkbox", { name: "Monday" }).check();
+    await start.getByRole("button", { name: "Start Habit" }).click();
+
+    const habits = page.getByRole("region", {
+      name: "Your Habits",
+      exact: true,
+    });
+    const habitItem = habits
+      .getByRole("listitem")
+      .filter({ hasText: templateName });
+    await habitItem.getByRole("button", { name: "Set Reminder" }).click();
+    const reminderForm = habitItem.getByRole("form", {
+      name: `Reminder settings for ${templateName}`,
+    });
+    await expect(reminderForm).toContainText("Asia/Bangkok");
+    await expect(reminderForm).toContainText(
+      "no email, push, background delivery, or snooze"
+    );
+    await reminderForm.getByLabel("Reminder time (Asia/Bangkok)").fill("18:00");
+    await reminderForm.getByRole("button", { name: "Save Reminder" }).click();
+    await expect(habitItem).toContainText("18:00 (Asia/Bangkok) · In-app only");
+
+    const today = page.getByRole("region", { name: "Today", exact: true });
+    const todayCard = today
+      .getByRole("listitem")
+      .filter({ hasText: templateName });
+    await expect(todayCard).toContainText(
+      "In-app Reminder set for 18:00 (Asia/Bangkok)"
+    );
+    await expect(todayCard.getByRole("status")).toHaveText("");
+
+    // Advance past 18:00 and trigger window focus to re-evaluate while the app stays open.
+    await setClock("2026-11-16T18:00:00+07:00");
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await expect(todayCard.getByRole("status")).toHaveText(
+      "Reminder due · 18:00 (Asia/Bangkok)"
+    );
+
+    // Completing the Daily Target clears the due indicator.
+    await todayCard.getByRole("button", { name: "Add entry" }).click();
+    await todayCard.getByLabel("Amount (minutes)").fill("40");
+    await todayCard.getByRole("button", { name: "Save entry" }).click();
+    await expect(todayCard).toContainText("40 / 40 minutes");
+    await expect(todayCard.getByRole("status").first()).toHaveText("");
+    await expect(todayCard).not.toContainText("Reminder due");
+  } finally {
+    await setClock(null);
+    await pool.end();
   }
 });

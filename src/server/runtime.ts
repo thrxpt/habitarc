@@ -2,14 +2,20 @@ import { existsSync } from "node:fs";
 
 import { Pool } from "pg";
 
+import type { Identity } from "../identity";
 import { createAuthentication } from "./auth";
 import type { AuthConfig } from "./auth";
 import { createDatabase } from "./database";
 import type { Database } from "./database";
-import { createEntryService } from "./entries";
-import { createHabitService } from "./habits";
+import { createEntryService, readTodayWorkspace } from "./entries";
+import { createHabitService, readHabitWorkspace } from "./habits";
 import { isLoopbackHost } from "./loopback";
 import { createTemplateService } from "./templates";
+import {
+  evaluateReminder,
+  getWorkspaceRefreshDelay,
+  readTracking,
+} from "./tracking";
 
 // Node loads private local configuration without publishing it through Vite's client env.
 if (existsSync(".env.local")) {
@@ -93,3 +99,29 @@ export const getEntryService = () => {
   entryService ??= createEntryService(getDatabase());
   return entryService;
 };
+
+export const readTrackingWorkspace = async (actor: Identity) =>
+  await readTracking(getDatabase(), actor, async (transaction, calendar) => {
+    const habitWorkspace = await readHabitWorkspace(
+      transaction,
+      actor.id,
+      calendar
+    );
+    const todayWorkspace = await readTodayWorkspace(
+      transaction,
+      actor.id,
+      calendar
+    );
+    const upcomingReminders = todayWorkspace.scheduled.flatMap((item) => {
+      const { nextDueAt } = evaluateReminder({
+        ...calendar,
+        reminderTime: item.habit.reminderTime,
+        active: true,
+        scheduled: item.progress.scheduled,
+        completed: item.progress.completed,
+      });
+      return nextDueAt === null ? [] : [nextDueAt];
+    });
+    const refreshInMs = getWorkspaceRefreshDelay(calendar, upcomingReminders);
+    return { habitWorkspace, todayWorkspace, refreshInMs };
+  });

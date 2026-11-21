@@ -9,6 +9,7 @@ import { fromCrossJSON, toJSONAsync } from "seroval";
 import type { SerovalNode } from "seroval";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vite-plus/test";
 
+import { addCalendarDays } from "../src/calendar";
 import type { Identity } from "../src/identity";
 import { createAuthentication } from "../src/server/auth";
 import { createDatabase } from "../src/server/database";
@@ -142,6 +143,473 @@ const createCountTemplate = async () =>
     entryMaximum: 1_000_000,
   });
 
+test("AC-F08-2: retiring a template blocks new Habits while existing entries and bounds persist", async () => {
+  const activityDate = "2026-11-16";
+  const now = () => new Date(`${activityDate}T12:00:00+07:00`);
+  const creator = createHabitService(database, { now });
+  const activity = createEntryService(otherDatabase, { now });
+  const published = await createStudyTemplate();
+  const edit = {
+    ...published,
+    templateId: published.id,
+    templateVersion: published.version,
+  };
+  await expect(
+    templates.updateTemplate(managerM, { ...edit, entryMaximum: 4 })
+  ).rejects.toMatchObject({ status: 400 });
+  const updated = await templates.updateTemplate(managerM, {
+    ...edit,
+    entryMaximum: 30,
+  });
+  const selection = {
+    templateId: updated.id,
+    templateVersion: updated.version,
+  };
+  const habitDraft = { ...selection, dailyTarget: 60, weekdays: [1] };
+  const { habit } = await creator.createHabit(participantA, habitDraft);
+  const entryDraft = { habitId: habit.id, activityDate };
+  const original = await activity.createEntry(participantA, {
+    ...entryDraft,
+    amount: 25,
+    requestKey: randomUUID(),
+  });
+
+  await templates.archiveTemplate(managerM, selection);
+  await expect(
+    creator.createHabit(participantB, habitDraft)
+  ).rejects.toMatchObject({
+    status: 409,
+  });
+  await expect(
+    activity.createEntry(participantA, {
+      ...entryDraft,
+      amount: 31,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+  await expect(
+    activity.createEntry(participantA, {
+      ...entryDraft,
+      amount: 30,
+      requestKey: randomUUID(),
+    })
+  ).resolves.toMatchObject({ kind: "created", dailyTotal: 55 });
+
+  const history = await activity.getHistory(participantA, {
+    habitId: habit.id,
+  });
+  expect(
+    history.days[0]?.entries.find((entry) => entry.id === original.entry.id)
+  ).toMatchObject({ amount: 25, activityDate });
+});
+
+test("AC-F07-1/3: tomorrow's target and weekdays apply only from their effective date", async () => {
+  let instant = new Date("2026-11-15T12:00:00+07:00");
+  const now = () => instant;
+  const habitService = createHabitService(database, { now });
+  const activity = createEntryService(otherDatabase, { now });
+  const template = await createStudyTemplate();
+  const { habit } = await habitService.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2],
+  });
+  const sunday = await activity.createEntry(participantA, {
+    habitId: habit.id,
+    activityDate: "2026-11-15",
+    amount: 20,
+    requestKey: randomUUID(),
+  });
+  instant = new Date("2026-11-16T12:00:00+07:00");
+  await activity.createEntry(participantA, {
+    habitId: habit.id,
+    activityDate: "2026-11-16",
+    amount: 40,
+    requestKey: randomUUID(),
+  });
+  instant = new Date("2026-11-17T23:59:59+07:00");
+  const history = async () => {
+    const result = await activity.getHistory(participantA, {
+      habitId: habit.id,
+    });
+    return result.days;
+  };
+
+  await expect(
+    habitService.reviseGoal(participantA, {
+      habitId: habit.id,
+      expectedVersion: habit.version,
+      effectiveFrom: "2026-11-18",
+      dailyTarget: 30,
+      weekdays: [3, 7],
+      requestKey: randomUUID(),
+    })
+  ).resolves.toEqual({ kind: "saved" });
+  await expect(habitService.listHabits(participantA)).resolves.toMatchObject({
+    items: [
+      {
+        goal: { dailyTarget: 60, weekdays: [1, 2] },
+        pendingGoal: {
+          effectiveFrom: "2026-11-18",
+          dailyTarget: 30,
+          weekdays: [3, 7],
+        },
+      },
+    ],
+  });
+  expect(await history()).toMatchObject([
+    {
+      date: "2026-11-17",
+      progress: { scheduled: true, dailyTarget: 60, dailyTotal: 0 },
+    },
+    {
+      date: "2026-11-16",
+      progress: { dailyTarget: 60, dailyTotal: 40, completed: false },
+    },
+    {
+      date: "2026-11-15",
+      progress: { scheduled: false, dailyTotal: 20, completed: false },
+    },
+  ]);
+  await expect(activity.getToday(participantA)).resolves.toMatchObject({
+    scheduled: [{ progress: { dailyTarget: 60 } }],
+  });
+
+  instant = new Date("2026-11-18T00:00:00+07:00");
+  await expect(habitService.listHabits(participantA)).resolves.toMatchObject({
+    items: [{ goal: { dailyTarget: 30, weekdays: [3, 7] }, pendingGoal: null }],
+  });
+  await expect(activity.getToday(participantA)).resolves.toMatchObject({
+    scheduled: [{ progress: { dailyTarget: 30 } }],
+  });
+  await activity.updateEntry(participantA, {
+    habitId: habit.id,
+    entryId: sunday.entry.id,
+    expectedVersion: sunday.entry.version,
+    activityDate: "2026-11-16",
+    amount: 20,
+    requestKey: randomUUID(),
+  });
+  expect(await history()).toMatchObject([
+    { date: "2026-11-18", progress: { dailyTarget: 30 } },
+    { date: "2026-11-17", progress: { dailyTarget: 60 } },
+    {
+      date: "2026-11-16",
+      progress: { dailyTarget: 60, dailyTotal: 60, completed: true },
+    },
+    {
+      date: "2026-11-15",
+      progress: { scheduled: false, dailyTotal: 0, completed: false },
+    },
+  ]);
+});
+
+test("AC-F07-2: concurrent edits conflict, same-day edits replace tomorrow's plan, and a waiting edit expires at midnight", async () => {
+  let instant = new Date("2026-11-17T23:59:59+07:00");
+  const now = () => instant;
+  const writer = createHabitService(database, { now });
+  const otherWriter = createHabitService(otherDatabase, { now });
+  const template = await createStudyTemplate();
+  const { habit } = await writer.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [2, 3],
+  });
+  const draft = {
+    habitId: habit.id,
+    expectedVersion: habit.version,
+    effectiveFrom: "2026-11-18",
+    dailyTarget: 35,
+    weekdays: [3, 4],
+    requestKey: randomUUID(),
+  };
+  const competing = { ...draft, dailyTarget: 80, requestKey: randomUUID() };
+  const raced = await Promise.allSettled([
+    writer.reviseGoal(participantA, draft),
+    otherWriter.reviseGoal(participantA, competing),
+  ]);
+  expect(raced.filter((result) => result.status === "fulfilled")).toHaveLength(
+    1
+  );
+  expect(raced.find((result) => result.status === "rejected")).toMatchObject({
+    reason: {
+      status: 409,
+      message:
+        "Your Habit settings changed. Reload the workspace before trying again.",
+    },
+  });
+  const winning = raced[0]?.status === "fulfilled" ? draft : competing;
+  const readHabit = async () => {
+    const { items } = await otherWriter.listHabits(participantA);
+    return items[0];
+  };
+  const pending = await readHabit();
+  expect(pending).toMatchObject({
+    version: habit.version + 1,
+    goal: { dailyTarget: 60, weekdays: [2, 3] },
+    pendingGoal: { dailyTarget: winning.dailyTarget, weekdays: [3, 4] },
+  });
+
+  const replacement = {
+    ...draft,
+    expectedVersion: habit.version + 1,
+    dailyTarget: 30,
+    weekdays: [5, 3],
+    requestKey: randomUUID(),
+  };
+  await expect(writer.reviseGoal(participantA, replacement)).resolves.toEqual({
+    kind: "saved",
+  });
+  await expect(
+    otherWriter.reviseGoal(participantA, { ...replacement, weekdays: [3, 5] })
+  ).resolves.toEqual({ kind: "replayed" });
+  await expect(
+    otherWriter.reviseGoal(participantA, { ...replacement, dailyTarget: 31 })
+  ).rejects.toMatchObject({ status: 409 });
+  expect(await readHabit()).toMatchObject({
+    version: habit.version + 2,
+    goal: { dailyTarget: 60 },
+    pendingGoal: { dailyTarget: 30, weekdays: [3, 5] },
+  });
+
+  const blocker = await pool.connect();
+  let waitingEdit: ReturnType<typeof writer.reviseGoal> | undefined;
+  const late = {
+    ...draft,
+    expectedVersion: habit.version + 2,
+    dailyTarget: 55,
+    requestKey: randomUUID(),
+  };
+  try {
+    const { rows: backends } = await blocker.query<{ pid: number }>(
+      "SELECT pg_backend_pid() AS pid"
+    );
+    await blocker.query("BEGIN");
+    await blocker.query(
+      "SELECT id FROM goal_revision WHERE habit_id = $1 AND effective_from = $2 FOR UPDATE",
+      [habit.id, late.effectiveFrom]
+    );
+    waitingEdit = otherWriter.reviseGoal(participantA, late);
+    void waitingEdit.catch(() => {});
+    await expect
+      .poll(async () => {
+        const { rows } = await pool.query<{ waiting: boolean }>(
+          "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND $1 = ANY(pg_blocking_pids(pid))) AS waiting",
+          [backends[0]?.pid]
+        );
+        return rows[0]?.waiting;
+      })
+      .toBe(true);
+    instant = new Date("2026-11-18T00:00:00+07:00");
+  } finally {
+    await blocker.query("ROLLBACK");
+    blocker.release();
+  }
+  await expect(waitingEdit).rejects.toMatchObject({
+    status: 409,
+    message:
+      "The account date or goal settings changed. Reload the workspace to edit tomorrow’s settings.",
+  });
+  await expect(
+    otherWriter.reviseGoal(participantA, replacement)
+  ).resolves.toEqual({ kind: "replayed" });
+  expect(await readHabit()).toMatchObject({
+    version: habit.version + 2,
+    goal: { effectiveFrom: "2026-11-18", dailyTarget: 30, weekdays: [3, 5] },
+    pendingGoal: null,
+  });
+  await expect(
+    writer.reviseGoal(participantA, { ...late, effectiveFrom: "2026-11-19" })
+  ).resolves.toEqual({ kind: "saved" });
+  expect(await readHabit()).toMatchObject({
+    goal: { dailyTarget: 30 },
+    pendingGoal: { dailyTarget: 55, effectiveFrom: "2026-11-19" },
+  });
+});
+
+test("F07 reads the newly effective revision when a goal save commits across midnight", async () => {
+  let instant = new Date("2026-11-17T23:59:59+07:00");
+  const now = () => instant;
+  const writer = createHabitService(database, { now });
+  const reader = createEntryService(otherDatabase, { now });
+  const template = await createStudyTemplate();
+  const { habit } = await writer.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [2, 3],
+  });
+  const blocker = await pool.connect();
+  let history: ReturnType<typeof reader.getHistory> | undefined;
+  let save: ReturnType<typeof writer.reviseGoal> | undefined;
+  try {
+    const { rows: backends } = await blocker.query<{ pid: number }>(
+      "SELECT pg_backend_pid() AS pid"
+    );
+    await blocker.query("BEGIN");
+    // The receipt insert waits after the guarded Goal Revision write.
+    await blocker.query("LOCK TABLE mutation_receipt IN SHARE MODE");
+    save = writer.reviseGoal(participantA, {
+      habitId: habit.id,
+      expectedVersion: habit.version,
+      effectiveFrom: "2026-11-18",
+      dailyTarget: 30,
+      weekdays: [3],
+      requestKey: randomUUID(),
+    });
+    void save.catch(() => {});
+    await expect
+      .poll(async () => {
+        const { rows } = await pool.query<{ waiting: boolean }>(
+          "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND $1 = ANY(pg_blocking_pids(pid))) AS waiting",
+          [backends[0]?.pid]
+        );
+        return rows[0]?.waiting;
+      })
+      .toBe(true);
+    history = reader.getHistory(participantA, { habitId: habit.id });
+    void history.catch(() => {});
+    await expect
+      .poll(async () => {
+        const { rows } = await pool.query<{ waiting: boolean }>(
+          "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query ILIKE '%for share%') AS waiting"
+        );
+        return rows[0]?.waiting;
+      })
+      .toBe(true);
+    instant = new Date("2026-11-18T00:00:00+07:00");
+  } finally {
+    await blocker.query("ROLLBACK");
+    blocker.release();
+  }
+  await expect(save).resolves.toEqual({ kind: "saved" });
+  await expect(history).resolves.toMatchObject({
+    accountDate: "2026-11-18",
+    days: [
+      { date: "2026-11-18", progress: { dailyTarget: 30, scheduled: true } },
+      { date: "2026-11-17", progress: { dailyTarget: 60, scheduled: true } },
+    ],
+  });
+});
+
+test("F07 validates goal bounds and restricts changes to the owner of a Habit tracking tomorrow", async () => {
+  const service = createHabitService(database, {
+    now: () => new Date("2026-11-17T12:00:00+07:00"),
+  });
+  const study = await createStudyTemplate();
+  const counts = await createCountTemplate();
+  const { habit } = await service.createHabit(participantA, {
+    templateId: study.id,
+    templateVersion: study.version,
+    dailyTarget: 60,
+    weekdays: [2],
+  });
+  const { habit: countHabit } = await service.createHabit(participantA, {
+    templateId: counts.id,
+    templateVersion: counts.version,
+    dailyTarget: 20,
+    weekdays: [2],
+  });
+  const draft = {
+    habitId: habit.id,
+    expectedVersion: habit.version,
+    effectiveFrom: "2026-11-18",
+    dailyTarget: 1440,
+    weekdays: [3],
+    requestKey: randomUUID(),
+  };
+  await Promise.all(
+    [4, 1441].map(async (dailyTarget) => {
+      await expect(
+        service.reviseGoal(participantA, { ...draft, dailyTarget })
+      ).rejects.toMatchObject({
+        status: 400,
+        fieldErrors: {
+          dailyTarget:
+            "Daily Target must be a whole number from 5 to 1,440 minutes.",
+        },
+      });
+    })
+  );
+  await Promise.all(
+    [17.5, 0, -1, 1_000_001].map(async (dailyTarget) => {
+      await expect(
+        service.reviseGoal(participantA, { ...draft, dailyTarget })
+      ).rejects.toMatchObject({
+        status: 400,
+        fieldErrors: {
+          dailyTarget: "Enter a valid whole-number Daily Target.",
+        },
+      });
+    })
+  );
+  await Promise.all(
+    [[], [3, 3], [8]].map(async (weekdays) => {
+      await expect(
+        service.reviseGoal(participantA, { ...draft, weekdays })
+      ).rejects.toMatchObject({
+        status: 400,
+        fieldErrors: {
+          weekdays: "Choose at least one weekday, with no duplicates.",
+        },
+      });
+    })
+  );
+  await expect(
+    service.reviseGoal(participantB, {
+      ...draft,
+      participantId: participantA.id,
+    })
+  ).rejects.toMatchObject({ status: 404 });
+  await expect(service.reviseGoal(managerM, draft)).rejects.toMatchObject({
+    status: 403,
+  });
+  await expect(
+    service.reviseGoal(participantA, { ...draft, effectiveFrom: "2026-11-19" })
+  ).rejects.toMatchObject({ status: 409 });
+  await expect(service.reviseGoal(participantA, draft)).resolves.toEqual({
+    kind: "saved",
+  });
+
+  const countDraft = {
+    ...draft,
+    habitId: countHabit.id,
+    expectedVersion: countHabit.version,
+    dailyTarget: 1_000_000,
+    requestKey: randomUUID(),
+  };
+  await expect(
+    service.reviseGoal(participantA, { ...countDraft, dailyTarget: 1_000_001 })
+  ).rejects.toMatchObject({ status: 400 });
+  await expect(service.reviseGoal(participantA, countDraft)).resolves.toEqual({
+    kind: "saved",
+  });
+
+  await pool.query("UPDATE habit SET archived_from = $1 WHERE id = $2", [
+    draft.effectiveFrom,
+    habit.id,
+  ]);
+  await expect(
+    service.reviseGoal(participantA, {
+      ...draft,
+      expectedVersion: habit.version + 1,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({
+    status: 409,
+    message:
+      "Goal settings can only change for Habits that are active tomorrow.",
+  });
+  const { items } = await service.listHabits(participantA);
+  expect(items.find((item) => item.id === habit.id)).toMatchObject({
+    id: habit.id,
+    goal: { effectiveFrom: "2026-11-17", dailyTarget: 60, weekdays: [2] },
+    pendingGoal: null,
+  });
+});
+
 beforeAll(async () => {
   await control.query(`CREATE DATABASE "${databaseName}"`);
   await migrate(pool);
@@ -166,6 +634,7 @@ test("AC-F04-1: multiple deliberate entries accumulate and show overachievement 
   const template = await createStudyTemplate();
   const createdHabit = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -235,6 +704,7 @@ test("AC-F04-2: concurrent idempotent retry counts once, payload mismatch confli
   const template = await createStudyTemplate();
   const { habit } = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -290,11 +760,13 @@ test("AC-F04-2: receipt and entry persist atomically, and auth/ownership run bef
   const template = await createStudyTemplate();
   const habitA = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
   const habitB = await habits.createHabit(participantB, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -366,6 +838,7 @@ test("AC-F04-3: account midnight, 7-day window, pre-start, post-archive, off-sch
   const template = await createStudyTemplate();
   const { habit: habitA } = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     // Monday through Friday only (Saturday=6, Sunday=7 unscheduled).
     weekdays: [1, 2, 3, 4, 5],
@@ -506,6 +979,7 @@ test("AC-F04-3: account midnight, 7-day window, pre-start, post-archive, off-sch
   fakeNow = new Date("2026-11-01T07:30:00Z");
   const { habit: habitB } = await habits.createHabit(participantB, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -529,10 +1003,547 @@ test("AC-F04-3: account midnight, 7-day window, pre-start, post-archive, off-sch
   expect(Number(receiptCount.rows[0]?.count)).toBe(4);
 });
 
+const createHistoryHabit = async () => {
+  const template = await createCountTemplate();
+  const { habit } = await habits.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1],
+  });
+  await pool.query("UPDATE habit SET start_date = '2026-10-01' WHERE id = $1", [
+    habit.id,
+  ]);
+  await pool.query(
+    "UPDATE goal_revision SET effective_from = '2026-10-01' WHERE habit_id = $1",
+    [habit.id]
+  );
+  return habit;
+};
+
+test("AC-F06-1: history shows dated scheduled and off-schedule amounts, with older entries read-only", async () => {
+  const habit = await createHistoryHabit();
+  let now = new Date("2026-11-09T12:00:00+07:00");
+  const clocked = createEntryService(database, { now: () => now });
+  const log = async (activityDate: string, amount: number) =>
+    await clocked.createEntry(participantA, {
+      habitId: habit.id,
+      activityDate,
+      amount,
+      requestKey: randomUUID(),
+    });
+
+  await log("2026-11-09", 60);
+  now = new Date("2026-11-16T12:00:00+07:00");
+  await pool.query(
+    "INSERT INTO goal_revision (id, habit_id, effective_from, daily_target, weekday_mask) VALUES ($1, $2, '2026-11-16', 65, 1)",
+    [randomUUID(), habit.id]
+  );
+  await log("2026-11-15", 25);
+  await log("2026-11-16", 65);
+
+  const history = await clocked.getHistory(participantA, { habitId: habit.id });
+  expect(history).toMatchObject({
+    accountDate: "2026-11-16",
+    timezone: "Asia/Bangkok",
+    writableMinDate: "2026-11-10",
+    writableMaxDate: "2026-11-16",
+  });
+  expect(history.days[0]).toMatchObject({
+    date: "2026-11-16",
+    progress: {
+      scheduled: true,
+      completed: true,
+      dailyTotal: 65,
+      dailyTarget: 65,
+    },
+    entries: [{ amount: 65 }],
+  });
+  expect(history.days[1]).toMatchObject({
+    date: "2026-11-15",
+    progress: { scheduled: false, percentage: null, dailyTotal: 25 },
+    entries: [{ amount: 25 }],
+  });
+  expect(history.days.at(-1)).toMatchObject({
+    date: "2026-11-09",
+    progress: {
+      scheduled: true,
+      completed: true,
+      dailyTotal: 60,
+      dailyTarget: 60,
+    },
+    entries: [{ amount: 60 }],
+  });
+  await expect(
+    clocked.getHistory(participantB, { habitId: habit.id })
+  ).rejects.toMatchObject({
+    status: 404,
+  });
+});
+
+const historyMondayNoon = () => new Date("2026-11-16T12:00:00+07:00");
+
+test("AC-F09-2/3: Habit History derives Streaks across account midnight, Goal Revisions, and eligible corrections", async () => {
+  let instant = new Date("2026-11-13T12:00:00+07:00");
+  const now = () => instant;
+  const organizer = createHabitService(database, { now });
+  const activity = createEntryService(database, { now });
+  const observer = createEntryService(otherDatabase, { now });
+  const template = await createCountTemplate();
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  };
+  const { habit } = await organizer.createHabit(participantA, draft);
+  const log = async (activityDate: string, amount: number) =>
+    await activity.createEntry(participantA, {
+      habitId: habit.id,
+      activityDate,
+      amount,
+      requestKey: randomUUID(),
+    });
+  const history = async (before?: string) =>
+    await observer.getHistory(participantA, { habitId: habit.id, before });
+
+  await log("2026-11-13", 30);
+  await log("2026-11-13", 30);
+  instant = new Date("2026-11-16T23:59:59+07:00");
+  await log("2026-11-14", 90);
+  const { entry } = await log("2026-11-16", 40);
+  await organizer.reviseGoal(participantA, {
+    habitId: habit.id,
+    expectedVersion: habit.version,
+    effectiveFrom: "2026-11-17",
+    dailyTarget: 75,
+    weekdays: [3],
+    requestKey: randomUUID(),
+  });
+  expect(await history()).toMatchObject({
+    accountDate: "2026-11-16",
+    streaks: { current: 1, longest: 1 },
+  });
+
+  instant = new Date("2026-11-17T00:00:00+07:00");
+  expect(await history()).toMatchObject({
+    accountDate: "2026-11-17",
+    streaks: { current: 0, longest: 1 },
+  });
+  await activity.updateEntry(participantA, {
+    habitId: habit.id,
+    entryId: entry.id,
+    expectedVersion: entry.version,
+    activityDate: entry.activityDate,
+    amount: 60,
+    requestKey: randomUUID(),
+  });
+  expect(await history("2026-11-16")).toMatchObject({
+    streaks: { current: 2, longest: 2 },
+  });
+
+  instant = new Date("2026-11-18T12:00:00+07:00");
+  await log("2026-11-18", 75);
+  expect(await history()).toMatchObject({
+    streaks: { current: 3, longest: 3 },
+  });
+  await activity.deleteEntry(participantA, {
+    habitId: habit.id,
+    entryId: entry.id,
+    expectedVersion: entry.version + 1,
+    requestKey: randomUUID(),
+  });
+  expect(await history()).toMatchObject({
+    streaks: { current: 1, longest: 1 },
+  });
+});
+
+test("History pages keep entries from the same date together and reach older records", async () => {
+  const { id: habitId } = await createHistoryHabit();
+  const clocked = createEntryService(database, { now: historyMondayNoon });
+  await pool.query(
+    `INSERT INTO activity_entry (id, habit_id, activity_date, amount)
+     SELECT gen_random_uuid()::text, $1, day::date, 15
+     FROM generate_series(date '2026-10-17', date '2026-11-16', interval '1 day') AS day
+     UNION ALL SELECT gen_random_uuid()::text, $1, date '2026-10-18', 20`,
+    [habitId]
+  );
+  const latest = await clocked.getHistory(participantA, { habitId });
+  expect(latest.days).toHaveLength(30);
+  expect(latest.nextBefore).toBe("2026-10-18");
+  expect(latest.days.at(-1)).toMatchObject({
+    date: "2026-10-18",
+    progress: { dailyTotal: 35 },
+  });
+
+  const older = await clocked.getHistory(participantA, {
+    habitId,
+    before: latest.nextBefore,
+  });
+  expect(older.nextBefore).toBeNull();
+  expect(older.days).toMatchObject([
+    { date: "2026-10-17", entries: [{ amount: 15 }] },
+  ]);
+});
+
+test("AC-F06-1/4: corrections recalculate completion and move amounts atomically", async () => {
+  const habit = await createHistoryHabit();
+  const clocked = createEntryService(database, { now: historyMondayNoon });
+  const observer = createEntryService(otherDatabase, {
+    now: historyMondayNoon,
+  });
+  const log = async (activityDate: string, amount: number) =>
+    await clocked.createEntry(participantA, {
+      habitId: habit.id,
+      activityDate,
+      amount,
+      requestKey: randomUUID(),
+    });
+  const { entry } = await log("2026-11-16", 40);
+  await log("2026-11-16", 30);
+  await log("2026-11-15", 999_970);
+  const edit = async (
+    expectedVersion: number,
+    activityDate: string,
+    amount: number
+  ) =>
+    await clocked.updateEntry(participantA, {
+      habitId: habit.id,
+      entryId: entry.id,
+      expectedVersion,
+      activityDate,
+      amount,
+      requestKey: randomUUID(),
+    });
+  const totals = async () => {
+    const { days } = await observer.getHistory(participantA, {
+      habitId: habit.id,
+    });
+    return days.slice(0, 2).map(({ progress: { dailyTotal, completed } }) => ({
+      dailyTotal,
+      completed,
+    }));
+  };
+
+  expect(await totals()).toEqual([
+    { dailyTotal: 70, completed: true },
+    { dailyTotal: 999_970, completed: false },
+  ]);
+  await edit(1, "2026-11-16", 20);
+  const today = await observer.getToday(participantA);
+  expect(today.scheduled[0]?.progress).toMatchObject({
+    dailyTotal: 50,
+    completed: false,
+  });
+  await edit(2, "2026-11-16", 40);
+  await expect(edit(3, "2026-11-15", 40)).rejects.toMatchObject({
+    status: 409,
+  });
+  expect(await totals()).toEqual([
+    { dailyTotal: 70, completed: true },
+    { dailyTotal: 999_970, completed: false },
+  ]);
+  await edit(3, "2026-11-15", 30);
+  expect(await totals()).toEqual([
+    { dailyTotal: 30, completed: false },
+    { dailyTotal: 1_000_000, completed: false },
+  ]);
+  expect(
+    await observer.listEntries(participantA, habit.id, "2026-11-15")
+  ).toContainEqual(
+    expect.objectContaining({ id: entry.id, amount: 30, version: 4 })
+  );
+});
+
+test("AC-F06-2: account midnight closes both sides of a move and older entries remain intact", async () => {
+  const habit = await createHistoryHabit();
+  let now = new Date("2026-11-16T23:59:50+07:00");
+  const clocked = createEntryService(database, { now: () => now });
+  const log = async (activityDate: string) => {
+    const { entry } = await clocked.createEntry(participantA, {
+      habitId: habit.id,
+      activityDate,
+      amount: 20,
+      requestKey: randomUUID(),
+    });
+    return {
+      habitId: habit.id,
+      entryId: entry.id,
+      expectedVersion: entry.version,
+      requestKey: randomUUID(),
+    };
+  };
+  const edge = await log("2026-11-10");
+  const inside = await log("2026-11-15");
+  const correction = { ...edge, activityDate: "2026-11-10", amount: 25 };
+  await expect(clocked.updateEntry(participantA, correction)).resolves.toEqual({
+    kind: "applied",
+  });
+
+  now = new Date("2026-11-17T00:00:10+07:00");
+  const nextDay = await clocked.getHistory(participantA, { habitId: habit.id });
+  expect(nextDay).toMatchObject({
+    accountDate: "2026-11-17",
+    writableMinDate: "2026-11-11",
+  });
+  await expect(clocked.updateEntry(participantA, correction)).resolves.toEqual({
+    kind: "replayed",
+  });
+  const oldTarget = { ...edge, expectedVersion: 2, requestKey: randomUUID() };
+  await expect(
+    clocked.updateEntry(participantA, {
+      ...oldTarget,
+      activityDate: "2026-11-16",
+      amount: 30,
+    })
+  ).rejects.toMatchObject({ status: 400 });
+  await expect(
+    clocked.deleteEntry(participantA, oldTarget)
+  ).rejects.toMatchObject({ status: 400 });
+  await expect(
+    clocked.updateEntry(participantA, {
+      ...inside,
+      activityDate: "2026-11-10",
+      amount: 30,
+    })
+  ).rejects.toMatchObject({ status: 400 });
+  expect(await clocked.listEntries(participantA, habit.id)).toMatchObject([
+    { activityDate: "2026-11-10", amount: 25, version: 2 },
+    { activityDate: "2026-11-15", amount: 20, version: 1 },
+  ]);
+
+  await pool.query(
+    "UPDATE habit SET archived_from = '2026-11-17' WHERE id = $1",
+    [habit.id]
+  );
+  await expect(
+    clocked.updateEntry(participantA, {
+      ...inside,
+      activityDate: "2026-11-17",
+      amount: 30,
+    })
+  ).rejects.toMatchObject({
+    status: 400,
+    message:
+      "Entries cannot be recorded on or after this Habit’s archive date (2026-11-17).",
+  });
+  await expect(clocked.deleteEntry(participantA, inside)).resolves.toEqual({
+    kind: "applied",
+  });
+  const archived = await clocked.getHistory(participantA, {
+    habitId: habit.id,
+  });
+  expect(archived.writableMaxDate).toBe("2026-11-16");
+});
+
+test("AC-F06-3: ownership and versions guard corrections, and retained receipts prevent resurrection", async () => {
+  const habit = await createHistoryHabit();
+  const clocked = createEntryService(database, { now: historyMondayNoon });
+  const otherTab = createEntryService(otherDatabase, {
+    now: historyMondayNoon,
+  });
+  const original = {
+    habitId: habit.id,
+    activityDate: "2026-11-16",
+    amount: 60,
+    requestKey: randomUUID(),
+  };
+  const { entry } = await clocked.createEntry(participantA, original);
+  const target = {
+    habitId: habit.id,
+    entryId: entry.id,
+    expectedVersion: entry.version,
+    requestKey: randomUUID(),
+  };
+  const edit = { ...target, activityDate: "2026-11-15", amount: 25 };
+  await expect(clocked.updateEntry(participantA, edit)).resolves.toEqual({
+    kind: "applied",
+  });
+  await expect(otherTab.updateEntry(participantA, edit)).resolves.toEqual({
+    kind: "replayed",
+  });
+  await expect(otherTab.updateEntry(participantB, edit)).rejects.toMatchObject({
+    status: 404,
+  });
+  await expect(
+    otherTab.updateEntry(participantA, {
+      ...edit,
+      amount: 20,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({
+    status: 409,
+    message: "This entry changed. Refresh history before trying again.",
+  });
+  await expect(
+    otherTab.deleteEntry(participantA, { ...target, requestKey: randomUUID() })
+  ).rejects.toMatchObject({ status: 409 });
+  await expect(
+    otherTab.createEntry(participantA, original)
+  ).resolves.toMatchObject({
+    kind: "replayed",
+    entry: { id: entry.id, activityDate: "2026-11-15", amount: 25, version: 2 },
+    dailyTotal: 25,
+  });
+
+  const deletion = { ...target, expectedVersion: 2, requestKey: randomUUID() };
+  const replies = await Promise.all([
+    clocked.deleteEntry(participantA, deletion),
+    otherTab.deleteEntry(participantA, deletion),
+  ]);
+  expect(replies).toEqual(
+    expect.arrayContaining([{ kind: "applied" }, { kind: "replayed" }])
+  );
+  await expect(
+    otherTab.deleteEntry(participantB, deletion)
+  ).rejects.toMatchObject({ status: 404 });
+  await expect(otherTab.deleteEntry(managerM, deletion)).rejects.toMatchObject({
+    status: 403,
+  });
+  await expect(
+    otherTab.createEntry(participantA, original)
+  ).rejects.toMatchObject({
+    status: 409,
+    message: "This entry was previously recorded and subsequently removed.",
+  });
+  await expect(otherTab.updateEntry(participantA, edit)).rejects.toMatchObject({
+    status: 409,
+    message: "This change was saved before the entry was deleted.",
+  });
+  expect(await clocked.listEntries(participantA, habit.id)).toEqual([]);
+});
+
+test("Concurrent edits from the same version apply exactly one correction", async () => {
+  const { id: habitId } = await createHistoryHabit();
+  const firstTab = createEntryService(database, { now: historyMondayNoon });
+  const secondTab = createEntryService(otherDatabase, {
+    now: historyMondayNoon,
+  });
+  const activityDate = "2026-11-16";
+  const { entry } = await firstTab.createEntry(participantA, {
+    habitId,
+    activityDate,
+    amount: 60,
+    requestKey: randomUUID(),
+  });
+  const target = {
+    habitId,
+    entryId: entry.id,
+    expectedVersion: entry.version,
+    activityDate,
+  };
+  const firstEdit = { ...target, amount: 25, requestKey: randomUUID() };
+  const secondEdit = { ...target, amount: 80, requestKey: randomUUID() };
+
+  const [first, second] = await Promise.allSettled([
+    firstTab.updateEntry(participantA, firstEdit),
+    secondTab.updateEntry(participantA, secondEdit),
+  ]);
+  const firstWon = first.status === "fulfilled";
+  const winner = firstWon ? firstEdit : secondEdit;
+  expect(firstWon ? first : second).toMatchObject({
+    status: "fulfilled",
+    value: { kind: "applied" },
+  });
+  expect(firstWon ? second : first).toMatchObject({
+    status: "rejected",
+    reason: {
+      status: 409,
+      message: "This entry changed. Refresh history before trying again.",
+    },
+  });
+
+  expect(await secondTab.listEntries(participantA, habitId)).toMatchObject([
+    { id: entry.id, activityDate, amount: winner.amount, version: 2 },
+  ]);
+  const { days } = await secondTab.getHistory(participantA, { habitId });
+  expect(days[0]).toMatchObject({
+    date: activityDate,
+    progress: { dailyTotal: winner.amount },
+  });
+  const receipts = await pool.query<{ request_key: string }>(
+    "SELECT request_key FROM mutation_receipt WHERE actor_id = $1 AND request_key IN ($2, $3)",
+    [participantA.id, firstEdit.requestKey, secondEdit.requestKey]
+  );
+  expect(receipts.rows).toEqual([{ request_key: winner.requestKey }]);
+});
+
+test("A date move racing a create cannot exceed the destination’s daily ceiling", async () => {
+  const { id: habitId } = await createHistoryHabit();
+  const firstTab = createEntryService(database, { now: historyMondayNoon });
+  const secondTab = createEntryService(otherDatabase, {
+    now: historyMondayNoon,
+  });
+  const source = "2026-11-16";
+  const destination = "2026-11-15";
+  const { entry } = await firstTab.createEntry(participantA, {
+    habitId,
+    activityDate: source,
+    amount: 20,
+    requestKey: randomUUID(),
+  });
+  await firstTab.createEntry(participantA, {
+    habitId,
+    activityDate: destination,
+    amount: 999_980,
+    requestKey: randomUUID(),
+  });
+  const create = {
+    habitId,
+    activityDate: destination,
+    amount: 20,
+    requestKey: randomUUID(),
+  };
+  const move = {
+    ...create,
+    entryId: entry.id,
+    expectedVersion: entry.version,
+    requestKey: randomUUID(),
+  };
+
+  const [moved, created] = await Promise.allSettled([
+    firstTab.updateEntry(participantA, move),
+    secondTab.createEntry(participantA, create),
+  ]);
+  const moveWon = moved.status === "fulfilled";
+  expect(moveWon ? moved : created).toMatchObject({
+    status: "fulfilled",
+    value: { kind: moveWon ? "applied" : "created" },
+  });
+  expect(moveWon ? created : moved).toMatchObject({
+    status: "rejected",
+    reason: {
+      status: 409,
+      message: "Daily total cannot exceed 1,000,000 counts.",
+    },
+  });
+
+  const { days } = await secondTab.getHistory(participantA, { habitId });
+  expect(days.slice(0, 2)).toMatchObject([
+    { date: source, progress: { dailyTotal: moveWon ? 0 : 20 } },
+    { date: destination, progress: { dailyTotal: 1_000_000 } },
+  ]);
+  const saved = await secondTab.listEntries(participantA, habitId);
+  expect(saved).toHaveLength(moveWon ? 2 : 3);
+  expect(saved.find((candidate) => candidate.id === entry.id)).toMatchObject({
+    activityDate: moveWon ? destination : source,
+    amount: 20,
+    version: moveWon ? 2 : 1,
+  });
+  const receipts = await pool.query<{ request_key: string }>(
+    "SELECT request_key FROM mutation_receipt WHERE actor_id = $1 AND request_key IN ($2, $3)",
+    [participantA.id, move.requestKey, create.requestKey]
+  );
+  expect(receipts.rows).toEqual([
+    { request_key: moveWon ? move.requestKey : create.requestKey },
+  ]);
+});
+
 test("AC-F04-4: concurrent ceiling writes cannot exceed 1,440 minutes or 1,000,000 counts, and rejected writes leave no receipt", async () => {
   const study = await createStudyTemplate();
   const { habit: minuteHabit } = await habits.createHabit(participantA, {
     templateId: study.id,
+    templateVersion: study.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -615,6 +1626,7 @@ test("AC-F04-4: concurrent ceiling writes cannot exceed 1,440 minutes or 1,000,0
   const countTemplate = await createCountTemplate();
   const { habit: countHabit } = await habits.createHabit(participantB, {
     templateId: countTemplate.id,
+    templateVersion: countTemplate.version,
     dailyTarget: 100,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -656,6 +1668,7 @@ test("Program Managers cannot read Today or record Activity Entries", async () =
   const template = await createStudyTemplate();
   const { habit } = await habits.createHabit(participantA, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   });
@@ -678,11 +1691,18 @@ test("Program Managers cannot read Today or record Activity Entries", async () =
 });
 
 const serverFunctionPatterns = {
+  getTrackingWorkspace:
+    /\bgetTrackingWorkspace\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  reviseGoal: /\breviseGoal\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  archiveHabit: /\barchiveHabit\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createTemplate:
     /\bcreateTemplate\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createHabit: /\bcreateHabit\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   getToday: /\bgetToday\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
   createEntry: /\bcreateEntry\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  getHistory: /\bgetHistory\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  updateEntry: /\bupdateEntry\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
+  deleteEntry: /\bdeleteEntry\b[\s\S]*?createClientRpc\("(?<id>[^"]+)"\)/u,
 };
 
 const entryServerClient = async (origin: string) => {
@@ -750,7 +1770,7 @@ const entryServerClient = async (origin: string) => {
 };
 
 test(
-  "TanStack Start enforces Today and entry recording authorization, idempotency, conflict serialization, and reload persistence over HTTP",
+  "TanStack Start enforces private tracking authorization, idempotency, conflict serialization, and reload persistence over HTTP",
   { timeout: 30_000 },
   async () => {
     const port = await new Promise<number>((resolve, reject) => {
@@ -857,6 +1877,10 @@ test(
           entryMaximum: 45,
         },
       });
+      expect(createdTemplate).toMatchObject({
+        status: 200,
+        body: { result: { version: 1 } },
+      });
       const templateId = readStringAt(createdTemplate.body, ["result", "id"]);
 
       const createdHabit = await callServerFn("createHabit", {
@@ -864,6 +1888,7 @@ test(
         cookie: participantCookie,
         data: {
           templateId,
+          templateVersion: 1,
           dailyTarget: 60,
           weekdays: [1, 2, 3, 4, 5, 6, 7],
         },
@@ -879,6 +1904,47 @@ test(
         cookie: participantCookie,
       });
       const todayDate = readStringAt(todayResp.body, ["result", "accountDate"]);
+      const revise = {
+        habitId,
+        expectedVersion: 1,
+        effectiveFrom: addCalendarDays(todayDate, 1),
+        dailyTarget: 30,
+        weekdays: [1],
+        requestKey: randomUUID(),
+      };
+      const revisionsAccess = await Promise.all([
+        callServerFn("reviseGoal", { method: "POST", data: revise }),
+        callServerFn("reviseGoal", {
+          method: "POST",
+          cookie: managerCookie,
+          data: revise,
+        }),
+        callServerFn("reviseGoal", {
+          method: "POST",
+          cookie: otherCookie,
+          data: { ...revise, participantId: participantA.id },
+        }),
+      ]);
+      expect(revisionsAccess.map(({ status }) => status)).toEqual([
+        401, 403, 404,
+      ]);
+      expect(
+        await callServerFn("getTrackingWorkspace", {
+          method: "GET",
+          cookie: participantCookie,
+        })
+      ).toMatchObject({
+        status: 200,
+        body: {
+          result: {
+            habitWorkspace: {
+              accountDate: todayDate,
+              items: [{ id: habitId, version: 1, pendingGoal: null }],
+            },
+            todayWorkspace: { accountDate: todayDate },
+          },
+        },
+      });
 
       expect(
         await callServerFn("getToday", {
@@ -1056,6 +2122,170 @@ test(
         headers: { cookie: managerCookie },
       });
       expect(await managerReload.text()).not.toContain("Scheduled for today");
+
+      const correction = {
+        habitId,
+        entryId: "missing",
+        expectedVersion: 1,
+        requestKey: "private-entry",
+      };
+      const [visitorHistory, managerHistory, otherHistory] = await Promise.all([
+        callServerFn("getHistory", { method: "GET", data: { habitId } }),
+        callServerFn("getHistory", {
+          method: "GET",
+          data: { habitId },
+          cookie: managerCookie,
+        }),
+        callServerFn("getHistory", {
+          method: "GET",
+          data: { habitId },
+          cookie: otherCookie,
+        }),
+      ]);
+      expect(visitorHistory.status).toBe(401);
+      expect(managerHistory.status).toBe(403);
+      expect(otherHistory.status).toBe(404);
+
+      const correctionAccess = [
+        { cookie: undefined, status: 401 },
+        { cookie: managerCookie, status: 403 },
+        { cookie: otherCookie, status: 404 },
+      ];
+      const endpoints = ["updateEntry", "deleteEntry"] as const;
+      await Promise.all(
+        endpoints.flatMap((endpoint) =>
+          correctionAccess.map(async ({ cookie, status }) => {
+            const data =
+              endpoint === "updateEntry"
+                ? { ...correction, activityDate: todayDate, amount: 25 }
+                : correction;
+            const response = await callServerFn(endpoint, {
+              method: "POST",
+              data,
+              cookie,
+            });
+            expect(response.status, endpoint).toBe(status);
+          })
+        )
+      );
+
+      // AC-F08-3 / AC-F08-4: archiveHabit HTTP auth, validation, idempotency, and post-archive goal rejection.
+      const tomorrowDate = addCalendarDays(todayDate, 1);
+      const archiveKey = randomUUID();
+      const archivePayload = {
+        habitId,
+        expectedVersion: 1,
+        archivedFrom: tomorrowDate,
+        requestKey: archiveKey,
+      };
+      const [
+        anonArchive,
+        managerArchive,
+        otherArchive,
+        badArchive,
+        nulHabitArchive,
+        nulKeyArchive,
+      ] = await Promise.all([
+        callServerFn("archiveHabit", {
+          method: "POST",
+          data: archivePayload,
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: managerCookie,
+          data: archivePayload,
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: otherCookie,
+          data: archivePayload,
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: { ...archivePayload, expectedVersion: 0 },
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: { ...archivePayload, habitId: `${habitId}\u0000` },
+        }),
+        callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: { ...archivePayload, requestKey: `${archiveKey}\u0000` },
+        }),
+      ]);
+      expect(anonArchive.status).toBe(401);
+      expect(managerArchive.status).toBe(403);
+      expect(otherArchive.status).toBe(404);
+      expect(badArchive).toMatchObject({
+        status: 400,
+        body: { result: { kind: "invalid" } },
+      });
+      expect(nulHabitArchive).toMatchObject({
+        status: 400,
+        body: { result: { kind: "invalid" } },
+      });
+      expect(nulKeyArchive).toMatchObject({
+        status: 400,
+        body: { result: { kind: "invalid" } },
+      });
+
+      expect(
+        await callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: archivePayload,
+        })
+      ).toMatchObject({
+        status: 200,
+        body: { result: { kind: "archived", archivedFrom: tomorrowDate } },
+      });
+
+      expect(
+        await callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: archivePayload,
+        })
+      ).toMatchObject({
+        status: 200,
+        body: { result: { kind: "replayed", archivedFrom: tomorrowDate } },
+      });
+
+      expect(
+        await callServerFn("archiveHabit", {
+          method: "POST",
+          cookie: participantCookie,
+          data: {
+            ...archivePayload,
+            expectedVersion: 2,
+            requestKey: randomUUID(),
+          },
+        })
+      ).toMatchObject({
+        status: 409,
+        body: { result: { kind: "conflict" } },
+      });
+
+      expect(
+        await callServerFn("reviseGoal", {
+          method: "POST",
+          cookie: participantCookie,
+          data: {
+            habitId,
+            expectedVersion: 2,
+            effectiveFrom: tomorrowDate,
+            dailyTarget: 30,
+            weekdays: [1, 2, 3, 4, 5],
+            requestKey: randomUUID(),
+          },
+        })
+      ).toMatchObject({
+        status: 409,
+        body: { result: { kind: "conflict" } },
+      });
     } finally {
       if (child.pid !== undefined) {
         if (process.platform === "win32") {
@@ -1074,3 +2304,276 @@ test(
     }
   }
 );
+
+test("AC-F08-3 / AC-F08-4: archiving retains today’s obligation and history, rejects post-archive activity, preserves eligible corrections, and isolates a fresh Habit", async () => {
+  const template = await createStudyTemplate();
+  let fakeNow = new Date("2026-11-16T12:00:00+07:00");
+  const clockedHabits = createHabitService(database, { now: () => fakeNow });
+  const clockedEntries = createEntryService(database, { now: () => fakeNow });
+
+  const { habit: first } = await clockedHabits.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+
+  // Record 40 minutes on Monday 2026-11-16.
+  await clockedEntries.createEntry(participantA, {
+    habitId: first.id,
+    activityDate: "2026-11-16",
+    amount: 40,
+    requestKey: randomUUID(),
+  });
+
+  // On Tuesday 2026-11-17, schedule a goal revision for Wednesday then archive from Wednesday.
+  fakeNow = new Date("2026-11-17T12:00:00+07:00");
+  await clockedHabits.reviseGoal(participantA, {
+    habitId: first.id,
+    expectedVersion: first.version,
+    effectiveFrom: "2026-11-18",
+    dailyTarget: 30,
+    weekdays: [3],
+    requestKey: randomUUID(),
+  });
+  await clockedHabits.archiveHabit(participantA, {
+    habitId: first.id,
+    expectedVersion: first.version + 1,
+    archivedFrom: "2026-11-18",
+    requestKey: randomUUID(),
+  });
+
+  // Tuesday 2026-11-17 remains scheduled and writable under the 60-minute target.
+  const tuesdayBefore = await clockedEntries.getToday(participantA);
+  expect(tuesdayBefore.scheduled).toHaveLength(1);
+  expect(tuesdayBefore.scheduled[0]?.habit.archivedFrom).toBe("2026-11-18");
+  expect(tuesdayBefore.scheduled[0]?.progress.dailyTarget).toBe(60);
+
+  const tuesdayEntry = await clockedEntries.createEntry(participantA, {
+    habitId: first.id,
+    activityDate: "2026-11-17",
+    amount: 25,
+    requestKey: randomUUID(),
+  });
+  expect(tuesdayEntry.dailyTotal).toBe(25);
+
+  // Advance to Wednesday 2026-11-18 (exclusive archive date).
+  fakeNow = new Date("2026-11-18T12:00:00+07:00");
+  const wednesdayToday = await clockedEntries.getToday(participantA);
+  expect(wednesdayToday.scheduled).toEqual([]);
+  expect(wednesdayToday.unscheduled).toEqual([]);
+
+  // New activity on the archive date is rejected.
+  await expect(
+    clockedEntries.createEntry(participantA, {
+      habitId: first.id,
+      activityDate: "2026-11-18",
+      amount: 20,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+
+  // Moving an eligible entry onto the archive date is rejected.
+  await expect(
+    clockedEntries.updateEntry(participantA, {
+      habitId: first.id,
+      entryId: tuesdayEntry.entry.id,
+      expectedVersion: tuesdayEntry.entry.version,
+      activityDate: "2026-11-18",
+      amount: 25,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+
+  // Eligible correction before the archive date succeeds and recalculates completion.
+  expect(
+    await clockedEntries.updateEntry(participantA, {
+      habitId: first.id,
+      entryId: tuesdayEntry.entry.id,
+      expectedVersion: tuesdayEntry.entry.version,
+      activityDate: "2026-11-17",
+      amount: 45,
+      requestKey: randomUUID(),
+    })
+  ).toEqual({ kind: "applied" });
+  await clockedEntries.createEntry(participantA, {
+    habitId: first.id,
+    activityDate: "2026-11-17",
+    amount: 15,
+    requestKey: randomUUID(),
+  });
+
+  const archivedHistory = await clockedEntries.getHistory(participantA, {
+    habitId: first.id,
+  });
+  expect(archivedHistory.writableMaxDate).toBe("2026-11-17");
+  const tuesdayHistory = archivedHistory.days.find(
+    (day) => day.date === "2026-11-17"
+  );
+  expect(tuesdayHistory?.progress).toMatchObject({
+    scheduled: true,
+    dailyTarget: 60,
+    dailyTotal: 60,
+    completed: true,
+  });
+  expect(
+    archivedHistory.days.find((day) => day.date === "2026-11-18")
+  ).toBeUndefined();
+
+  // Starting a fresh Habit from the same template on 2026-11-18 has separate history and zero progress.
+  const fresh = await clockedHabits.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 30,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+  expect(fresh.kind).toBe("created");
+  expect(fresh.habit.id).not.toBe(first.id);
+
+  const freshToday = await clockedEntries.getToday(participantA);
+  expect(freshToday.scheduled).toHaveLength(1);
+  expect(freshToday.scheduled[0]?.habit.id).toBe(fresh.habit.id);
+  expect(freshToday.scheduled[0]?.progress.dailyTotal).toBe(0);
+
+  const freshHistory = await clockedEntries.getHistory(participantA, {
+    habitId: fresh.habit.id,
+  });
+  expect(freshHistory.days.every((day) => day.entries.length === 0)).toBe(true);
+
+  // Advance to Thursday 2026-11-19 (after the archive date): new activity on 2026-11-19 is rejected,
+  // while pre-archive history remains intact and eligible within the 7-day window.
+  fakeNow = new Date("2026-11-19T12:00:00+07:00");
+  await expect(
+    clockedEntries.createEntry(participantA, {
+      habitId: first.id,
+      activityDate: "2026-11-19",
+      amount: 15,
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+  const laterArchivedHistory = await clockedEntries.getHistory(participantA, {
+    habitId: first.id,
+  });
+  expect(laterArchivedHistory.writableMaxDate).toBe("2026-11-17");
+  expect(
+    laterArchivedHistory.days.some((day) => day.date === "2026-11-16")
+  ).toBe(true);
+});
+
+test("AC-F10-1/2: Today evaluates Reminder due state across local time, completion, disable, Goal Revision, midnight, and archive", async () => {
+  const template = await createStudyTemplate();
+  // Monday 2026-11-16 at 17:59 Asia/Bangkok
+  let fakeNow = new Date("2026-11-16T17:59:00+07:00");
+  const clockedHabits = createHabitService(database, { now: () => fakeNow });
+  const clockedEntries = createEntryService(database, { now: () => fakeNow });
+
+  const { habit } = await clockedHabits.createHabit(participantA, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+  await clockedHabits.setReminder(participantA, {
+    habitId: habit.id,
+    expectedVersion: habit.version,
+    reminderTime: "18:00",
+    requestKey: randomUUID(),
+  });
+
+  // Before 18:00: not due
+  const beforeDue = await clockedEntries.getToday(participantA);
+  expect(beforeDue.scheduled[0]).toMatchObject({
+    habit: { id: habit.id, reminderTime: "18:00" },
+    reminderDue: false,
+  });
+
+  // At 18:00 with unmet target: due
+  fakeNow = new Date("2026-11-16T18:00:00+07:00");
+  const atDue = await clockedEntries.getToday(participantA);
+  expect(atDue.scheduled[0]).toMatchObject({
+    habit: { id: habit.id, reminderTime: "18:00" },
+    reminderDue: true,
+  });
+
+  // Partial entry still unmet: still due
+  await clockedEntries.createEntry(participantA, {
+    habitId: habit.id,
+    activityDate: "2026-11-16",
+    amount: 30,
+    requestKey: randomUUID(),
+  });
+  const afterPartial = await clockedEntries.getToday(participantA);
+  expect(afterPartial.scheduled[0]).toMatchObject({
+    progress: { dailyTotal: 30, completed: false },
+    reminderDue: true,
+  });
+
+  // Completing the target clears the due indicator
+  await clockedEntries.createEntry(participantA, {
+    habitId: habit.id,
+    activityDate: "2026-11-16",
+    amount: 30,
+    requestKey: randomUUID(),
+  });
+  const afterComplete = await clockedEntries.getToday(participantA);
+  expect(afterComplete.scheduled[0]).toMatchObject({
+    progress: { dailyTotal: 60, completed: true },
+    reminderDue: false,
+  });
+
+  // Revise schedule for tomorrow (Tuesday 2026-11-17) so Tuesday is unscheduled (only Wednesday)
+  await clockedHabits.reviseGoal(participantA, {
+    habitId: habit.id,
+    expectedVersion: 2,
+    effectiveFrom: "2026-11-17",
+    dailyTarget: 60,
+    weekdays: [3],
+    requestKey: randomUUID(),
+  });
+
+  // Advance across midnight to Tuesday 2026-11-17 at 19:00: unscheduled -> no due indicator
+  fakeNow = new Date("2026-11-17T19:00:00+07:00");
+  const unscheduledDay = await clockedEntries.getToday(participantA);
+  expect(unscheduledDay.scheduled).toHaveLength(0);
+  expect(unscheduledDay.unscheduled[0]).toMatchObject({
+    habit: { id: habit.id, reminderTime: "18:00" },
+    progress: { scheduled: false },
+    reminderDue: false,
+  });
+
+  // Advance to Wednesday 2026-11-18 at 19:00: scheduled & unmet -> due again, then disable clears it
+  fakeNow = new Date("2026-11-18T19:00:00+07:00");
+  const wednesdayDue = await clockedEntries.getToday(participantA);
+  expect(wednesdayDue.scheduled[0]).toMatchObject({
+    reminderDue: true,
+  });
+  await clockedHabits.setReminder(participantA, {
+    habitId: habit.id,
+    expectedVersion: 3,
+    reminderTime: null,
+    requestKey: randomUUID(),
+  });
+  const afterDisable = await clockedEntries.getToday(participantA);
+  expect(afterDisable.scheduled[0]).toMatchObject({
+    habit: { reminderTime: null },
+    reminderDue: false,
+  });
+
+  // Re-enable reminder and archive from tomorrow (2026-11-19): archived date has no Today item/indicator
+  await clockedHabits.setReminder(participantA, {
+    habitId: habit.id,
+    expectedVersion: 4,
+    reminderTime: "18:00",
+    requestKey: randomUUID(),
+  });
+  await clockedHabits.archiveHabit(participantA, {
+    habitId: habit.id,
+    expectedVersion: 5,
+    archivedFrom: "2026-11-19",
+    requestKey: randomUUID(),
+  });
+  fakeNow = new Date("2026-11-19T19:00:00+07:00");
+  const archivedDay = await clockedEntries.getToday(participantA);
+  expect(archivedDay.scheduled).toHaveLength(0);
+  expect(archivedDay.unscheduled).toHaveLength(0);
+});

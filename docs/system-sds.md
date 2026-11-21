@@ -1,6 +1,6 @@
 # Habitarc System-Level SDS
 
-Status: accepted implementation design following user confirmation of Q25. F01–F04 are implemented and integrated into `sprint-1`; later product features remain planned. The [Deliverable 1 ledger](deliverables/deliverable-1/part-f.md) records current execution and release gaps. Cloud deployment is separately tracked in issue #8; no deployment is established by this document.
+Status: accepted implementation design following user confirmation of Q25. F01–F04 are released on main through reviewed PR #32; later product features remain planned. The [Deliverable 1 ledger](deliverables/deliverable-1/part-f.md) records current execution and release gaps. Cloud deployment is separately tracked in issue #8; no deployment is established by this document.
 
 Read the [SRS](srs.md), [feature inventory](features.md), [traceability matrix](traceability.md), and [sprint contracts](sprints/README.md) alongside this system-level design.
 

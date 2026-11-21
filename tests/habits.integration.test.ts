@@ -27,6 +27,7 @@ const otherPool = new Pool({
 const habits = createHabitService(createDatabase(pool));
 const otherHabits = createHabitService(createDatabase(otherPool));
 const templates = createTemplateService(createDatabase(pool));
+const otherTemplates = createTemplateService(createDatabase(otherPool));
 const participant: Identity = {
   id: "a",
   name: "Participant A",
@@ -101,6 +102,7 @@ test.each([
     await expect(
       habits.createHabit(participant, {
         templateId: template.id,
+        templateVersion: template.version,
         dailyTarget: 60,
         weekdays: [1],
         ...changes,
@@ -129,6 +131,7 @@ test.each([
     expect(
       await habits.createHabit(participant, {
         templateId: template.id,
+        templateVersion: template.version,
         dailyTarget: target,
         weekdays: [1, 2, 3, 4, 5, 6, 7],
       })
@@ -139,6 +142,7 @@ test.each([
     await expect(
       habits.createHabit(otherParticipant, {
         templateId: template.id,
+        templateVersion: template.version,
         dailyTarget: target + 1,
         weekdays: [1],
       })
@@ -148,7 +152,12 @@ test.each([
 
 test("Account Timezones determine start dates across the date line and caller timezone fields are ignored", async () => {
   const template = await studyTemplate();
-  const draft = { templateId: template.id, dailyTarget: 60, weekdays: [1] };
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1],
+  };
   const east = await habits.createHabit(
     { ...eastParticipant, timezone: "UTC" },
     draft
@@ -168,7 +177,12 @@ test("Account Timezones determine start dates across the date line and caller ti
 
 test("only the owner reads a Habit and Program Managers cannot read or create private Habits directly", async () => {
   const template = await studyTemplate();
-  const draft = { templateId: template.id, dailyTarget: 60, weekdays: [1] };
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1],
+  };
   await habits.createHabit(participant, {
     ...draft,
     participantId: otherParticipant.id,
@@ -185,7 +199,12 @@ test("only the owner reads a Habit and Program Managers cannot read or create pr
 
 test("tomorrow's pending archive blocks today, and an ended Habit permits a fresh history", async () => {
   const template = await studyTemplate();
-  const draft = { templateId: template.id, dailyTarget: 60, weekdays: [1] };
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1],
+  };
   const first = await habits.createHabit(participant, draft);
   await pool.query(
     "UPDATE habit SET archived_from = start_date + 1 WHERE id = $1",
@@ -212,7 +231,12 @@ test("tomorrow's pending archive blocks today, and an ended Habit permits a fres
 
 test("a failed initial Goal Revision rolls back the Habit and permits a clean retry", async () => {
   const template = await studyTemplate();
-  const draft = { templateId: template.id, dailyTarget: 60, weekdays: [1] };
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1],
+  };
   await pool.query(
     "CREATE FUNCTION reject_test_goal() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Simulated storage failure'; END; $$; CREATE TRIGGER reject_test_goal BEFORE INSERT ON goal_revision FOR EACH ROW EXECUTE FUNCTION reject_test_goal()"
   );
@@ -273,6 +297,7 @@ test("Habit creation waits for the participant tracking lock after locking its t
     ]);
     const creation = habits.createHabit(participant, {
       templateId: template.id,
+      templateVersion: template.version,
       dailyTarget: 60,
       weekdays: [1],
     });
@@ -286,34 +311,56 @@ test("Habit creation waits for the participant tracking lock after locking its t
 });
 
 test.each(["archive", "measurement"] as const)(
-  "a %s committed before a blocked create is rechecked after the template lock",
+  "a %s committed ahead of first use rejects the stale Habit selection",
   async (operation) => {
     const template = await studyTemplate();
-    const client = await otherPool.connect();
+    const barrier = await pool.connect();
+    const barrierKey = 606_005;
+    await barrier.query("SELECT pg_advisory_lock($1)", [barrierKey]);
     try {
-      await client.query("BEGIN");
-      await client.query(
-        operation === "archive"
-          ? "UPDATE activity_template SET archived_at = now() WHERE id = $1"
-          : "UPDATE activity_template SET entry_minimum = 90, entry_maximum = 120 WHERE id = $1",
-        [template.id]
+      await pool.query(
+        `CREATE FUNCTION wait_for_test_template_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(${barrierKey}); RETURN NEW; END; $$; CREATE TRIGGER wait_for_test_template_update BEFORE UPDATE ON activity_template FOR EACH ROW EXECUTE FUNCTION wait_for_test_template_update()`
       );
-      const creation = habits.createHabit(participant, {
+      const reference = {
         templateId: template.id,
-        dailyTarget: 60,
-        weekdays: [1],
+        templateVersion: template.version,
+      };
+      const maintenance =
+        operation === "archive"
+          ? otherTemplates.archiveTemplate(manager, reference)
+          : otherTemplates.updateTemplate(manager, {
+              ...template,
+              ...reference,
+              unit: "counts",
+            });
+      await waitForBlockedQuery('update "activity_template"');
+      const rejected = expect(
+        habits.createHabit(participant, {
+          ...reference,
+          dailyTarget: 60,
+          weekdays: [1],
+        })
+      ).rejects.toMatchObject({
+        status: 409,
+        message:
+          operation === "archive"
+            ? "This Activity Template is no longer available. Choose an active template."
+            : "This Activity Template changed. Select it again and review the settings before starting your Habit.",
       });
-      const rejected = expect(creation).rejects.toMatchObject({
-        status: operation === "archive" ? 409 : 400,
+      await waitForBlockedQuery('from "activity_template"');
+      await barrier.query("SELECT pg_advisory_unlock($1)", [barrierKey]);
+      expect(await maintenance).toMatchObject({
+        version: template.version + 1,
       });
-      await waitForBlockedQuery("for update");
-      await client.query("COMMIT");
       await rejected;
       const workspace = await otherHabits.listHabits(participant);
       expect(workspace.items).toEqual([]);
     } finally {
-      await client.query("ROLLBACK");
-      client.release();
+      await barrier.query("SELECT pg_advisory_unlock($1)", [barrierKey]);
+      barrier.release();
+      await pool.query(
+        "DROP TRIGGER IF EXISTS wait_for_test_template_update ON activity_template; DROP FUNCTION IF EXISTS wait_for_test_template_update()"
+      );
     }
   }
 );
@@ -329,17 +376,24 @@ test("a measurement edit waiting behind Habit creation cannot change the newly u
   try {
     const creation = habits.createHabit(participant, {
       templateId: template.id,
+      templateVersion: template.version,
       dailyTarget: 60,
       weekdays: [1],
     });
     await waitForBlockedQuery('insert into "goal_revision"');
     const edited = expect(
-      otherPool.query(
-        "UPDATE activity_template SET entry_maximum = 90 WHERE id = $1",
-        [template.id]
-      )
-    ).rejects.toMatchObject({ code: "23514" });
-    await waitForBlockedQuery("UPDATE activity_template");
+      otherTemplates.updateTemplate(manager, {
+        ...template,
+        templateId: template.id,
+        templateVersion: template.version,
+        entryMaximum: 90,
+      })
+    ).rejects.toMatchObject({
+      status: 409,
+      message:
+        "This Activity Template is in use. Its unit and entry bounds are fixed. Reload to edit its name or description.",
+    });
+    await waitForBlockedQuery('from "activity_template"');
     await blocker.query("SELECT pg_advisory_unlock($1)", [barrierKey]);
     expect(await creation).toMatchObject({
       kind: "created",
@@ -361,6 +415,7 @@ test("Participant starts a persisted scheduled Habit with target 60 on a 5–45 
   const template = await studyTemplate();
   const created = await habits.createHabit(participant, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5],
   });
@@ -391,6 +446,7 @@ test("concurrent creates return one active Habit and direct overlapping periods 
   const template = await studyTemplate();
   const draft = {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1, 2, 3, 4, 5, 6, 7],
   };
@@ -416,6 +472,7 @@ test("using a template freezes its measurement meaning but permits descriptive e
   const template = await studyTemplate();
   await habits.createHabit(participant, {
     templateId: template.id,
+    templateVersion: template.version,
     dailyTarget: 60,
     weekdays: [1],
   });
@@ -447,8 +504,426 @@ test("using a template freezes its measurement meaning but permits descriptive e
   await expect(
     habits.createHabit(otherParticipant, {
       templateId: template.id,
+      templateVersion: template.version,
       dailyTarget: 60,
       weekdays: [1],
+    })
+  ).rejects.toMatchObject({ status: 409 });
+});
+
+test("AC-F08-3 / AC-F08-4: archiving sets tomorrow as exclusive end date and enforces ownership, version, idempotency, and midnight rollover", async () => {
+  const template = await studyTemplate();
+  let fakeNow = new Date("2026-11-16T12:00:00+07:00");
+  const clockedHabits = createHabitService(createDatabase(pool), {
+    now: () => fakeNow,
+  });
+  const otherClockedHabits = createHabitService(createDatabase(otherPool), {
+    now: () => fakeNow,
+  });
+
+  const { habit: created } = await clockedHabits.createHabit(participant, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+  expect(created.startDate).toBe("2026-11-16");
+
+  // Program Manager, another Participant, invalid payload, and wrong date are rejected.
+  await expect(
+    clockedHabits.archiveHabit(manager, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-17",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 403 });
+
+  await expect(
+    clockedHabits.archiveHabit(otherParticipant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-17",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 404 });
+
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: 0,
+      archivedFrom: "2026-11-17",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: `${created.id}\u0000`,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-17",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 400 });
+
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-17",
+      requestKey: `${randomUUID()}\u0000`,
+    })
+  ).rejects.toMatchObject({ status: 400 });
+
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-16",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 409 });
+
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-18",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 409 });
+
+  // Stale version fails without mutating the Habit.
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version + 1,
+      archivedFrom: "2026-11-17",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 409 });
+
+  // Valid archive succeeds with tomorrow as exclusive end date.
+  const archiveKey = randomUUID();
+  expect(
+    await clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-17",
+      requestKey: archiveKey,
+    })
+  ).toEqual({ kind: "archived", archivedFrom: "2026-11-17" });
+
+  // Replaying the same request key confirms without mutating again.
+  expect(
+    await otherClockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-17",
+      requestKey: archiveKey,
+    })
+  ).toEqual({ kind: "replayed", archivedFrom: "2026-11-17" });
+
+  // Reusing the same key for a different payload conflicts.
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      archivedFrom: "2026-11-18",
+      requestKey: archiveKey,
+    })
+  ).rejects.toMatchObject({ status: 409 });
+
+  // Already-archived Habit cannot be archived again or extended.
+  const workspace = await otherClockedHabits.listHabits(participant);
+  expect(workspace.items[0]).toMatchObject({
+    id: created.id,
+    archivedFrom: "2026-11-17",
+    version: created.version + 1,
+  });
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version + 1,
+      archivedFrom: "2026-11-17",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 409 });
+
+  // Midnight rollover rejects a stale archivedFrom date on a second Habit.
+  const secondTemplate = await templates.createTemplate(manager, {
+    name: "Evening Reading",
+    description: "",
+    unit: "minutes",
+    entryMinimum: 5,
+    entryMaximum: 60,
+  });
+  const { habit: second } = await clockedHabits.createHabit(participant, {
+    templateId: secondTemplate.id,
+    templateVersion: secondTemplate.version,
+    dailyTarget: 30,
+    weekdays: [1, 2, 3, 4, 5, 6, 7],
+  });
+  fakeNow = new Date("2026-11-17T00:00:05+07:00");
+  await expect(
+    clockedHabits.archiveHabit(participant, {
+      habitId: second.id,
+      expectedVersion: second.version,
+      archivedFrom: "2026-11-17",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 409 });
+});
+
+test("AC-F08-4: pending archive blocks future goal edits and supersedes any existing tomorrow Goal Revision", async () => {
+  const template = await studyTemplate();
+  let fakeNow = new Date("2026-11-16T12:00:00+07:00");
+  const clockedHabits = createHabitService(createDatabase(pool), {
+    now: () => fakeNow,
+  });
+
+  const { habit: created } = await clockedHabits.createHabit(participant, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+
+  // First schedule a Goal Revision for tomorrow (2026-11-17).
+  expect(
+    await clockedHabits.reviseGoal(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      effectiveFrom: "2026-11-17",
+      dailyTarget: 30,
+      weekdays: [3],
+      requestKey: randomUUID(),
+    })
+  ).toEqual({ kind: "saved" });
+
+  // Then archive the Habit effective from tomorrow (2026-11-17).
+  expect(
+    await clockedHabits.archiveHabit(participant, {
+      habitId: created.id,
+      expectedVersion: created.version + 1,
+      archivedFrom: "2026-11-17",
+      requestKey: randomUUID(),
+    })
+  ).toEqual({ kind: "archived", archivedFrom: "2026-11-17" });
+
+  // Today's workspace hides the superseded pending revision and keeps today's goal.
+  const todayWorkspace = await clockedHabits.listHabits(participant);
+  expect(todayWorkspace.items[0]).toMatchObject({
+    id: created.id,
+    archivedFrom: "2026-11-17",
+    goal: { effectiveFrom: "2026-11-16", dailyTarget: 60 },
+    pendingGoal: null,
+  });
+
+  // Attempting to revise tomorrow's goal on a pending-archive Habit fails.
+  await expect(
+    clockedHabits.reviseGoal(participant, {
+      habitId: created.id,
+      expectedVersion: created.version + 2,
+      effectiveFrom: "2026-11-17",
+      dailyTarget: 45,
+      weekdays: [1, 2, 3],
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 409 });
+
+  // After advancing to 2026-11-17, the ended Habit still shows its last active goal (60, not 30).
+  fakeNow = new Date("2026-11-17T12:00:00+07:00");
+  const tomorrowWorkspace = await clockedHabits.listHabits(participant);
+  expect(tomorrowWorkspace.items[0]).toMatchObject({
+    id: created.id,
+    archivedFrom: "2026-11-17",
+    goal: { effectiveFrom: "2026-11-16", dailyTarget: 60 },
+    pendingGoal: null,
+  });
+
+  // Old Goal Revisions remain persisted in the database.
+  const revisions = await pool.query<{ effective_from: string }>(
+    "SELECT to_char(effective_from, 'YYYY-MM-DD') AS effective_from FROM goal_revision WHERE habit_id = $1 ORDER BY effective_from",
+    [created.id]
+  );
+  expect(revisions.rows.map((row) => row.effective_from)).toEqual([
+    "2026-11-16",
+    "2026-11-17",
+  ]);
+});
+
+test("AC-F08-3: pending archive blocks duplicates today and concurrent creates on the end date yield one fresh Habit", async () => {
+  const template = await studyTemplate();
+  let fakeNow = new Date("2026-11-16T12:00:00+07:00");
+  const clockedHabits = createHabitService(createDatabase(pool), {
+    now: () => fakeNow,
+  });
+  const otherClockedHabits = createHabitService(createDatabase(otherPool), {
+    now: () => fakeNow,
+  });
+  const draft = {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  };
+
+  const first = await clockedHabits.createHabit(participant, draft);
+  await clockedHabits.archiveHabit(participant, {
+    habitId: first.habit.id,
+    expectedVersion: first.habit.version,
+    archivedFrom: "2026-11-17",
+    requestKey: randomUUID(),
+  });
+
+  // Still active today, so creating from the same template returns the existing Habit.
+  expect(
+    await otherClockedHabits.createHabit(participant, draft)
+  ).toMatchObject({
+    kind: "existing",
+    habit: { id: first.habit.id, archivedFrom: "2026-11-17" },
+  });
+
+  // On 2026-11-17 (the exclusive end date), concurrent creates yield exactly one new Habit.
+  fakeNow = new Date("2026-11-17T08:00:00+07:00");
+  const results = await Promise.all([
+    clockedHabits.createHabit(participant, { ...draft, dailyTarget: 45 }),
+    otherClockedHabits.createHabit(participant, { ...draft, dailyTarget: 45 }),
+  ]);
+  expect(results.map((result) => result.kind)).toEqual(
+    expect.arrayContaining(["created", "existing"])
+  );
+  expect(results[0]?.habit.id).toBe(results[1]?.habit.id);
+  expect(results[0]?.habit.id).not.toBe(first.habit.id);
+  expect(results[0]?.habit.startDate).toBe("2026-11-17");
+
+  const workspace = await clockedHabits.listHabits(participant);
+  expect(workspace.items).toHaveLength(2);
+});
+
+test("AC-F10-1/2: setReminder persists, updates, replays, disables, enforces ownership/role, and rejects archived Habits", async () => {
+  const template = await studyTemplate();
+  let fakeNow = new Date("2026-11-16T12:00:00+07:00");
+  const clockedHabits = createHabitService(createDatabase(pool), {
+    now: () => fakeNow,
+  });
+  const { habit: created } = await clockedHabits.createHabit(participant, {
+    templateId: template.id,
+    templateVersion: template.version,
+    dailyTarget: 60,
+    weekdays: [1, 2, 3, 4, 5],
+  });
+  expect(created.reminderTime).toBeNull();
+
+  // Direct ownership and role restrictions
+  await expect(
+    clockedHabits.setReminder(manager, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "18:00",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 403 });
+  await expect(
+    clockedHabits.setReminder(otherParticipant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "18:00",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 404 });
+
+  // Invalid local time is rejected with 400 and leaves database unchanged
+  await expect(
+    clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "25:00",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({
+    status: 400,
+    fieldErrors: {
+      reminderTime: "Enter a valid local time (HH:MM, 00:00 to 23:59).",
+    },
+  });
+
+  // Database CHECK constraint also rejects malformed values
+  await expect(
+    pool.query("UPDATE habit SET reminder_time = $1 WHERE id = $2", [
+      "9:00",
+      created.id,
+    ])
+  ).rejects.toThrow();
+
+  // Set reminder to 18:00 and replay with same requestKey
+  const setKey = randomUUID();
+  expect(
+    await clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "18:00",
+      requestKey: setKey,
+    })
+  ).toEqual({ kind: "saved", reminderTime: "18:00" });
+  expect(
+    await clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "18:00",
+      requestKey: setKey,
+    })
+  ).toEqual({ kind: "replayed", reminderTime: "18:00" });
+
+  // Stale version fails with 409
+  await expect(
+    clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: created.version,
+      reminderTime: "19:00",
+      requestKey: randomUUID(),
+    })
+  ).rejects.toMatchObject({ status: 409 });
+
+  const afterSet = await clockedHabits.listHabits(participant);
+  expect(afterSet.items[0]).toMatchObject({
+    id: created.id,
+    reminderTime: "18:00",
+    version: 2,
+  });
+
+  // Disable reminder
+  expect(
+    await clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: 2,
+      reminderTime: null,
+      requestKey: randomUUID(),
+    })
+  ).toEqual({ kind: "saved", reminderTime: null });
+
+  const afterDisable = await clockedHabits.listHabits(participant);
+  expect(afterDisable.items[0]).toMatchObject({
+    id: created.id,
+    reminderTime: null,
+    version: 3,
+  });
+
+  // Archive from tomorrow: today is still active, tomorrow rejects reminder edits
+  await clockedHabits.archiveHabit(participant, {
+    habitId: created.id,
+    expectedVersion: 3,
+    archivedFrom: "2026-11-17",
+    requestKey: randomUUID(),
+  });
+  fakeNow = new Date("2026-11-17T08:00:00+07:00");
+  await expect(
+    clockedHabits.setReminder(participant, {
+      habitId: created.id,
+      expectedVersion: 4,
+      reminderTime: "18:00",
+      requestKey: randomUUID(),
     })
   ).rejects.toMatchObject({ status: 409 });
 });

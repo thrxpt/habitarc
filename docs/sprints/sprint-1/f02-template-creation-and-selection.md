@@ -1,6 +1,6 @@
 # F02 — Template creation and selection
 
-Status: implemented and integrated into `sprint-1` through reviewed PR #26. Current execution results and remaining release gates are recorded in the [Deliverable 1 evidence ledger](../../deliverables/deliverable-1/part-f.md). This does not establish acceptance on main.
+Status: implemented and integrated into `sprint-1` through reviewed PR #26. Current execution results and remaining release gates are recorded in the [Deliverable 1 evidence ledger](../../deliverables/deliverable-1/part-f.md). The reviewed increment is now released on main through PR #32; its exact version and known verification gaps are recorded in Part F.
 
 Sprint 1. FR-03, BR-02/12, NFR-01. Depends on F01. Owner B; A reviews.
 

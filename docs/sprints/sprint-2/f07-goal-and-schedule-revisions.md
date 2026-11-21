@@ -1,6 +1,6 @@
 # F07 — Goal and schedule revisions
 
-Status: accepted contract baseline following Q25. Implementation and all verification are PLANNED.
+Status: accepted contract baseline following Q25. See the [F07 verification ledger](../../habits.md#f07-verification-ledger) for local execution and outstanding release checks.
 
 Sprint 2. FR-07, BR-03–05/10/13. Depends on F03/F06. Owner B; A reviews.
 

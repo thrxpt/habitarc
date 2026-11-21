@@ -1,18 +1,18 @@
 $ playwright test ⊘ cache disabled
-[WebServer] (node:62112) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (node:86191) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 [WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
-[WebServer] (node:62126) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (node:86193) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 [WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
-[WebServer] (node:62127) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (node:86194) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 [WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
 
 Running 4 tests using 1 worker
 
-(node:62152) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:86207) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-  ✓  1 [chromium] › e2e/activity-entries.spec.ts:44:1 › Participant records durable progress and safely retries lost responses and failed saves (5.8s)
-  ✓  2 [chromium] › e2e/habit-setup.spec.ts:41:1 › sign-in cannot submit before hydration and its fallback uses POST (159ms)
-  ✓  3 [chromium] › e2e/habit-setup.spec.ts:59:1 › a Participant starts a private weekday Habit and retrieves it after reload and a new sign-in (3.6s)
-  ✓  4 [chromium] › e2e/habit-setup.spec.ts:157:1 › a narrow-screen Participant corrects invalid settings and starts an every-day Habit (2.2s)
+  ✓  1 [chromium] › e2e/activity-entries.spec.ts:44:1 › Participant records durable progress and safely retries lost responses and failed saves (4.9s)
+  ✓  2 [chromium] › e2e/habit-setup.spec.ts:41:1 › sign-in cannot submit before hydration and its fallback uses POST (141ms)
+  ✓  3 [chromium] › e2e/habit-setup.spec.ts:59:1 › a Participant starts a private weekday Habit and retrieves it after reload and a new sign-in (4.1s)
+  ✓  4 [chromium] › e2e/habit-setup.spec.ts:157:1 › a narrow-screen Participant corrects invalid settings and starts an every-day Habit (2.0s)
 
-  4 passed (16.8s)
+  4 passed (15.0s)

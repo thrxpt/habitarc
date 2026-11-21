@@ -1,14 +1,10 @@
+import { addCalendarDays, getIsoWeekday, isValidIsoDate } from "./calendar";
+import type { GoalSnapshot } from "./habits";
+import { parseRequestKey } from "./mutation-request";
 import { MEASUREMENT_CEILINGS } from "./templates";
 import type { ActivityTemplate } from "./templates";
 
 export const ENTRY_WINDOW_DAYS = 6;
-export const REQUEST_KEY_MAX_LENGTH = 128;
-
-export interface GoalSnapshot {
-  effectiveFrom: string;
-  dailyTarget: number;
-  weekdays: number[];
-}
 
 export interface ActivityEntry {
   id: string;
@@ -27,7 +23,17 @@ export interface ActivityEntryDraft {
   requestKey: string;
 }
 
-export type EntryField = keyof ActivityEntryDraft;
+export interface EntryCorrectionTarget {
+  habitId: string;
+  entryId: string;
+  expectedVersion: number;
+  requestKey: string;
+}
+
+export type UpdateEntryDraft = EntryCorrectionTarget &
+  Pick<ActivityEntryDraft, "activityDate" | "amount">;
+
+export type EntryField = keyof ActivityEntryDraft | keyof EntryCorrectionTarget;
 
 export type EntryFieldErrors = Partial<Record<EntryField, string>>;
 
@@ -37,18 +43,23 @@ export interface RecordEntrySuccess {
   dailyTotal: number;
 }
 
-export type RecordEntryResponse =
-  | RecordEntrySuccess
-  | {
-      kind: "invalid";
-      message: string;
-      fieldErrors: EntryFieldErrors;
-    }
-  | {
-      kind: "conflict";
-      message: string;
-      fieldErrors: EntryFieldErrors;
-    };
+export type EntryMutationFailure = (
+  | { kind: "invalid" }
+  | { kind: "conflict" }
+) & {
+  message: string;
+  fieldErrors: EntryFieldErrors;
+};
+
+export type RecordEntryResponse = RecordEntrySuccess | EntryMutationFailure;
+
+export interface EntryCorrectionSuccess {
+  kind: "applied" | "replayed";
+}
+
+export type EntryCorrectionResponse =
+  | EntryCorrectionSuccess
+  | EntryMutationFailure;
 
 export interface DayProgress {
   scheduled: boolean;
@@ -65,9 +76,11 @@ export interface TodayHabitItem {
     template: ActivityTemplate;
     startDate: string;
     archivedFrom: string | null;
+    reminderTime: string | null;
     goal: GoalSnapshot;
   };
   progress: DayProgress;
+  reminderDue: boolean;
   entries: ActivityEntry[];
   writableMinDate: string | null;
   writableMaxDate: string | null;
@@ -80,67 +93,45 @@ export interface TodayWorkspace {
   unscheduled: TodayHabitItem[];
 }
 
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
+export interface HistoryDay {
+  date: string;
+  progress: DayProgress;
+  entries: ActivityEntry[];
+}
 
-const parseIsoDateParts = (
-  date: string
-): { year: number; month: number; day: number } | undefined => {
-  if (!ISO_DATE_PATTERN.test(date)) {
-    return undefined;
-  }
-  const [yearPart, monthPart, dayPart] = date.split("-");
-  const year = Number(yearPart);
-  const month = Number(monthPart);
-  const day = Number(dayPart);
-  const utc = new Date(Date.UTC(year, month - 1, day));
-  if (
-    utc.getUTCFullYear() !== year ||
-    utc.getUTCMonth() + 1 !== month ||
-    utc.getUTCDate() !== day
-  ) {
-    return undefined;
-  }
-  return { year, month, day };
-};
+interface HabitStreaks {
+  current: number | null;
+  longest: number;
+}
 
-export const isValidIsoDate = (value: unknown): value is string =>
-  typeof value === "string" && parseIsoDateParts(value) !== undefined;
+interface HabitTrackingDates {
+  accountDate: string;
+  startDate: string;
+  archivedFrom: string | null;
+}
 
-export const addCalendarDays = (date: string, deltaDays: number): string => {
-  const parts = parseIsoDateParts(date);
-  if (parts === undefined) {
-    throw new Error(`Invalid calendar date: ${date}`);
-  }
-  const utc = new Date(
-    Date.UTC(parts.year, parts.month - 1, parts.day + deltaDays)
-  );
-  const year = String(utc.getUTCFullYear()).padStart(4, "0");
-  const month = String(utc.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(utc.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-// Returns ISO weekday: 1 = Monday through 7 = Sunday.
-export const getIsoWeekday = (date: string): number => {
-  const parts = parseIsoDateParts(date);
-  if (parts === undefined) {
-    throw new Error(`Invalid calendar date: ${date}`);
-  }
-  const utcDay = new Date(
-    Date.UTC(parts.year, parts.month - 1, parts.day)
-  ).getUTCDay();
-  return utcDay === 0 ? 7 : utcDay;
-};
+export interface HabitHistory {
+  habitId: string;
+  template: ActivityTemplate;
+  accountDate: string;
+  timezone: string;
+  writableMinDate: string | null;
+  writableMaxDate: string | null;
+  streaks: HabitStreaks;
+  refreshInMs: number;
+  days: HistoryDay[];
+  nextBefore: string | null;
+}
 
 export const getWritableDateBounds = ({
   accountDate,
   startDate,
   archivedFrom,
-}: {
-  accountDate: string;
-  startDate: string;
-  archivedFrom: string | null;
-}): { minDate: string; maxDate: string; writable: boolean } => {
+}: HabitTrackingDates): {
+  minDate: string;
+  maxDate: string;
+  writable: boolean;
+} => {
   const windowStart = addCalendarDays(accountDate, -ENTRY_WINDOW_DAYS);
   const minDate = windowStart > startDate ? windowStart : startDate;
   const periodEnd =
@@ -158,11 +149,8 @@ export const checkEntryDateEligibility = ({
   accountDate,
   startDate,
   archivedFrom,
-}: {
+}: HabitTrackingDates & {
   activityDate: string;
-  accountDate: string;
-  startDate: string;
-  archivedFrom: string | null;
 }): { ok: true } | { ok: false; message: string } => {
   if (activityDate > accountDate) {
     return {
@@ -249,6 +237,56 @@ export const calculateDayProgress = ({
   };
 };
 
+export const calculateStreaks = ({
+  startDate,
+  accountDate,
+  archivedFrom,
+  revisions,
+  dailyTotals,
+}: HabitTrackingDates & {
+  revisions: readonly GoalSnapshot[];
+  dailyTotals: ReadonlyMap<string, number>;
+}): HabitStreaks => {
+  const sortedRevisions = [...revisions];
+  // eslint-disable-next-line unicorn/no-array-sort -- The ES2022 target has no toSorted; this array is a local copy.
+  sortedRevisions.sort((a, b) =>
+    a.effectiveFrom.localeCompare(b.effectiveFrom)
+  );
+  const goals = sortedRevisions.values();
+  const archived = archivedFrom !== null && archivedFrom <= accountDate;
+  const lastDate = archived ? addCalendarDays(archivedFrom, -1) : accountDate;
+  let nextGoal = goals.next().value;
+  let goal: GoalSnapshot | undefined;
+  let current = 0;
+  let longest = 0;
+
+  for (
+    let date = startDate;
+    date <= lastDate;
+    date = addCalendarDays(date, 1)
+  ) {
+    while (nextGoal !== undefined && nextGoal.effectiveFrom <= date) {
+      goal = nextGoal;
+      nextGoal = goals.next().value;
+    }
+    const progress = calculateDayProgress({
+      date,
+      goal,
+      dailyTotal: dailyTotals.get(date) ?? 0,
+      startDate,
+      archivedFrom,
+    });
+    if (progress.completed) {
+      current += 1;
+      longest = Math.max(longest, current);
+    } else if (progress.scheduled && date < accountDate) {
+      current = 0;
+    }
+  }
+
+  return { current: archived ? null : current, longest };
+};
+
 const isWholePositiveAmount = (
   value: unknown,
   minimum: number,
@@ -295,8 +333,8 @@ const validateAmountField = (
 const validateRequestKeyField = (
   value: unknown
 ): { ok: true; value: string } | { ok: false; error: string } => {
-  const requestKey = typeof value === "string" ? value.trim() : "";
-  if (requestKey.length === 0 || requestKey.length > REQUEST_KEY_MAX_LENGTH) {
+  const requestKey = parseRequestKey(value);
+  if (requestKey === undefined) {
     return { ok: false, error: "A valid request key is required." };
   }
   return { ok: true, value: requestKey };
@@ -351,4 +389,59 @@ export const validateEntryInput = (
       requestKey: keyResult.value,
     },
   };
+};
+
+export const validateCorrectionTarget = (
+  input: unknown
+):
+  | { ok: true; value: EntryCorrectionTarget }
+  | { ok: false; fieldErrors: EntryFieldErrors } => {
+  const habitId = validateHabitIdField(readField(input, "habitId"));
+  const entryId = readField(input, "entryId");
+  const expectedVersion = readField(input, "expectedVersion");
+  const requestKey = validateRequestKeyField(readField(input, "requestKey"));
+  const validEntryId =
+    typeof entryId === "string" && entryId.length > 0 && entryId.length <= 200;
+  const validVersion =
+    typeof expectedVersion === "number" &&
+    Number.isSafeInteger(expectedVersion) &&
+    expectedVersion >= 1;
+  if (!habitId.ok || !validEntryId || !validVersion || !requestKey.ok) {
+    return {
+      ok: false,
+      fieldErrors: {
+        habitId: habitId.ok ? undefined : habitId.error,
+        entryId: validEntryId ? undefined : "Select an Activity Entry.",
+        expectedVersion: validVersion
+          ? undefined
+          : "Refresh history and try again.",
+        requestKey: requestKey.ok ? undefined : requestKey.error,
+      },
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      habitId: habitId.value,
+      entryId,
+      expectedVersion,
+      requestKey: requestKey.value,
+    },
+  };
+};
+
+export const validateHistoryQuery = (
+  input: unknown
+):
+  | { ok: true; habitId: string; before: string | undefined }
+  | { ok: false; message: string } => {
+  const habitId = validateHabitIdField(readField(input, "habitId"));
+  if (!habitId.ok) {
+    return { ok: false, message: habitId.error };
+  }
+  const before = readField(input, "before");
+  if (before !== undefined && !isValidIsoDate(before)) {
+    return { ok: false, message: "Enter a valid history date." };
+  }
+  return { ok: true, habitId: habitId.value, before };
 };

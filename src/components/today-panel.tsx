@@ -148,7 +148,8 @@ const EntryRecordForm = ({
         setFieldErrors({});
         const formattedAmount = `${response.entry.amount.toLocaleString("en-US")} ${template.unit}`;
         const formattedTotal = `${response.dailyTotal.toLocaleString("en-US")} ${template.unit}`;
-        if (activityDate === accountDate) {
+        const savedDate = response.entry.activityDate;
+        if (savedDate === accountDate) {
           setSavedMessage(
             response.kind === "replayed"
               ? `Entry confirmed (already saved): ${formattedAmount}. Today’s total: ${formattedTotal}.`
@@ -157,8 +158,8 @@ const EntryRecordForm = ({
         } else {
           setSavedMessage(
             response.kind === "replayed"
-              ? `Entry confirmed (already saved) for ${activityDate}: ${formattedAmount} (Daily Total: ${formattedTotal}).`
-              : `Saved ${formattedAmount} for ${activityDate} (Daily Total: ${formattedTotal}).`
+              ? `Entry confirmed (already saved) for ${savedDate}: ${formattedAmount} (Daily Total: ${formattedTotal}).`
+              : `Saved ${formattedAmount} for ${savedDate} (Daily Total: ${formattedTotal}).`
           );
         }
       }
@@ -294,20 +295,27 @@ const EntryRecordForm = ({
 const TodayHabitCard = ({
   item,
   accountDate,
+  timezone,
   isFormOpen,
   onToggleForm,
   onRecordEntry,
 }: {
   item: TodayHabitItem;
   accountDate: string;
+  timezone: string;
   isFormOpen: boolean;
   onToggleForm: () => void;
   onRecordEntry?: (draft: ActivityEntryDraft) => Promise<RecordEntryResponse>;
 }) => {
   const hydrated = useHydrated();
-  const { habit, progress, entries } = item;
+  const { habit, progress, entries, reminderDue } = item;
   const { template } = habit;
   const { unit } = template;
+  const showUpcomingReminder =
+    !reminderDue &&
+    progress.scheduled &&
+    !progress.completed &&
+    habit.reminderTime !== null;
 
   return (
     <li id={`today-habit-${habit.id}`} className="py-5">
@@ -317,6 +325,19 @@ const TodayHabitCard = ({
           {formatTemplateRange(template)}
         </span>
       </div>
+
+      {progress.scheduled && habit.reminderTime !== null && (
+        <output className="text-foreground not-empty:bg-secondary block text-sm font-medium not-empty:mt-2 not-empty:inline-flex not-empty:items-center not-empty:rounded-md not-empty:border not-empty:px-2.5 not-empty:py-1">
+          {reminderDue
+            ? `Reminder due · ${habit.reminderTime} (${timezone})`
+            : ""}
+        </output>
+      )}
+      {showUpcomingReminder && (
+        <p className="text-muted-foreground mt-2 text-sm">
+          In-app Reminder set for {habit.reminderTime} ({timezone})
+        </p>
+      )}
 
       {progress.scheduled && progress.dailyTarget !== null ? (
         <div className="mt-2">
@@ -440,6 +461,7 @@ export const TodayPanel = ({
                     key={item.habit.id}
                     item={item}
                     accountDate={workspace.accountDate}
+                    timezone={workspace.timezone}
                     isFormOpen={openHabitId === item.habit.id}
                     onToggleForm={() => {
                       setOpenHabitId((previous) =>
@@ -462,6 +484,7 @@ export const TodayPanel = ({
                     key={item.habit.id}
                     item={item}
                     accountDate={workspace.accountDate}
+                    timezone={workspace.timezone}
                     isFormOpen={openHabitId === item.habit.id}
                     onToggleForm={() => {
                       setOpenHabitId((previous) =>

@@ -1,20 +1,28 @@
-import { Alert, AlertDescription } from "#components/ui/alert.tsx";
-
 import type {
   ActivityEntryDraft,
   RecordEntryResponse,
   TodayWorkspace,
 } from "../entries";
 import type {
+  ArchiveHabitDraft,
+  ArchiveHabitResponse,
+  GoalRevisionDraft,
+  GoalRevisionResponse,
   HabitCreationResponse,
   HabitDraft,
   HabitWorkspace,
+  ReminderDraft,
+  SetReminderResponse,
 } from "../habits";
 import type { Identity } from "../identity";
-import type { ActivityTemplate, ActivityTemplateDraft } from "../templates";
+import type {
+  ActivityTemplate,
+  ActivityTemplateDraft,
+  TemplateMaintenanceActions,
+} from "../templates";
 import { HabitList } from "./habit-list";
 import { PageHeading } from "./page-heading";
-import { TemplateCreateForm } from "./template-create-form";
+import { TemplateForm } from "./template-form";
 import { TemplateLibrary } from "./template-library";
 import { TodayPanel } from "./today-panel";
 
@@ -25,29 +33,35 @@ export const WorkspacePanel = ({
   onRecordEntry,
   habitWorkspace,
   onCreateHabit,
+  onReviseGoal,
+  onArchiveHabit,
+  onSetReminder,
   identity,
   templates = EMPTY_TEMPLATES,
   hasMoreTemplates = false,
   loadingMoreTemplates = false,
   loadMoreTemplatesError = "",
-  error,
   onCreateTemplate,
   onLoadMoreTemplates,
+  templateMaintenance,
 }: {
   todayWorkspace?: TodayWorkspace;
   onRecordEntry?: (draft: ActivityEntryDraft) => Promise<RecordEntryResponse>;
   habitWorkspace?: HabitWorkspace;
   onCreateHabit?: (draft: HabitDraft) => Promise<HabitCreationResponse>;
+  onReviseGoal?: (draft: GoalRevisionDraft) => Promise<GoalRevisionResponse>;
+  onArchiveHabit?: (draft: ArchiveHabitDraft) => Promise<ArchiveHabitResponse>;
+  onSetReminder?: (draft: ReminderDraft) => Promise<SetReminderResponse>;
   identity: Identity;
   templates?: ActivityTemplate[];
   hasMoreTemplates?: boolean;
   loadingMoreTemplates?: boolean;
   loadMoreTemplatesError?: string;
-  error: string;
   onCreateTemplate?: (
     draft: ActivityTemplateDraft
   ) => Promise<ActivityTemplate>;
   onLoadMoreTemplates?: () => Promise<void> | void;
+  templateMaintenance?: TemplateMaintenanceActions;
 }) => (
   <>
     <PageHeading>
@@ -97,13 +111,41 @@ export const WorkspacePanel = ({
       </p>
     </section>
     {identity.role === "program-manager" && (
-      <TemplateCreateForm onCreateTemplate={onCreateTemplate} />
+      <section
+        className="border-primary mt-12 max-w-2xl border-t-3 pt-7"
+        aria-labelledby="create-template-heading"
+      >
+        <h2
+          id="create-template-heading"
+          className="mb-3 text-[23px] leading-[1.3] font-[650]"
+        >
+          Create Activity Template
+        </h2>
+        <p className="text-muted-foreground mb-6 max-w-prose leading-[1.65]">
+          Define a shared activity, its Measurement Unit, and valid whole-number
+          entry bounds.
+        </p>
+        <TemplateForm
+          onSave={
+            onCreateTemplate &&
+            (async (draft) => {
+              const template = await onCreateTemplate(draft);
+              return { kind: "saved", template };
+            })
+          }
+        />
+      </section>
     )}
     {identity.role === "participant" && todayWorkspace && (
       <TodayPanel workspace={todayWorkspace} onRecordEntry={onRecordEntry} />
     )}
     {identity.role === "participant" && habitWorkspace && (
-      <HabitList workspace={habitWorkspace} />
+      <HabitList
+        workspace={habitWorkspace}
+        onReviseGoal={onReviseGoal}
+        onArchiveHabit={onArchiveHabit}
+        onSetReminder={onSetReminder}
+      />
     )}
     <TemplateLibrary
       habitWorkspace={
@@ -116,11 +158,7 @@ export const WorkspacePanel = ({
       loadingMore={loadingMoreTemplates}
       loadMoreError={loadMoreTemplatesError}
       onLoadMore={onLoadMoreTemplates}
+      templateMaintenance={templateMaintenance}
     />
-    {error && (
-      <Alert variant="destructive" className="mt-4">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    )}
   </>
 );

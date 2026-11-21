@@ -5,19 +5,28 @@ import { authClient } from "../auth-client";
 import { AccountScreen } from "../components/account-screen";
 import { PageHeading } from "../components/page-heading";
 import {
+  archiveHabit,
+  archiveTemplate,
   createEntry,
   createTemplate,
   createHabit,
   getIdentity,
-  getToday,
+  getTrackingWorkspace,
   listTemplates,
-  listHabits,
+  reviseGoal,
+  setReminder,
+  updateTemplate,
 } from "../server/functions";
 import type {
   ActivityTemplate,
   ActivityTemplatePage,
   TemplateCursor,
+  TemplateMaintenanceResponse,
 } from "../templates";
+import {
+  getNavigationElapsedTime,
+  useAccountDateRefresh,
+} from "../use-account-date-refresh";
 
 const EMPTY_TEMPLATE_PAGE: ActivityTemplatePage = {
   items: [],
@@ -25,7 +34,7 @@ const EMPTY_TEMPLATE_PAGE: ActivityTemplatePage = {
 };
 
 const Home = () => {
-  const { identity, templatePage, habitWorkspace, todayWorkspace } =
+  const { identity, templatePage, habitWorkspace, todayWorkspace, rolloverAt } =
     Route.useLoaderData();
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
@@ -45,6 +54,8 @@ const Home = () => {
       void router.invalidate();
     }
   }, [identity?.id, session?.user.id, isPending, router]);
+
+  useAccountDateRefresh(rolloverAt);
 
   const activeExtra = extraState?.forPage === templatePage ? extraState : null;
   const templates =
@@ -85,6 +96,15 @@ const Home = () => {
     }
   };
 
+  const refreshAfterMaintenance = async (
+    response: TemplateMaintenanceResponse
+  ) => {
+    if (response.kind === "saved" || response.kind === "conflict") {
+      await router.invalidate({ sync: true });
+    }
+    return response;
+  };
+
   return (
     <AccountScreen
       todayWorkspace={todayWorkspace ?? undefined}
@@ -103,6 +123,27 @@ const Home = () => {
         }
         return result;
       }}
+      onReviseGoal={async (draft) => {
+        const result = await reviseGoal({ data: draft });
+        if (result.kind === "saved" || result.kind === "replayed") {
+          await router.invalidate({ sync: true });
+        }
+        return result;
+      }}
+      onArchiveHabit={async (draft) => {
+        const result = await archiveHabit({ data: draft });
+        if (result.kind === "archived" || result.kind === "replayed") {
+          await router.invalidate({ sync: true });
+        }
+        return result;
+      }}
+      onSetReminder={async (draft) => {
+        const result = await setReminder({ data: draft });
+        if (result.kind === "saved" || result.kind === "replayed") {
+          await router.invalidate({ sync: true });
+        }
+        return result;
+      }}
       identity={identity}
       templates={templates}
       hasMoreTemplates={nextCursor !== null}
@@ -117,35 +158,59 @@ const Home = () => {
         return created;
       }}
       onLoadMoreTemplates={loadMoreTemplates}
+      templateMaintenance={
+        identity?.role === "program-manager"
+          ? {
+              update: async (draft) =>
+                await refreshAfterMaintenance(
+                  await updateTemplate({ data: draft })
+                ),
+              archive: async (draft) =>
+                await refreshAfterMaintenance(
+                  await archiveTemplate({ data: draft })
+                ),
+            }
+          : undefined
+      }
     />
   );
 };
 
 export const Route = createFileRoute("/")({
-  loader: async () => {
-    const identity = await getIdentity();
-    if (!identity) {
-      return {
-        identity: null,
-        templatePage: EMPTY_TEMPLATE_PAGE,
-        habitWorkspace: null,
-        todayWorkspace: null,
-      };
-    }
-    const templatePage = await listTemplates();
-    if (identity.role !== "participant") {
+  loader: {
+    staleReloadMode: "blocking",
+    handler: async () => {
+      const startedAt = getNavigationElapsedTime();
+      const identity = await getIdentity();
+      if (!identity) {
+        return {
+          identity: null,
+          templatePage: EMPTY_TEMPLATE_PAGE,
+          habitWorkspace: null,
+          todayWorkspace: null,
+          rolloverAt: null,
+        };
+      }
+      const templatePage = await listTemplates();
+      if (identity.role !== "participant") {
+        return {
+          identity,
+          templatePage,
+          habitWorkspace: null,
+          todayWorkspace: null,
+          rolloverAt: null,
+        };
+      }
+      const { habitWorkspace, todayWorkspace, refreshInMs } =
+        await getTrackingWorkspace();
       return {
         identity,
         templatePage,
-        habitWorkspace: null,
-        todayWorkspace: null,
+        habitWorkspace,
+        todayWorkspace,
+        rolloverAt: startedAt + refreshInMs,
       };
-    }
-    const [habitWorkspace, todayWorkspace] = await Promise.all([
-      listHabits(),
-      getToday(),
-    ]);
-    return { identity, templatePage, habitWorkspace, todayWorkspace };
+    },
   },
   component: Home,
   errorComponent: () => (

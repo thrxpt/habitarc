@@ -1,6 +1,6 @@
 # Habitarc product and three-sprint plan
 
-Status: accepted planning baseline. The user confirmed Q1–25, including the complete product scope, security/quality details, estimates, and three-sprint allocation. The planning interview is complete. The original plan preceded implementation. F01–F04 are now integrated into `sprint-1`; current verification and the remaining main-release gates are recorded in the [Deliverable 1 ledger](../deliverables/deliverable-1/part-f.md). Cloud delivery remains separately tracked in issue #8.
+Status: accepted planning baseline. The user confirmed Q1–25, including the complete product scope, security/quality details, estimates, and three-sprint allocation. The planning interview is complete. The original plan preceded implementation. F01–F04 are now released on main through reviewed PR #32; current verification and the remaining main-release gates are recorded in the [Deliverable 1 ledger](../deliverables/deliverable-1/part-f.md). Cloud delivery remains separately tracked in issue #8.
 
 This is a course-complete two-role product: define a template, establish a personal Habit, record real activity, and understand consistent progress without rewriting history. The plan covers the complete release and the engineering evidence required across three sprints.
 

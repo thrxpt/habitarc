@@ -3,19 +3,9 @@ import type { SubmitEvent } from "react";
 
 import { Alert, AlertDescription } from "#components/ui/alert.tsx";
 import { Button } from "#components/ui/button.tsx";
-import { Checkbox } from "#components/ui/checkbox.tsx";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "#components/ui/field.tsx";
-import { Input } from "#components/ui/input.tsx";
+import { FieldGroup } from "#components/ui/field.tsx";
 
-import { formatSchedule, validateHabitInput, WEEKDAYS } from "../habits";
+import { formatSchedule, validateHabitInput } from "../habits";
 import type {
   CreateHabitResult,
   Habit,
@@ -23,8 +13,9 @@ import type {
   HabitFieldErrors,
   HabitCreationResponse,
 } from "../habits";
-import { MEASUREMENT_CEILINGS, parseWholeNumberInput } from "../templates";
+import { parseWholeNumberInput } from "../templates";
 import type { ActivityTemplate } from "../templates";
+import { HabitGoalFields } from "./habit-goal-fields";
 
 export const HabitCreateForm = ({
   template,
@@ -56,6 +47,7 @@ export const HabitCreateForm = ({
     const validation = validateHabitInput(
       {
         templateId: template.id,
+        templateVersion: template.version,
         dailyTarget: parseWholeNumberInput(dailyTarget),
         weekdays,
       },
@@ -75,11 +67,11 @@ export const HabitCreateForm = ({
     setPending(true);
     try {
       const response = await onCreateHabit(validation.value);
-      if (response.kind === "invalid") {
+      if ("habit" in response) {
+        setResult(response);
+      } else {
         setFieldErrors(response.fieldErrors);
         setError(response.message);
-      } else {
-        setResult(response);
       }
     } catch (error_) {
       setError(
@@ -130,87 +122,27 @@ export const HabitCreateForm = ({
         Starts on your account date, {accountDate} ({timezone}).
       </p>
       <FieldGroup>
-        <Field data-invalid={Boolean(fieldErrors.dailyTarget)}>
-          <FieldLabel htmlFor="habit-target">Daily Target</FieldLabel>
-          <Input
-            id="habit-target"
-            inputMode="numeric"
-            value={dailyTarget}
-            disabled={pending}
-            aria-invalid={Boolean(fieldErrors.dailyTarget)}
-            aria-describedby={
-              fieldErrors.dailyTarget === undefined
-                ? "habit-target-help"
-                : "habit-target-help habit-target-error"
-            }
-            onChange={(event) => {
-              setDailyTarget(event.target.value);
-              setFieldErrors((previous) => ({
-                ...previous,
-                dailyTarget: undefined,
-              }));
-            }}
-          />
-          <FieldDescription id="habit-target-help">
-            {template.entryMinimum}–
-            {MEASUREMENT_CEILINGS[template.unit].toLocaleString("en-US")}{" "}
-            {template.unit} per scheduled day. Your target can exceed the
-            maximum for one entry.
-          </FieldDescription>
-          <FieldError id="habit-target-error">
-            {fieldErrors.dailyTarget}
-          </FieldError>
-        </Field>
-        <FieldSet
-          disabled={pending}
-          aria-describedby={
-            fieldErrors.weekdays === undefined
-              ? "habit-weekdays-help"
-              : "habit-weekdays-help habit-weekdays-error"
-          }
-        >
-          <FieldLegend>Schedule</FieldLegend>
-          <FieldDescription id="habit-weekdays-help">
-            Choose at least one weekday. Select all seven for every day.
-          </FieldDescription>
-          <FieldGroup>
-            {WEEKDAYS.map((day) => (
-              <Field
-                key={day.value}
-                orientation="horizontal"
-                data-invalid={Boolean(fieldErrors.weekdays)}
-              >
-                <Checkbox
-                  id={`habit-day-${day.value}`}
-                  checked={weekdays.includes(day.value)}
-                  aria-invalid={Boolean(fieldErrors.weekdays)}
-                  aria-describedby={
-                    fieldErrors.weekdays === undefined
-                      ? undefined
-                      : "habit-weekdays-error"
-                  }
-                  onCheckedChange={(checked) => {
-                    setWeekdays((previous) =>
-                      checked
-                        ? [...previous, day.value]
-                        : previous.filter((value) => value !== day.value)
-                    );
-                    setFieldErrors((previous) => ({
-                      ...previous,
-                      weekdays: undefined,
-                    }));
-                  }}
-                />
-                <FieldLabel htmlFor={`habit-day-${day.value}`}>
-                  {day.label}
-                </FieldLabel>
-              </Field>
-            ))}
-          </FieldGroup>
-          <FieldError id="habit-weekdays-error">
-            {fieldErrors.weekdays}
-          </FieldError>
-        </FieldSet>
+        <HabitGoalFields
+          template={template}
+          dailyTarget={dailyTarget}
+          weekdays={weekdays}
+          fieldErrors={fieldErrors}
+          pending={pending}
+          onDailyTargetChange={(value) => {
+            setDailyTarget(value);
+            setFieldErrors((previous) => ({
+              ...previous,
+              dailyTarget: undefined,
+            }));
+          }}
+          onWeekdaysChange={(value) => {
+            setWeekdays(value);
+            setFieldErrors((previous) => ({
+              ...previous,
+              weekdays: undefined,
+            }));
+          }}
+        />
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>

@@ -1,6 +1,6 @@
 # F04 — Activity recording and Today
 
-Status: implemented and integrated into `sprint-1` through reviewed PR #28. Current execution results and remaining release gates are recorded in the [Deliverable 1 evidence ledger](../../deliverables/deliverable-1/part-f.md). This does not establish acceptance on main.
+Status: implemented and integrated into `sprint-1` through reviewed PR #28. Current execution results and remaining release gates are recorded in the [Deliverable 1 evidence ledger](../../deliverables/deliverable-1/part-f.md). The reviewed increment is now released on main through PR #32; its exact version and known verification gaps are recorded in Part F.
 
 Sprint 1. FR-05, BR-01/03–09/13, NFR-02/04. Depends on F03. Owner B; A reviews. Today is the first complete participant journey.
 

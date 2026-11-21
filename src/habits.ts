@@ -1,5 +1,7 @@
-import { MEASUREMENT_CEILINGS } from "./templates";
-import type { ActivityTemplate } from "./templates";
+import { isValidIsoDate } from "./calendar";
+import { parseRequestKey } from "./mutation-request";
+import { MEASUREMENT_CEILINGS, parseTemplateReference } from "./templates";
+import type { ActivityTemplate, TemplateReference } from "./templates";
 
 export const WEEKDAYS = [
   { value: 1, label: "Monday" },
@@ -11,10 +13,35 @@ export const WEEKDAYS = [
   { value: 7, label: "Sunday" },
 ] as const;
 
-export interface HabitDraft {
-  templateId: string;
+export interface GoalDraft {
   dailyTarget: number;
   weekdays: number[];
+}
+
+export interface GoalSnapshot extends GoalDraft {
+  effectiveFrom: string;
+}
+
+export interface HabitDraft extends GoalDraft, TemplateReference {}
+
+export interface GoalRevisionDraft extends GoalSnapshot {
+  habitId: string;
+  expectedVersion: number;
+  requestKey: string;
+}
+
+export interface ArchiveHabitDraft {
+  habitId: string;
+  expectedVersion: number;
+  archivedFrom: string;
+  requestKey: string;
+}
+
+export interface ReminderDraft {
+  habitId: string;
+  expectedVersion: number;
+  reminderTime: string | null;
+  requestKey: string;
 }
 
 export interface Habit {
@@ -22,7 +49,10 @@ export interface Habit {
   template: ActivityTemplate;
   startDate: string;
   archivedFrom: string | null;
-  goal: { effectiveFrom: string; dailyTarget: number; weekdays: number[] };
+  reminderTime: string | null;
+  version: number;
+  goal: GoalSnapshot;
+  pendingGoal: GoalSnapshot | null;
 }
 
 export interface HabitWorkspace {
@@ -37,27 +67,68 @@ export interface CreateHabitResult {
 }
 
 export type HabitFieldErrors = Partial<Record<keyof HabitDraft, string>>;
+export type GoalFieldErrors = Partial<Record<keyof GoalDraft, string>>;
+export type ReminderFieldErrors = Partial<Record<"reminderTime", string>>;
 
-export type HabitCreationResponse =
-  | CreateHabitResult
+export interface SetReminderSuccess {
+  kind: "saved" | "replayed";
+  reminderTime: string | null;
+}
+
+export type SetReminderResponse =
+  | SetReminderSuccess
   | {
-      kind: "invalid";
+      kind: "invalid" | "conflict";
+      message: string;
+      fieldErrors: ReminderFieldErrors;
+    };
+
+export interface GoalRevisionSuccess {
+  kind: "saved" | "replayed";
+}
+
+export type GoalRevisionResponse =
+  | GoalRevisionSuccess
+  | {
+      kind: "invalid" | "conflict";
+      message: string;
+      fieldErrors: GoalFieldErrors;
+    };
+
+export interface ArchiveHabitSuccess {
+  kind: "archived" | "replayed";
+  archivedFrom: string;
+}
+
+export type ArchiveHabitResponse =
+  | ArchiveHabitSuccess
+  | {
+      kind: "invalid" | "conflict";
       message: string;
       fieldErrors: HabitFieldErrors;
     };
 
-const isWeekdays = (value: unknown): value is number[] =>
-  Array.isArray(value) &&
-  value.length >= 1 &&
-  value.length <= WEEKDAYS.length &&
-  value.every(
-    (day: unknown) =>
-      typeof day === "number" &&
-      Number.isInteger(day) &&
-      day >= 1 &&
-      day <= WEEKDAYS.length
-  ) &&
-  new Set(value).size === value.length;
+export type HabitCreationResponse =
+  | CreateHabitResult
+  | {
+      kind: "invalid" | "conflict";
+      message: string;
+      fieldErrors: HabitFieldErrors;
+    };
+
+const parseWeekdays = (value: unknown): number[] | undefined => {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.length > WEEKDAYS.length
+  ) {
+    return undefined;
+  }
+  const weekdays = WEEKDAYS.filter((day) => value.includes(day.value)).map(
+    (day) => day.value
+  );
+  return weekdays.length === value.length ? weekdays : undefined;
+};
 
 const isDailyTarget = (
   value: unknown,
@@ -69,50 +140,219 @@ const isDailyTarget = (
   value >= minimum &&
   value <= ceiling;
 
+const inputRecord = (input: unknown) =>
+  typeof input === "object" && input !== null ? input : {};
+
+export const validateGoalInput = (
+  input: unknown,
+  template?: ActivityTemplate
+):
+  | { ok: true; value: GoalDraft }
+  | { ok: false; fieldErrors: GoalFieldErrors } => {
+  const record = inputRecord(input);
+  const dailyTarget = "dailyTarget" in record ? record.dailyTarget : undefined;
+  const weekdays = parseWeekdays(
+    "weekdays" in record ? record.weekdays : undefined
+  );
+  const fieldErrors: GoalFieldErrors = {};
+  const minimum = template?.entryMinimum ?? 1;
+  const ceiling = template
+    ? MEASUREMENT_CEILINGS[template.unit]
+    : MEASUREMENT_CEILINGS.counts;
+  const validTarget = isDailyTarget(dailyTarget, minimum, ceiling);
+  if (!validTarget) {
+    fieldErrors.dailyTarget = template
+      ? `Daily Target must be a whole number from ${minimum.toLocaleString("en-US")} to ${ceiling.toLocaleString("en-US")} ${template.unit}.`
+      : "Enter a valid whole-number Daily Target.";
+  }
+  if (weekdays === undefined) {
+    fieldErrors.weekdays = "Choose at least one weekday, with no duplicates.";
+  }
+  if (!validTarget || weekdays === undefined) {
+    return { ok: false, fieldErrors };
+  }
+  return {
+    ok: true,
+    value: { dailyTarget, weekdays },
+  };
+};
+
 export const validateHabitInput = (
   input: unknown,
   template?: ActivityTemplate
 ):
   | { ok: true; value: HabitDraft }
   | { ok: false; fieldErrors: HabitFieldErrors } => {
-  const record = typeof input === "object" && input !== null ? input : {};
-  const templateId = "templateId" in record ? record.templateId : undefined;
-  const dailyTarget = "dailyTarget" in record ? record.dailyTarget : undefined;
-  const weekdays = "weekdays" in record ? record.weekdays : undefined;
-  const fieldErrors: HabitFieldErrors = {};
-  if (
-    typeof templateId !== "string" ||
-    templateId.length === 0 ||
-    templateId.length > 200
-  ) {
-    fieldErrors.templateId = "Select an active Activity Template.";
+  const record = inputRecord(input);
+  const reference = parseTemplateReference(input);
+  const goal = validateGoalInput(record, template);
+  if (reference === undefined || !goal.ok) {
+    return {
+      ok: false,
+      fieldErrors: {
+        ...(goal.ok ? {} : goal.fieldErrors),
+        ...(reference === undefined
+          ? { templateId: "Select an active Activity Template." }
+          : {}),
+      },
+    };
   }
-  const minimum = template?.entryMinimum ?? 1;
-  const ceiling = template
-    ? MEASUREMENT_CEILINGS[template.unit]
-    : MEASUREMENT_CEILINGS.counts;
-  if (!isDailyTarget(dailyTarget, minimum, ceiling)) {
-    fieldErrors.dailyTarget = `Daily Target must be a whole number from ${minimum.toLocaleString("en-US")} to ${ceiling.toLocaleString("en-US")}${template ? ` ${template.unit}` : ""}.`;
+  return { ok: true, value: { ...reference, ...goal.value } };
+};
+
+const MAX_HABIT_ID_LENGTH = 200;
+const REMINDER_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/u;
+
+export const INVALID_REMINDER_TIME_MESSAGE =
+  "Enter a valid local time (HH:MM, 00:00 to 23:59).";
+
+export const isValidReminderTime = (value: unknown): value is string =>
+  typeof value === "string" && REMINDER_TIME_PATTERN.test(value);
+
+const parseHabitVersionTarget = (
+  record: object
+):
+  | {
+      habitId: string;
+      expectedVersion: number;
+      requestKey: string;
+    }
+  | undefined => {
+  const habitId = "habitId" in record ? record.habitId : undefined;
+  const expectedVersion =
+    "expectedVersion" in record ? record.expectedVersion : undefined;
+  const requestKey = parseRequestKey(
+    "requestKey" in record ? record.requestKey : undefined
+  );
+  const validHabitId =
+    typeof habitId === "string" &&
+    habitId.length > 0 &&
+    habitId.length <= MAX_HABIT_ID_LENGTH &&
+    !habitId.includes("\u0000");
+  const validVersion =
+    typeof expectedVersion === "number" &&
+    Number.isSafeInteger(expectedVersion) &&
+    expectedVersion >= 1;
+  if (!validHabitId || !validVersion || requestKey === undefined) {
+    return undefined;
   }
-  if (!isWeekdays(weekdays)) {
-    fieldErrors.weekdays = "Choose at least one weekday, with no duplicates.";
+  return { habitId, expectedVersion, requestKey };
+};
+
+const parseHabitMutationTarget = (
+  record: object,
+  dateField: "effectiveFrom" | "archivedFrom"
+):
+  | {
+      habitId: string;
+      expectedVersion: number;
+      date: string;
+      requestKey: string;
+    }
+  | undefined => {
+  const base = parseHabitVersionTarget(record);
+  let date: unknown;
+  if (dateField === "effectiveFrom") {
+    date = "effectiveFrom" in record ? record.effectiveFrom : undefined;
+  } else {
+    date = "archivedFrom" in record ? record.archivedFrom : undefined;
   }
-  if (
-    Object.keys(fieldErrors).length > 0 ||
-    typeof templateId !== "string" ||
-    typeof dailyTarget !== "number" ||
-    !isWeekdays(weekdays)
-  ) {
-    return { ok: false, fieldErrors };
+  if (base === undefined || !isValidIsoDate(date)) {
+    return undefined;
+  }
+  return { ...base, date };
+};
+
+export const validateGoalRevisionInput = (
+  input: unknown
+):
+  | { ok: true; value: GoalRevisionDraft }
+  | { ok: false; message: string; fieldErrors: GoalFieldErrors } => {
+  const record = inputRecord(input);
+  const target = parseHabitMutationTarget(record, "effectiveFrom");
+  if (target === undefined) {
+    return {
+      ok: false,
+      message: "Reload your Habit settings and try again.",
+      fieldErrors: {},
+    };
+  }
+  const goal = validateGoalInput(record);
+  if (!goal.ok) {
+    return {
+      ok: false,
+      message: "Check your Habit settings.",
+      fieldErrors: goal.fieldErrors,
+    };
   }
   return {
     ok: true,
     value: {
-      templateId,
-      dailyTarget,
-      weekdays: WEEKDAYS.filter((day) => weekdays.includes(day.value)).map(
-        (day) => day.value
-      ),
+      ...goal.value,
+      habitId: target.habitId,
+      effectiveFrom: target.date,
+      expectedVersion: target.expectedVersion,
+      requestKey: target.requestKey,
+    },
+  };
+};
+
+export const validateArchiveHabitInput = (
+  input: unknown
+):
+  | { ok: true; value: ArchiveHabitDraft }
+  | { ok: false; message: string; fieldErrors: HabitFieldErrors } => {
+  const target = parseHabitMutationTarget(inputRecord(input), "archivedFrom");
+  if (target === undefined) {
+    return {
+      ok: false,
+      message: "Reload your Habit settings and try again.",
+      fieldErrors: {},
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      habitId: target.habitId,
+      expectedVersion: target.expectedVersion,
+      archivedFrom: target.date,
+      requestKey: target.requestKey,
+    },
+  };
+};
+
+export const validateReminderInput = (
+  input: unknown
+):
+  | { ok: true; value: ReminderDraft }
+  | { ok: false; message: string; fieldErrors: ReminderFieldErrors } => {
+  const record = inputRecord(input);
+  const target = parseHabitVersionTarget(record);
+  if (target === undefined) {
+    return {
+      ok: false,
+      message: "Reload your Habit settings and try again.",
+      fieldErrors: {},
+    };
+  }
+  const rawReminderTime =
+    "reminderTime" in record ? record.reminderTime : undefined;
+  if (rawReminderTime !== null && !isValidReminderTime(rawReminderTime)) {
+    return {
+      ok: false,
+      message: "Check your Reminder settings.",
+      fieldErrors: {
+        reminderTime: INVALID_REMINDER_TIME_MESSAGE,
+      },
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      habitId: target.habitId,
+      expectedVersion: target.expectedVersion,
+      reminderTime: rawReminderTime,
+      requestKey: target.requestKey,
     },
   };
 };
