@@ -540,9 +540,9 @@ test("AC-F07-1: a Participant changes tomorrow’s settings and history keeps th
         releaseRefresh?.();
         await page.unrouteAll({ behavior: "wait" });
       }
-      await expect(habits.getByRole("status")).toContainText(
-        "Goal settings saved for 2026-11-18."
-      );
+      await expect(
+        habits.getByRole("status").filter({ hasText: "Goal settings saved" })
+      ).toContainText("Goal settings saved for 2026-11-18.");
       await edit.click();
       await expect(form.getByLabel("Daily Target")).toHaveValue("35");
       await form.getByLabel("Daily Target").fill("30");
@@ -826,6 +826,83 @@ test("AC-F08-3/F09-3: a Participant archives a Habit, corrects its Streak after 
       "0 days",
       "0 days",
     ]);
+  } finally {
+    await setClock(null);
+    await pool.end();
+  }
+});
+
+test("AC-F10-1: a Participant sets a local Reminder and sees the Today due indicator appear on focus and clear after completion", async ({
+  page,
+}) => {
+  const templateName = "Reminder E2E Study";
+  const pool = new Pool({ connectionString: e2eDatabaseURL().toString() });
+  const setClock = async (instant: string | null) =>
+    await pool.query("UPDATE e2e_clock.override SET instant = $1", [instant]);
+  try {
+    await setClock("2026-11-16T17:59:00+07:00");
+    await page.goto("/");
+    await publishTemplate(page, templateName);
+    await signIn(page, "b@example.test");
+
+    const library = page.getByRole("region", {
+      name: "Activity Template library",
+      exact: true,
+    });
+    await library
+      .getByRole("button", { name: new RegExp(templateName, "u") })
+      .click();
+    const start = page.getByRole("form", {
+      name: `Start ${templateName} Habit`,
+    });
+    await start.getByLabel("Daily Target").fill("40");
+    await start.getByRole("checkbox", { name: "Monday" }).check();
+    await start.getByRole("button", { name: "Start Habit" }).click();
+
+    const habits = page.getByRole("region", {
+      name: "Your Habits",
+      exact: true,
+    });
+    const habitItem = habits
+      .getByRole("listitem")
+      .filter({ hasText: templateName });
+    await habitItem.getByRole("button", { name: "Set Reminder" }).click();
+    const reminderForm = habitItem.getByRole("form", {
+      name: `Reminder settings for ${templateName}`,
+    });
+    await expect(reminderForm).toContainText("Asia/Bangkok");
+    await expect(reminderForm).toContainText(
+      "no email, push, background delivery, or snooze"
+    );
+    await reminderForm.getByLabel("Reminder time (Asia/Bangkok)").fill("18:00");
+    await reminderForm.getByRole("button", { name: "Save Reminder" }).click();
+    await expect(habitItem).toContainText("18:00 (Asia/Bangkok) · In-app only");
+
+    const today = page.getByRole("region", { name: "Today", exact: true });
+    const todayCard = today
+      .getByRole("listitem")
+      .filter({ hasText: templateName });
+    await expect(todayCard).toContainText(
+      "In-app Reminder set for 18:00 (Asia/Bangkok)"
+    );
+    await expect(todayCard.getByRole("status")).toHaveText("");
+
+    // Advance past 18:00 and trigger window focus to re-evaluate while the app stays open.
+    await setClock("2026-11-16T18:00:00+07:00");
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await expect(todayCard.getByRole("status")).toHaveText(
+      "Reminder due · 18:00 (Asia/Bangkok)"
+    );
+
+    // Completing the Daily Target clears the due indicator.
+    await todayCard.getByRole("button", { name: "Add entry" }).click();
+    await todayCard.getByLabel("Amount (minutes)").fill("40");
+    await todayCard.getByRole("button", { name: "Save entry" }).click();
+    await expect(todayCard).toContainText("40 / 40 minutes");
+    await expect(todayCard.getByRole("status").first()).toHaveText("");
+    await expect(todayCard).not.toContainText("Reminder due");
   } finally {
     await setClock(null);
     await pool.end();

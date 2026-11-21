@@ -14,6 +14,7 @@ import {
   getTrackingWorkspace,
   listTemplates,
   reviseGoal,
+  setReminder,
   updateTemplate,
 } from "../server/functions";
 import type {
@@ -55,18 +56,6 @@ const Home = () => {
   }, [identity?.id, session?.user.id, isPending, router]);
 
   useAccountDateRefresh(rolloverAt);
-  const refreshOnFocus = rolloverAt !== null;
-  useEffect(() => {
-    const refreshWorkspace = () => {
-      void router.invalidate();
-    };
-    if (refreshOnFocus) {
-      window.addEventListener("focus", refreshWorkspace);
-    }
-    return () => {
-      window.removeEventListener("focus", refreshWorkspace);
-    };
-  }, [refreshOnFocus, router]);
 
   const activeExtra = extraState?.forPage === templatePage ? extraState : null;
   const templates =
@@ -144,6 +133,13 @@ const Home = () => {
       onArchiveHabit={async (draft) => {
         const result = await archiveHabit({ data: draft });
         if (result.kind === "archived" || result.kind === "replayed") {
+          await router.invalidate({ sync: true });
+        }
+        return result;
+      }}
+      onSetReminder={async (draft) => {
+        const result = await setReminder({ data: draft });
+        if (result.kind === "saved" || result.kind === "replayed") {
           await router.invalidate({ sync: true });
         }
         return result;

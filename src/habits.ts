@@ -37,11 +37,19 @@ export interface ArchiveHabitDraft {
   requestKey: string;
 }
 
+export interface ReminderDraft {
+  habitId: string;
+  expectedVersion: number;
+  reminderTime: string | null;
+  requestKey: string;
+}
+
 export interface Habit {
   id: string;
   template: ActivityTemplate;
   startDate: string;
   archivedFrom: string | null;
+  reminderTime: string | null;
   version: number;
   goal: GoalSnapshot;
   pendingGoal: GoalSnapshot | null;
@@ -60,6 +68,20 @@ export interface CreateHabitResult {
 
 export type HabitFieldErrors = Partial<Record<keyof HabitDraft, string>>;
 export type GoalFieldErrors = Partial<Record<keyof GoalDraft, string>>;
+export type ReminderFieldErrors = Partial<Record<"reminderTime", string>>;
+
+export interface SetReminderSuccess {
+  kind: "saved" | "replayed";
+  reminderTime: string | null;
+}
+
+export type SetReminderResponse =
+  | SetReminderSuccess
+  | {
+      kind: "invalid" | "conflict";
+      message: string;
+      fieldErrors: ReminderFieldErrors;
+    };
 
 export interface GoalRevisionSuccess {
   kind: "saved" | "replayed";
@@ -179,27 +201,26 @@ export const validateHabitInput = (
 };
 
 const MAX_HABIT_ID_LENGTH = 200;
+const REMINDER_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/u;
 
-const parseHabitMutationTarget = (
-  record: object,
-  dateField: "effectiveFrom" | "archivedFrom"
+export const INVALID_REMINDER_TIME_MESSAGE =
+  "Enter a valid local time (HH:MM, 00:00 to 23:59).";
+
+export const isValidReminderTime = (value: unknown): value is string =>
+  typeof value === "string" && REMINDER_TIME_PATTERN.test(value);
+
+const parseHabitVersionTarget = (
+  record: object
 ):
   | {
       habitId: string;
       expectedVersion: number;
-      date: string;
       requestKey: string;
     }
   | undefined => {
   const habitId = "habitId" in record ? record.habitId : undefined;
   const expectedVersion =
     "expectedVersion" in record ? record.expectedVersion : undefined;
-  let date: unknown;
-  if (dateField === "effectiveFrom") {
-    date = "effectiveFrom" in record ? record.effectiveFrom : undefined;
-  } else {
-    date = "archivedFrom" in record ? record.archivedFrom : undefined;
-  }
   const requestKey = parseRequestKey(
     "requestKey" in record ? record.requestKey : undefined
   );
@@ -212,15 +233,34 @@ const parseHabitMutationTarget = (
     typeof expectedVersion === "number" &&
     Number.isSafeInteger(expectedVersion) &&
     expectedVersion >= 1;
-  if (
-    !validHabitId ||
-    !validVersion ||
-    !isValidIsoDate(date) ||
-    requestKey === undefined
-  ) {
+  if (!validHabitId || !validVersion || requestKey === undefined) {
     return undefined;
   }
-  return { habitId, expectedVersion, date, requestKey };
+  return { habitId, expectedVersion, requestKey };
+};
+
+const parseHabitMutationTarget = (
+  record: object,
+  dateField: "effectiveFrom" | "archivedFrom"
+):
+  | {
+      habitId: string;
+      expectedVersion: number;
+      date: string;
+      requestKey: string;
+    }
+  | undefined => {
+  const base = parseHabitVersionTarget(record);
+  let date: unknown;
+  if (dateField === "effectiveFrom") {
+    date = "effectiveFrom" in record ? record.effectiveFrom : undefined;
+  } else {
+    date = "archivedFrom" in record ? record.archivedFrom : undefined;
+  }
+  if (base === undefined || !isValidIsoDate(date)) {
+    return undefined;
+  }
+  return { ...base, date };
 };
 
 export const validateGoalRevisionInput = (
@@ -276,6 +316,42 @@ export const validateArchiveHabitInput = (
       habitId: target.habitId,
       expectedVersion: target.expectedVersion,
       archivedFrom: target.date,
+      requestKey: target.requestKey,
+    },
+  };
+};
+
+export const validateReminderInput = (
+  input: unknown
+):
+  | { ok: true; value: ReminderDraft }
+  | { ok: false; message: string; fieldErrors: ReminderFieldErrors } => {
+  const record = inputRecord(input);
+  const target = parseHabitVersionTarget(record);
+  if (target === undefined) {
+    return {
+      ok: false,
+      message: "Reload your Habit settings and try again.",
+      fieldErrors: {},
+    };
+  }
+  const rawReminderTime =
+    "reminderTime" in record ? record.reminderTime : undefined;
+  if (rawReminderTime !== null && !isValidReminderTime(rawReminderTime)) {
+    return {
+      ok: false,
+      message: "Check your Reminder settings.",
+      fieldErrors: {
+        reminderTime: INVALID_REMINDER_TIME_MESSAGE,
+      },
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      habitId: target.habitId,
+      expectedVersion: target.expectedVersion,
+      reminderTime: rawReminderTime,
       requestKey: target.requestKey,
     },
   };
