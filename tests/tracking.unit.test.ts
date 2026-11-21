@@ -169,7 +169,7 @@ test("evaluateReminder handles midnight and Los Angeles DST spring-forward and f
     })
   ).toEqual({ due: true, nextDueAt: null });
 
-  // Spring forward 2026-03-08: 02:30 does not exist; compatible disambiguation shifts to 03:30 PDT (10:30Z)
+  // Spring forward 2026-03-08: 02:30 is skipped when clocks jump from 01:59:59 PST to 03:00:00 PDT (10:00Z)
   expect(
     evaluateReminder({
       accountDate: "2026-03-08",
@@ -178,9 +178,9 @@ test("evaluateReminder handles midnight and Los Angeles DST spring-forward and f
       active: true,
       scheduled: true,
       completed: false,
-      observedAt: Date.parse("2026-03-08T10:29:59Z"),
+      observedAt: Date.parse("2026-03-08T09:59:59Z"),
     })
-  ).toEqual({ due: false, nextDueAt: Date.parse("2026-03-08T10:30:00Z") });
+  ).toEqual({ due: false, nextDueAt: Date.parse("2026-03-08T10:00:00Z") });
 
   expect(
     evaluateReminder({
@@ -190,7 +190,7 @@ test("evaluateReminder handles midnight and Los Angeles DST spring-forward and f
       active: true,
       scheduled: true,
       completed: false,
-      observedAt: Date.parse("2026-03-08T10:30:00Z"),
+      observedAt: Date.parse("2026-03-08T10:00:00Z"),
     })
   ).toEqual({ due: true, nextDueAt: null });
 

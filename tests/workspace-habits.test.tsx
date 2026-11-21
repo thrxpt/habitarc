@@ -670,3 +670,68 @@ test("AC-F10-1/2: Participant configures, retries, and disables a local Reminder
     within(habitsRegion).queryByRole("button", { name: /Reminder/u })
   ).not.toBeInTheDocument();
 });
+
+test("AC-F10-2: Retry disable remains available and resends the original payload and requestKey after a workspace refresh", async () => {
+  const saveReminder = vi
+    .fn<(draft: ReminderDraft) => Promise<SetReminderResponse>>()
+    .mockRejectedValueOnce(new Error("Lost response"))
+    .mockResolvedValueOnce({ kind: "replayed", reminderTime: null });
+
+  const withReminder: Habit = { ...habit, reminderTime: "18:00", version: 2 };
+  const { rerender } = render(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{ ...workspace, items: [withReminder] }}
+      onSetReminder={saveReminder}
+      onSessionChanged={sessionChanged}
+    />
+  );
+
+  const habitsRegion = screen.getByRole("region", { name: "Your Habits" });
+  const user = userEvent.setup();
+  await user.click(
+    within(habitsRegion).getByRole("button", { name: "Edit Reminder" })
+  );
+  const form = within(habitsRegion).getByRole("form", {
+    name: "Reminder settings for Focused Study",
+  });
+  await user.click(
+    within(form).getByRole("button", { name: "Disable Reminder" })
+  );
+  expect(within(form).getByRole("alert")).toHaveTextContent(
+    "We couldn’t confirm whether your Reminder was saved."
+  );
+
+  // Workspace refreshes after the disable committed server-side, setting reminderTime to null.
+  rerender(
+    <AccountScreen
+      identity={participant}
+      templates={[template]}
+      habitWorkspace={{
+        ...workspace,
+        items: [{ ...habit, reminderTime: null, version: 3 }],
+      }}
+      onSetReminder={saveReminder}
+      onSessionChanged={sessionChanged}
+    />
+  );
+
+  expect(
+    within(form).queryByRole("button", { name: "Save Reminder" })
+  ).not.toBeInTheDocument();
+  await user.click(within(form).getByRole("button", { name: "Retry disable" }));
+
+  expect(saveReminder).toHaveBeenCalledTimes(2);
+  expect(saveReminder.mock.calls[1]?.[0]).toEqual(
+    saveReminder.mock.calls[0]?.[0]
+  );
+  expect(saveReminder.mock.calls[1]?.[0]).toMatchObject({
+    habitId: habit.id,
+    expectedVersion: 2,
+    reminderTime: null,
+  });
+  expect(within(habitsRegion).getByRole("status")).toHaveTextContent(
+    "Reminder disabled."
+  );
+});

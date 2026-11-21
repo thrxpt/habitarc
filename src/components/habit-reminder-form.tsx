@@ -26,6 +26,51 @@ interface ReminderEditor {
   expectedVersion: number;
 }
 
+const ReminderFormActions = ({
+  hasReminder,
+  pending,
+  retry,
+  onDisable,
+}: {
+  hasReminder: boolean;
+  pending: boolean;
+  retry: ReminderDraft | null;
+  onDisable: () => void;
+}) => {
+  if (retry?.reminderTime === null) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" disabled={pending} onClick={onDisable}>
+          {pending ? "Saving…" : "Retry disable"}
+        </Button>
+      </div>
+    );
+  }
+  let saveLabel = "Save Reminder";
+  if (pending) {
+    saveLabel = "Saving…";
+  } else if (retry !== null) {
+    saveLabel = "Retry save";
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="submit" disabled={pending}>
+        {saveLabel}
+      </Button>
+      {retry === null && hasReminder && (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={pending}
+          onClick={onDisable}
+        >
+          Disable Reminder
+        </Button>
+      )}
+    </div>
+  );
+};
+
 export const HabitReminderForm = ({
   habit,
   timezone,
@@ -117,6 +162,10 @@ export const HabitReminderForm = ({
     if (!hydrated || edit === null || pending || conflict) {
       return;
     }
+    if (retry !== null) {
+      await persist(retry.reminderTime);
+      return;
+    }
     const trimmed = edit.reminderTime.trim();
     if (!isValidReminderTime(trimmed)) {
       setFieldErrors({
@@ -128,16 +177,10 @@ export const HabitReminderForm = ({
   };
 
   const locked = pending || conflict || retry !== null;
-  let saveLabel = "Save Reminder";
-  if (pending) {
-    saveLabel = "Saving…";
-  } else if (retry !== null && retry.reminderTime !== null) {
-    saveLabel = "Retry save";
-  }
-
-  let disableLabel = "Disable Reminder";
-  if (retry !== null && retry.reminderTime === null) {
-    disableLabel = "Retry disable";
+  let toggleLabel = "Close Reminder settings";
+  if (edit === null) {
+    toggleLabel =
+      habit.reminderTime === null ? "Set Reminder" : "Edit Reminder";
   }
 
   return (
@@ -151,12 +194,7 @@ export const HabitReminderForm = ({
         disabled={!hydrated || pending}
         onClick={toggle}
       >
-        {(() => {
-          if (edit !== null) {
-            return "Close Reminder settings";
-          }
-          return habit.reminderTime === null ? "Set Reminder" : "Edit Reminder";
-        })()}
+        {toggleLabel}
       </Button>
       {notice.length > 0 && (
         <output className="mt-3 block text-sm">{notice}</output>
@@ -223,23 +261,14 @@ export const HabitReminderForm = ({
                 Reload workspace
               </a>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={pending}>
-                  {saveLabel}
-                </Button>
-                {habit.reminderTime !== null && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() => {
-                      void persist(null);
-                    }}
-                  >
-                    {disableLabel}
-                  </Button>
-                )}
-              </div>
+              <ReminderFormActions
+                hasReminder={habit.reminderTime !== null}
+                pending={pending}
+                retry={retry}
+                onDisable={() => {
+                  void persist(null);
+                }}
+              />
             )}
           </FieldGroup>
         </form>

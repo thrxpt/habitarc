@@ -565,6 +565,7 @@ test("AC-F10-1/2: Today displays the Reminder due indicator only when due and cl
   expect(
     screen.getByText("In-app Reminder set for 18:00 (Asia/Bangkok)")
   ).toBeVisible();
+  expect(screen.getByRole("status")).toBeEmptyDOMElement();
   expect(screen.queryByText(/Reminder due/u)).not.toBeInTheDocument();
 
   // After reminder time while unmet: due indicator appears with local time and Account Timezone.

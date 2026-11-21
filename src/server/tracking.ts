@@ -36,11 +36,21 @@ export const getReminderInstantMs = (
   accountDate: string,
   timezone: string,
   reminderTime: string
-): number =>
-  Temporal.PlainDate.from(accountDate).toZonedDateTime({
-    timeZone: timezone,
-    plainTime: Temporal.PlainTime.from(reminderTime),
-  }).epochMilliseconds;
+): number => {
+  const plainTime = Temporal.PlainTime.from(reminderTime);
+  const plainDateTime =
+    Temporal.PlainDate.from(accountDate).toPlainDateTime(plainTime);
+  const resolved = plainDateTime.toZonedDateTime(timezone);
+  if (resolved.toPlainTime().equals(plainTime)) {
+    return resolved.epochMilliseconds;
+  }
+  // Skipped DST local time: the selected time has elapsed as soon as the clock jumps forward.
+  const earlier = plainDateTime.toZonedDateTime(timezone, {
+    disambiguation: "earlier",
+  });
+  const transition = earlier.getTimeZoneTransition("next");
+  return (transition ?? resolved).epochMilliseconds;
+};
 
 export const evaluateReminder = ({
   accountDate,

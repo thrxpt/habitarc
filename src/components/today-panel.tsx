@@ -326,9 +326,11 @@ const TodayHabitCard = ({
         </span>
       </div>
 
-      {reminderDue && habit.reminderTime !== null && (
-        <output className="bg-secondary text-foreground mt-2 inline-flex items-center rounded-md border px-2.5 py-1 text-sm font-medium">
-          Reminder due · {habit.reminderTime} ({timezone})
+      {progress.scheduled && habit.reminderTime !== null && (
+        <output className="bg-secondary text-foreground mt-2 inline-flex items-center rounded-md border px-2.5 py-1 text-sm font-medium empty:hidden">
+          {reminderDue
+            ? `Reminder due · ${habit.reminderTime} (${timezone})`
+            : ""}
         </output>
       )}
       {showUpcomingReminder && (
