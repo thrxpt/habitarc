@@ -85,19 +85,29 @@ fi
 immutable_image="$image@$digest"
 
 # Preserve the Portal's service account, SQL socket and DATABASE_URL on both resources.
-accounts_file=/secrets/habitarc-provision/accounts.json
-migration=(--command node --args dist/operators/migrate.mjs --remove-secrets "$accounts_file")
-if [[ -n $accounts_version ]]; then
-  migration=(
-    --command sh
-    --args "^@^-ec@node dist/operators/migrate.mjs && node dist/operators/provision.mjs < $accounts_file"
-    --update-env-vars "BETTER_AUTH_URL=$origin,NODE_ENV=production"
-    --update-secrets "BETTER_AUTH_SECRET=$team-app-secret-1:$auth_version,$accounts_file=$team-app-secret-2:$accounts_version"
+(
+  accounts_file=/secrets/habitarc-provision/accounts.json
+  migration_only=(
+    --command node --args dist/operators/migrate.mjs
+    --remove-env-vars BETTER_AUTH_URL
+    --remove-secrets "BETTER_AUTH_SECRET,$accounts_file"
   )
-fi
-run gcloud run jobs update "$job" "${cloud[@]}" --image "$immutable_image" \
-  --tasks 1 --parallelism 1 --max-retries 0 --task-timeout 300s "${migration[@]}"
-run gcloud run jobs execute "$job" "${cloud[@]}" --wait
+  migration=("${migration_only[@]}")
+  if [[ -n $accounts_version ]]; then
+    # Restore the migration-only job before staging the service, even if provisioning fails.
+    trap 'run gcloud run jobs update "$job" "${cloud[@]}" "${migration_only[@]}" ||
+      fail "Could not restore the migration job after provisioning. Retry the release to remove the provisioning settings."' EXIT
+    migration=(
+      --command sh
+      --args "^@^-ec@node dist/operators/migrate.mjs && node dist/operators/provision.mjs < $accounts_file"
+      --update-env-vars "BETTER_AUTH_URL=$origin,NODE_ENV=production"
+      --update-secrets "BETTER_AUTH_SECRET=$team-app-secret-1:$auth_version,$accounts_file=$team-app-secret-2:$accounts_version"
+    )
+  fi
+  run gcloud run jobs update "$job" "${cloud[@]}" --image "$immutable_image" \
+    --tasks 1 --parallelism 1 --max-retries 0 --task-timeout 300s "${migration[@]}"
+  run gcloud run jobs execute "$job" "${cloud[@]}" --wait
+)
 
 run gcloud run services update "$team" "${cloud[@]}" --image "$immutable_image" \
   --command "" --args "" --port 8080 --min-instances 0 --max-instances 1 --memory 512Mi --cpu 1 \

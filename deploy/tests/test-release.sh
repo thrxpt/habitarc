@@ -25,7 +25,8 @@ case "$*" in
   'run revisions describe '*--format=json)
     printf '%s\n' '{"metadata":{"labels":{"serving.knative.dev/service":"sd31d6c61"}},"status":{"conditions":[{"type":"Ready","status":"True"}]}}' ;;
   'artifacts docker images describe '*) printf 'sha256:%064d\n' 123 ;;
-  'run jobs execute '*) [[ ${CASE:-} != migration-failure ]] ;;
+  'run jobs execute '*) [[ ${CASE:-} != migration-failure ]] || exit 27 ;;
+  'run jobs update '*--remove-secrets*) [[ ${CASE:-} != cleanup-failure ]] ;;
   'run jobs describe '*|'auth configure-docker '*|'run jobs update '*|'run services update '*|'run services update-traffic '*) ;;
   *) exit 2 ;;
 esac
@@ -60,6 +61,15 @@ run_release() {
 expect_trace() { grep -Eq -- "$1" "$TRACE" || { cat "$TRACE"; exit 1; }; }
 reject_trace() { if grep -Eq -- "$1" "$TRACE"; then cat "$TRACE"; exit 1; fi; }
 expect_failure() { if run_release; then cat "$scratch/output"; exit 1; fi; }
+migration_only='run jobs update .*--command node --args dist/operators/migrate\.mjs --remove-env-vars BETTER_AUTH_URL --remove-secrets BETTER_AUTH_SECRET,/secrets/habitarc-provision/accounts\.json'
+expect_cleanup_after_provisioning() {
+  awk -v cleanup_pattern="$migration_only" '
+    /run jobs execute / { execution = NR }
+    $0 ~ cleanup_pattern { cleanup = NR }
+    /run services update .*--no-traffic/ { candidate = NR }
+    END { exit !(execution && cleanup > execution && (!candidate || cleanup < candidate)) }
+  ' "$TRACE" || { cat "$TRACE"; exit 1; }
+}
 
 export DRY_RUN=1
 run_release
@@ -78,8 +88,26 @@ grep -Eq 'Image.*@sha256:' "$GITHUB_STEP_SUMMARY"
 export HABITARC_ACCOUNTS_SECRET_VERSION=2
 run_release
 expect_trace 'run jobs update .*dist/operators/migrate\.mjs.*dist/operators/provision\.mjs.*sd31d6c61-app-secret-2:2'
+expect_cleanup_after_provisioning
 reject_trace 'run services update .*app-secret-2'
+
+export CASE=migration-failure
+status=0
+run_release || status=$?
+[[ $status == 27 ]] || { cat "$scratch/output"; exit 1; }
+expect_cleanup_after_provisioning
+reject_trace 'run services update '
+
+export CASE=cleanup-failure
+expect_failure
+expect_cleanup_after_provisioning
+grep -q 'Could not restore the migration job' "$scratch/output"
+reject_trace 'run services update '
+unset CASE
 unset HABITARC_ACCOUNTS_SECRET_VERSION
+
+run_release
+expect_trace "$migration_only"
 
 export CASE=migration-failure
 expect_failure

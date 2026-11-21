@@ -27,13 +27,13 @@ bash deploy/tests/test-release.sh
 
 The preview prints the release commands with placeholder image and revision values. `Validate` runs the release-script checks, regular suites and the production image test. The image test covers migration, private account setup, login, identity, logout and session persistence across app container replacement against disposable PostgreSQL.
 
-After review and integration into `main`, open **Actions → Deploy demo → Run workflow** and have the `demo` reviewer approve. Select `provision_accounts` on the first release to create the synthetic accounts. Provisioning skips existing accounts and preserves their passwords. A routine release detaches the provisioning file from the job.
+After review and integration into `main`, open **Actions → Deploy demo → Run workflow** and have the `demo` reviewer approve. Select `provision_accounts` on the first release to create the synthetic accounts. Provisioning skips existing accounts and preserves their passwords.
 
 Dispatching from any branch other than `main` fails before testing or authenticating to GCP. GitHub pauses the deploy job for the `demo` reviewer. Before requesting an OIDC credential, the job also reads the public environment policy and verifies that it requires review and prevents self-review.
 
 1. Lab 5's `test-and-docker` invokes `Validate` and uploads the tested image archive for the same commit.
 2. The deploy job authenticates through Portal OIDC, publishes the tested image and resolves its registry digest.
-3. `deploy/release.sh` updates the assigned migration job to run `node dist/operators/migrate.mjs` using that digest, with one task and zero retries. The job must succeed before the service update. Optional provisioning runs `node dist/operators/provision.mjs` in that job.
+3. `deploy/release.sh` updates the assigned migration job to run `node dist/operators/migrate.mjs` using that digest, with one task and zero retries. Optional provisioning runs `node dist/operators/provision.mjs` in that job. When provisioning finishes or fails, the release restores the migration command and removes `BETTER_AUTH_URL`, `BETTER_AUTH_SECRET`, and the mounted accounts file from the job. A routine release removes those settings before running migrations. The migration job and any cleanup must succeed before the service update. If a runner interruption or cleanup failure leaves the settings attached, rerun the workflow with `provision_accounts` off to clear them.
 4. The assigned service listens on port 8080 using the image's default command. It derives `BETTER_AUTH_URL` from the existing service URL. It uses up to one instance per revision with five PostgreSQL connections per app process. It stages a candidate and verifies the Habitarc sign-in page and anonymous session response before promoting that revision.
 
 ### Cloud SQL connection headroom
