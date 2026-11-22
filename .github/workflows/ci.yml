@@ -52,8 +52,11 @@ jobs:
       - name: Check migration history
         run: vp exec drizzle-kit check
 
-      - name: Verify the Portal release script
-        run: bash deploy/tests/test-release.sh
+      - name: Verify the Portal release and smoke-test scripts
+        run: |
+          bash -n deploy/deploy.sh deploy/release.sh
+          bash deploy/tests/test-release.sh
+          python3 -m unittest discover -s deploy/tests -p 'test_smoke.py'
 
       - name: Start PostgreSQL
         run: docker compose up -d --wait postgres

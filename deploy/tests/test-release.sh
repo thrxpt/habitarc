@@ -10,7 +10,8 @@ export GITHUB_SHA=0123456789abcdef0123456789abcdef01234567
 export GCP_PROJECT_ID=cpe-se-course-2026 GCP_REGION=asia-southeast1
 export HABITARC_AUTH_SECRET_VERSION=4
 export GITHUB_STEP_SUMMARY="$scratch/summary"
-unset HABITARC_ACCOUNTS_SECRET_VERSION ROLLBACK_REVISION
+export GITHUB_ENV="$scratch/env"
+unset HABITARC_ACCOUNTS_SECRET_VERSION ROLLBACK_REVISION SMOKE_EMAIL SMOKE_PASSWORD
 export PATH="$scratch:$PATH"
 
 cat > "$scratch/gcloud" <<'STUB'
@@ -42,20 +43,21 @@ case "$*" in
   *) exit 2 ;;
 esac
 STUB
-cat > "$scratch/curl" <<'STUB'
+cat > "$scratch/python3" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'curl %s\n' "$*" >> "$TRACE"
+printf 'python3 %s\n' "$*" >> "$TRACE"
+[[ -z ${SMOKE_EMAIL:-} && -z ${SMOKE_PASSWORD:-} ]] || {
+  echo 'Candidate smoke check must not receive login credentials.' >&2
+  exit 23
+}
 [[ ${CASE:-} != candidate-failure ]] || exit 22
-case "$*" in
-  *'/api/auth/get-session') printf 'null\n' ;;
-  *) printf '<h1>Sign in to Habitarc</h1>\n' ;;
-esac
 STUB
-chmod +x "$scratch/gcloud" "$scratch/docker" "$scratch/curl"
+chmod +x "$scratch/gcloud" "$scratch/docker" "$scratch/python3"
 
 run_release() {
   : > "$TRACE"
+  : > "$GITHUB_ENV"
   bash "$release" tested-image.tar > "$scratch/output" 2>&1
 }
 expect_trace() { grep -Eq -- "$1" "$TRACE" || { cat "$TRACE"; exit 1; }; }
@@ -75,15 +77,24 @@ export DRY_RUN=1
 run_release
 [[ ! -s $TRACE ]]
 grep -Eq 'sd31d6c61.*8080' "$scratch/output"
+grep -q 'smoke_test\.py' "$scratch/output"
+grep -q 'candidate---sd31d6c61' "$scratch/output"
 export DRY_RUN=0
 
-run_release
+SMOKE_EMAIL=smoke@example.test SMOKE_PASSWORD=smoke-secret run_release
 expect_trace 'docker push asia-southeast1-docker\.pkg\.dev/cpe-se-course-2026/sd31d6c61/sd31d6c61:012345'
 expect_trace 'run jobs update .*@sha256:.*--tasks 1 .*--command node --args dist/operators/migrate\.mjs'
 expect_trace 'run services update .*@sha256:.*--port 8080 .*BETTER_AUTH_URL=https://sd31d6c61-000000000000\.asia-southeast1\.run\.app.*BETTER_AUTH_SECRET=sd31d6c61-app-secret-1:4.*--no-traffic'
+expect_trace 'python3 .*/smoke_test\.py https://candidate---sd31d6c61-example-as\.a\.run\.app'
 expect_trace 'run services update-traffic .*sd31d6c61-00002-ok=100'
+awk '
+  /python3 .*\/smoke_test\.py / { smoke = NR }
+  /run services update-traffic / { traffic = NR }
+  END { exit !(smoke && traffic && smoke < traffic) }
+' "$TRACE" || { cat "$TRACE"; exit 1; }
 reject_trace 'DATABASE_URL|--set-env-vars|--set-secrets|--service-account|--set-cloudsql-instances|run jobs deploy|run deploy '
 grep -Eq 'Image.*@sha256:' "$GITHUB_STEP_SUMMARY"
+grep -q '^SERVICE_URL=https://sd31d6c61-000000000000\.asia-southeast1\.run\.app$' "$GITHUB_ENV"
 
 export HABITARC_ACCOUNTS_SECRET_VERSION=2
 run_release
@@ -136,7 +147,8 @@ export GCP_PROJECT_ID=cpe-se-course-2026
 export ROLLBACK_REVISION=sd31d6c61-00001-ok
 run_release
 expect_trace 'run services update-traffic .*sd31d6c61-00001-ok=100'
-reject_trace 'docker |run jobs |run services update '
+reject_trace 'docker |run jobs |run services update |python3 '
+grep -q '^SERVICE_URL=https://sd31d6c61-000000000000\.asia-southeast1\.run\.app$' "$GITHUB_ENV"
 export ROLLBACK_REVISION=other-team-revision
 expect_failure
 [[ ! -s $TRACE ]]
