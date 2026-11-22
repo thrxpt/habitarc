@@ -106,7 +106,7 @@ immutable_image="$image@$digest"
       fail "Could not restore the migration job after provisioning. Retry the release to remove the provisioning settings."' EXIT
     migration=(
       --command sh
-      --args "^@^-ec@node dist/operators/migrate.mjs && node dist/operators/provision.mjs < $accounts_file"
+      --args "^@^-ec@node dist/operators/migrate.mjs && node dist/operators/provision.mjs --file $accounts_file"
       --update-env-vars "BETTER_AUTH_URL=$origin,NODE_ENV=production"
       --update-secrets "BETTER_AUTH_SECRET=$team-app-secret-1:$auth_version,$accounts_file=$team-app-secret-2:$accounts_version"
     )
