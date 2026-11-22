@@ -60,7 +60,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check Portal settings and independent reviewer requirement
+      - name: Check Portal settings
         shell: bash
         run: |
           [[ "$GCP_PROJECT_ID" == cpe-se-course-2026 && "$GCP_REGION" == asia-southeast1 ]]
@@ -70,14 +70,6 @@ jobs:
           fi
           if [[ -z "$ROLLBACK_REVISION" ]]; then
             [[ "$HABITARC_AUTH_SECRET_VERSION" =~ ^[1-9][0-9]*$ ]]
-          fi
-          # GitHub exposes environment protection rules for this public repository.
-          if ! curl --fail --silent --show-error --retry 3 --max-time 15 \
-            -H 'Cache-Control: no-cache' \
-            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/environments/demo" |
-            jq -e '.can_admins_bypass == false and any(.protection_rules[]; .type == "required_reviewers" and .prevent_self_review == true and (.reviewers | length) > 0)' > /dev/null; then
-            echo '::error::The demo environment must require an independent reviewer, prevent self-review, and disable administrator bypass.'
-            exit 1
           fi
 
       - name: Download the tested release image

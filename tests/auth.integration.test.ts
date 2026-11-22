@@ -573,7 +573,7 @@ test(
     );
     expect(invalid.code).toBe(1);
     expect(invalid.output).toBe(
-      "Provisioning failed. Check private input and database configuration; existing accounts are preserved.\n"
+      "Provisioning failed. Check private input and database configuration; existing accounts are preserved.\nDiagnostic: stage=provision name=Error\n"
     );
     expect(
       [created, repeated, invalid].some((result) =>

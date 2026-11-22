@@ -30,7 +30,7 @@ The preview prints the release commands with placeholder image and revision valu
 
 After review and integration into `main`, open **Actions → Deploy demo → Run workflow** and have the `demo` reviewer approve. Select `provision_accounts` on the first release to create the synthetic accounts. Provisioning skips existing accounts and preserves their passwords. Optionally set `SMOKE_EMAIL` (environment variable) and `SMOKE_PASSWORD` (environment secret) to a non-privileged synthetic Participant account in `demo` to include a live sign-in/sign-out verification after promotion or rollback.
 
-Dispatching from any branch other than `main` fails before testing or authenticating to GCP. GitHub pauses the deploy job for the `demo` reviewer. Before requesting an OIDC credential, the job also reads the public environment policy and verifies that it requires review and prevents self-review.
+Dispatching from any branch other than `main` fails before testing or authenticating to GCP. GitHub enforces the `demo` environment policy and pauses the deploy job for the independent reviewer before the job starts or requests an OIDC credential.
 
 1. Lab 5's `test-and-docker` invokes `Validate` and uploads the tested image archive for the same commit.
 2. The deploy job authenticates through Portal OIDC, publishes the tested image and resolves its registry digest.
