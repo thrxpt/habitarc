@@ -3,6 +3,8 @@ set -euo pipefail
 
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+smoke_test="$script_dir/smoke_test.py"
 project=cpe-se-course-2026
 region=asia-southeast1
 team=sd31d6c61
@@ -37,6 +39,10 @@ run() {
   fi
 }
 
+service_origin() {
+  [[ $1 =~ ^https://[a-z0-9-]+(\.[a-z0-9-]+)*\.run\.app$ ]]
+}
+
 if [[ -n $rollback ]]; then
   [[ $rollback =~ ^sd31d6c61-[a-z0-9-]+$ ]] || fail 'Enter a revision of the assigned service.'
   if [[ $dry_run == 0 ]]; then
@@ -45,8 +51,13 @@ if [[ -n $rollback ]]; then
       .metadata.labels["serving.knative.dev/service"] == $service and
       any(.status.conditions[]; .type == "Ready" and .status == "True")
     ' <<< "$revision_json" > /dev/null || fail 'Rollback requires a ready revision of this service.'
+    origin=$(gcloud run services describe "$team" "${cloud[@]}" --format='value(status.url)')
+    service_origin "$origin" || fail 'The assigned service must have a canonical Cloud Run HTTPS URL.'
   fi
   run gcloud run services update-traffic "$team" "${cloud[@]}" --to-revisions "$rollback=100"
+  if [[ $dry_run == 0 && -n ${GITHUB_ENV:-} ]]; then
+    printf 'SERVICE_URL=%s\n' "$origin" >> "$GITHUB_ENV"
+  fi
   printf 'Rollback revision: %s\n' "$rollback" | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
   exit 0
 fi
@@ -55,10 +66,6 @@ if [[ $dry_run == 1 && -z $auth_version ]]; then auth_version=1; fi
 [[ $auth_version =~ ^[1-9][0-9]*$ ]] || fail 'Set HABITARC_AUTH_SECRET_VERSION to the numbered version in app-secret-1.'
 [[ -z $accounts_version || $accounts_version =~ ^[1-9][0-9]*$ ]] || fail 'Use a numbered version in app-secret-2 for optional account provisioning.'
 archive=${1:-habitarc-image.tar}
-
-service_origin() {
-  [[ $1 =~ ^https://[a-z0-9-]+(\.[a-z0-9-]+)*\.run\.app$ ]]
-}
 
 if [[ $dry_run == 1 ]]; then
   origin="https://$team-000000000000.$region.run.app"
@@ -118,22 +125,21 @@ run gcloud run services update "$team" "${cloud[@]}" --image "$immutable_image" 
 if [[ $dry_run == 1 ]]; then
   candidate_url="https://candidate---$team-example-as.a.run.app"
   revision="$team-example"
-  run curl --fail --silent --show-error "$candidate_url/"
-  run curl --fail --silent --show-error "$candidate_url/api/auth/get-session"
+  run env -u SMOKE_EMAIL -u SMOKE_PASSWORD python3 "$smoke_test" "$candidate_url"
 else
   service_json=$(gcloud run services describe "$team" "${cloud[@]}" --format=json)
   revision=$(jq -er '.status.traffic[] | select(.tag == "candidate") | .revisionName' <<< "$service_json")
   [[ $revision =~ ^sd31d6c61-[a-z0-9-]+$ ]] || fail 'Expected a candidate revision for the assigned service.'
   candidate_url=$(jq -er '.status.traffic[] | select(.tag == "candidate") | .url' <<< "$service_json")
   service_origin "$candidate_url" || fail 'Expected the direct HTTPS URL for the candidate revision.'
-  page=$(curl --fail --silent --show-error --retry 3 --max-time 30 "$candidate_url/")
-  [[ $page == *'Sign in to Habitarc'* ]] || fail 'The candidate did not serve the Habitarc sign-in page.'
-  curl --fail --silent --show-error --max-time 30 "$candidate_url/api/auth/get-session" |
-    jq -e -s 'length == 1 and .[0] == null' > /dev/null
+  env -u SMOKE_EMAIL -u SMOKE_PASSWORD python3 "$smoke_test" "$candidate_url"
 fi
 
 run gcloud run services update-traffic "$team" "${cloud[@]}" --to-revisions "$revision=100"
 if [[ $dry_run == 0 ]]; then
+  if [[ -n ${GITHUB_ENV:-} ]]; then
+    printf 'SERVICE_URL=%s\nDEPLOYED_IMAGE=%s\n' "$origin" "$immutable_image" >> "$GITHUB_ENV"
+  fi
   {
     printf '### Habitarc demo deployment\n\n'
     printf -- '- Commit `%s`\n- Image `%s`\n- Revision `%s`\n- Migration job `%s`\n- URL %s\n' \
