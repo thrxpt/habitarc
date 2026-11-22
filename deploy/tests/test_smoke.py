@@ -1,7 +1,12 @@
 """Offline unit and loopback tests for deploy/smoke_test.py."""
 
+from __future__ import annotations
+
+import contextlib
+import http.client
 import http.server
 import importlib.util
+import io
 import json
 from pathlib import Path
 import threading
@@ -290,9 +295,14 @@ class SmokeTests(unittest.TestCase):
                 logged_in=state["signed_in"],
             )
 
-        with patch.object(smoke, "request", side_effect=auth_flow) as req:
+        stdout = io.StringIO()
+        with (
+            patch.object(smoke, "request", side_effect=auth_flow) as req,
+            contextlib.redirect_stdout(stdout),
+        ):
             smoke.check("https://demo.test")
 
+        self.assertIn("PASS logout", stdout.getvalue())
         paths = [call.args[1] for call in req.call_args_list]
         self.assertEqual(
             paths,
@@ -329,14 +339,44 @@ class SmokeTests(unittest.TestCase):
                 raise ValueError("Broken session payload")
             return self.fake_response(base, path, data, origin, opener)
 
-        with patch.object(smoke, "request", side_effect=broken_auth_session) as req:
+        stdout = io.StringIO()
+        with (
+            patch.object(
+                smoke, "request", side_effect=broken_auth_session
+            ) as req,
+            contextlib.redirect_stdout(stdout),
+        ):
             with self.assertRaisesRegex(RuntimeError, "Login smoke"):
                 smoke.check("https://demo.test")
 
+        self.assertNotIn("PASS logout", stdout.getvalue())
         last_call = req.call_args_list[-1]
         self.assertEqual(last_call.args[1], "/api/auth/sign-out")
         self.assertEqual(last_call.kwargs["origin"], "https://demo.test")
         self.assertEqual(last_call.kwargs["data"], {})
+
+    @patch.dict("os.environ", {}, clear=True)
+    def test_remote_disconnected_is_retried(self) -> None:
+        calls = 0
+
+        def flaky_connect(base, path, data=None, origin=None, opener=None):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise http.client.RemoteDisconnected(
+                    "Remote end closed connection without response"
+                )
+            return self.fake_response(base, path, data, origin, opener)
+
+        with (
+            patch.object(smoke, "request", side_effect=flaky_connect) as req,
+            patch.object(smoke.time, "sleep") as sleep_mock,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            smoke.check("https://demo.test")
+
+        self.assertEqual(req.call_count, 3)
+        self.assertEqual(sleep_mock.call_count, 1)
 
     def test_loopback_http_cookie_and_origin_round_trip(self) -> None:
         email = "participant@example.test"

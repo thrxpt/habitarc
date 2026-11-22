@@ -95,7 +95,6 @@ awk '
 reject_trace 'DATABASE_URL|--set-env-vars|--set-secrets|--service-account|--set-cloudsql-instances|run jobs deploy|run deploy '
 grep -Eq 'Image.*@sha256:' "$GITHUB_STEP_SUMMARY"
 grep -q '^SERVICE_URL=https://sd31d6c61-000000000000\.asia-southeast1\.run\.app$' "$GITHUB_ENV"
-grep -q '^DEPLOYED_IMAGE=asia-southeast1-docker\.pkg\.dev/cpe-se-course-2026/sd31d6c61/sd31d6c61@sha256:' "$GITHUB_ENV"
 
 export HABITARC_ACCOUNTS_SECRET_VERSION=2
 run_release

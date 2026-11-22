@@ -125,20 +125,19 @@ run gcloud run services update "$team" "${cloud[@]}" --image "$immutable_image" 
 if [[ $dry_run == 1 ]]; then
   candidate_url="https://candidate---$team-example-as.a.run.app"
   revision="$team-example"
-  run env -u SMOKE_EMAIL -u SMOKE_PASSWORD python3 "$smoke_test" "$candidate_url"
 else
   service_json=$(gcloud run services describe "$team" "${cloud[@]}" --format=json)
   revision=$(jq -er '.status.traffic[] | select(.tag == "candidate") | .revisionName' <<< "$service_json")
   [[ $revision =~ ^sd31d6c61-[a-z0-9-]+$ ]] || fail 'Expected a candidate revision for the assigned service.'
   candidate_url=$(jq -er '.status.traffic[] | select(.tag == "candidate") | .url' <<< "$service_json")
   service_origin "$candidate_url" || fail 'Expected the direct HTTPS URL for the candidate revision.'
-  env -u SMOKE_EMAIL -u SMOKE_PASSWORD python3 "$smoke_test" "$candidate_url"
 fi
+run env -u SMOKE_EMAIL -u SMOKE_PASSWORD python3 "$smoke_test" "$candidate_url"
 
 run gcloud run services update-traffic "$team" "${cloud[@]}" --to-revisions "$revision=100"
 if [[ $dry_run == 0 ]]; then
   if [[ -n ${GITHUB_ENV:-} ]]; then
-    printf 'SERVICE_URL=%s\nDEPLOYED_IMAGE=%s\n' "$origin" "$immutable_image" >> "$GITHUB_ENV"
+    printf 'SERVICE_URL=%s\n' "$origin" >> "$GITHUB_ENV"
   fi
   {
     printf '### Habitarc demo deployment\n\n'

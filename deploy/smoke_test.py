@@ -1,10 +1,13 @@
 """Public and optional authenticated smoke checks for deployed Habitarc.
 
 Credentials, cookies, and session tokens are never printed. Uses only the
-Python standard library (Python 3.9+) so CI and Cloud Run verification need
+Python standard library (Python 3.10+) so CI and Cloud Run verification need
 no third-party packages.
 """
 
+from __future__ import annotations
+
+import http.client
 import http.cookiejar
 import json
 import os
@@ -18,6 +21,11 @@ TIMEOUT_SECONDS = 30
 MAX_ATTEMPTS = 5
 RETRY_DELAY_SECONDS = 3
 VALID_ROLES = frozenset({"participant", "program-manager"})
+TRANSIENT_ERRORS = (
+    http.client.HTTPException,
+    urllib.error.URLError,
+    TimeoutError,
+)
 
 
 def validate_base_url(raw_url: str) -> tuple[str, str]:
@@ -89,10 +97,8 @@ def is_anonymous_session(body: bytes, headers: dict[str, str]) -> bool:
     return has_no_store(headers) and json.loads(body) is None
 
 
-def check(raw_base: str) -> None:
-    """Run public read-only smoke checks and optional Participant sign-in."""
-    base, origin = validate_base_url(raw_base)
-
+def check_public(base: str) -> None:
+    """Run retryable read-only checks for sign-in page and anonymous session."""
     for path, predicate in (
         ("/", is_sign_in_page),
         ("/api/auth/get-session", is_anonymous_session),
@@ -103,23 +109,15 @@ def check(raw_base: str) -> None:
                 if not predicate(body, headers):
                     raise ValueError("Unexpected response")
                 break
-            except (urllib.error.URLError, TimeoutError, ValueError):
+            except (*TRANSIENT_ERRORS, ValueError):
                 if attempt == MAX_ATTEMPTS - 1:
                     raise RuntimeError(f"Smoke check failed: {path}") from None
                 time.sleep(RETRY_DELAY_SECONDS)
         print(f"PASS {path}")
 
-    raw_email = os.getenv("SMOKE_EMAIL")
-    email = raw_email.strip() if raw_email is not None else ""
-    password = os.getenv("SMOKE_PASSWORD") or ""
-    if bool(email) != bool(password):
-        raise RuntimeError(
-            "Set both SMOKE_EMAIL and SMOKE_PASSWORD, or neither."
-        )
-    if not email:
-        print("SKIP login: optional smoke credentials not configured")
-        return
 
+def check_login(base: str, origin: str, email: str, password: str) -> None:
+    """Verify cookie-based sign-in, session identity, and guaranteed sign-out."""
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     signed_in = False
@@ -158,7 +156,7 @@ def check(raw_base: str) -> None:
         ):
             raise ValueError("Unexpected session response")
         print("PASS login and authenticated /api/auth/get-session")
-    except (urllib.error.URLError, TimeoutError, ValueError, KeyError, TypeError):
+    except (*TRANSIENT_ERRORS, ValueError, KeyError, TypeError):
         login_failed = True
         raise RuntimeError("Login smoke check failed") from None
     finally:
@@ -179,10 +177,29 @@ def check(raw_base: str) -> None:
                     )
                     if not is_anonymous_session(after_body, after_headers):
                         raise ValueError("Session remained active after sign-out")
-                print("PASS logout")
-            except (urllib.error.URLError, TimeoutError, ValueError):
+                    print("PASS logout")
+            except (*TRANSIENT_ERRORS, ValueError):
                 if not login_failed:
                     raise RuntimeError("Logout smoke check failed") from None
+
+
+def check(raw_base: str) -> None:
+    """Run public read-only smoke checks and optional Participant sign-in."""
+    base, origin = validate_base_url(raw_base)
+    check_public(base)
+
+    raw_email = os.getenv("SMOKE_EMAIL")
+    email = raw_email.strip() if raw_email is not None else ""
+    password = os.getenv("SMOKE_PASSWORD") or ""
+    if bool(email) != bool(password):
+        raise RuntimeError(
+            "Set both SMOKE_EMAIL and SMOKE_PASSWORD, or neither."
+        )
+    if not email:
+        print("SKIP login: optional smoke credentials not configured")
+        return
+
+    check_login(base, origin, email, password)
 
 
 if __name__ == "__main__":
