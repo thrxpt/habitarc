@@ -98,7 +98,8 @@ grep -q '^SERVICE_URL=https://sd31d6c61-000000000000\.asia-southeast1\.run\.app$
 
 export HABITARC_ACCOUNTS_SECRET_VERSION=2
 run_release
-expect_trace 'run jobs update .*dist/operators/migrate\.mjs.*dist/operators/provision\.mjs.*sd31d6c61-app-secret-2:2'
+expect_trace 'run jobs update .*dist/operators/migrate\.mjs && node dist/operators/provision\.mjs --file /secrets/habitarc-provision/accounts\.json.*sd31d6c61-app-secret-2:2'
+reject_trace 'dist/operators/provision\.mjs <'
 expect_cleanup_after_provisioning
 reject_trace 'run services update .*app-secret-2'
 

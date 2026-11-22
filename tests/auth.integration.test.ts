@@ -1,6 +1,13 @@
 import { spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
-import { chmod, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import {
+  chmod,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 /* eslint-disable no-await-in-loop, promise/avoid-new -- Ordered requests test lifecycle; promises bridge process/socket events. */
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -580,6 +587,66 @@ test(
         result.output.includes(commandPassword)
       )
     ).toBe(false);
+  }
+);
+
+test(
+  "operator provision accepts --file paths and emits safe stage diagnostics on input errors",
+  { timeout: 15_000 },
+  async () => {
+    const commandPassword = randomBytes(9).toString("base64url");
+    const batch = accounts.map((account) => ({
+      ...account,
+      email: `file-${account.email}`,
+      password: commandPassword,
+    }));
+    const directory = await mkdtemp(
+      nodePath.join(tmpdir(), "habitarc-provision-file-")
+    );
+    const filePath = nodePath.join(directory, "accounts.json");
+    try {
+      await writeFile(filePath, `${JSON.stringify(batch)}\n`, { mode: 0o600 });
+      const created = await runOperator("provision", "", ["--file", filePath]);
+      expect(created).toEqual({
+        code: 0,
+        output: "Provisioning complete: 3 created, 0 preserved.\n",
+      });
+      const repeated = await runOperator("provision", "", ["--file", filePath]);
+      expect(repeated).toEqual({
+        code: 0,
+        output: "Provisioning complete: 0 created, 3 preserved.\n",
+      });
+      const missingPath = nodePath.join(directory, "missing.json");
+      const missing = await runOperator("provision", "", [
+        "--file",
+        missingPath,
+      ]);
+      expect(missing).toEqual({
+        code: 1,
+        output:
+          "Provisioning failed. Check private input and database configuration; existing accounts are preserved.\nDiagnostic: stage=file name=Error code=ENOENT\n",
+      });
+      expect(missing.output).not.toContain(directory);
+      const invalidArgs = await runOperator("provision", "", ["--unknown"]);
+      expect(invalidArgs).toEqual({
+        code: 1,
+        output:
+          "Provisioning failed. Check private input and database configuration; existing accounts are preserved.\nDiagnostic: stage=args name=Error code=INVALID_ARGS\n",
+      });
+      const emptyStdin = await runOperator("provision", "");
+      expect(emptyStdin).toEqual({
+        code: 1,
+        output:
+          "Provisioning failed. Check private input and database configuration; existing accounts are preserved.\nDiagnostic: stage=stdin name=Error code=EMPTY_INPUT\n",
+      });
+      expect(
+        [created, repeated, missing, invalidArgs, emptyStdin].some((result) =>
+          result.output.includes(commandPassword)
+        )
+      ).toBe(false);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   }
 );
 

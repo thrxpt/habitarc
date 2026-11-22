@@ -1,6 +1,16 @@
 /* eslint-disable promise/avoid-new -- Bridge child-process completion for the image's public CLI boundary. */
 import { spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import nodePath from "node:path";
 
 import { expect, test, vi } from "vite-plus/test";
 
@@ -46,6 +56,7 @@ test(
     const name = `habitarc-verify-${randomUUID()}`;
     const postgres = `${name}-db`;
     const app = `${name}-app`;
+    let secretDir: string | undefined;
     const environment = [
       "--env",
       `DATABASE_URL=postgresql://postgres@${postgres}/habitarc`,
@@ -121,12 +132,33 @@ test(
         },
         { timeout: 30_000, interval: 500 }
       );
-      expect(await operator("migrate")).toContain(
-        "Database migrations applied."
+      secretDir = await mkdtemp(nodePath.join(tmpdir(), "habitarc-secret-"));
+      await chmod(secretDir, 0o755);
+      const dataDir = nodePath.join(secretDir, "..data");
+      await mkdir(dataDir, { mode: 0o755 });
+      await chmod(dataDir, 0o755);
+      const secretTarget = nodePath.join(dataDir, "accounts.json");
+      await writeFile(secretTarget, accounts, { mode: 0o444 });
+      await chmod(secretTarget, 0o444);
+      await symlink(
+        nodePath.join("..data", "accounts.json"),
+        nodePath.join(secretDir, "accounts.json")
       );
-      expect(await operator("provision", accounts)).toContain(
-        "3 created, 0 preserved"
-      );
+      const jobOutput = await docker([
+        "run",
+        "--rm",
+        "--network",
+        name,
+        "--volume",
+        `${secretDir}:/secrets/habitarc-provision:ro`,
+        ...environment,
+        image,
+        "sh",
+        "-ec",
+        "node dist/operators/migrate.mjs && node dist/operators/provision.mjs --file /secrets/habitarc-provision/accounts.json",
+      ]);
+      expect(jobOutput).toContain("Database migrations applied.");
+      expect(jobOutput).toContain("3 created, 0 preserved");
       const applicationArgs = [
         "run",
         "--detach",
@@ -240,6 +272,9 @@ test(
       await Promise.allSettled([
         docker(["rm", "--force", "--volumes", app]),
         docker(["rm", "--force", "--volumes", postgres]),
+        ...(secretDir === undefined
+          ? []
+          : [rm(secretDir, { recursive: true, force: true })]),
       ]);
       await docker(["network", "rm", name]).catch(() => {});
     }

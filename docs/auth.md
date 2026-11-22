@@ -12,7 +12,7 @@ For custom account batches, use the stdin command below.
 
 Start the local PostgreSQL service with `docker compose up -d --wait postgres`, then run migrations. Compose creates the development and test databases on first startup and preserves them in a named volume. Create a private UTF-8 JSON file outside the repository with permissions `0600`. Its array contains at least two distinct Participants and one Program Manager. Each object has `name`, `email`, `password`, and `role` (`participant` or `program-manager`); optional `timezone` defaults to `Asia/Bangkok`. Use unique synthetic email addresses and privately generated passwords of 12–128 characters. Timezones must be named IANA zones recognized by both the JavaScript runtime and PostgreSQL; `UTC` is also accepted.
 
-Do not put credentials in command arguments, shell history, source files, screenshots, or logs. The command accepts stdin only:
+Do not put credentials in command arguments, shell history, source files, screenshots, or logs. The command accepts private stdin or `--file <private-path>` for mounted secret files (such as Cloud Run Job secret volumes):
 
 ```sh
 vp run accounts:provision < /private/path/synthetic-accounts.json
