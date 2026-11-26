@@ -1,3 +1,5 @@
 # Use Cloud Run and ordinary Cloud SQL within the trial budget
 
 Deploy the existing TanStack Start application as one Dockerized Cloud Run service backed by an ordinary single-zone Cloud SQL PostgreSQL instance, with backups, managed secrets, and limited application scaling. This keeps durable records outside disposable application containers and uses the course-required GCP platform while accepting single-zone availability and ongoing database costs within the user's $300 trial-credit budget. Retain non-upgraded trial billing, verify credit balance/expiry and estimate costs before provisioning, and avoid the separate 30-day Cloud SQL promotion because its backup restrictions and expiry threaten final-delivery continuity.
+
+On November 22, 2026, the course moved Lab 5 to the Student Cloud Portal. The Portal now provides the team’s Cloud Run, Cloud SQL, registry, IAM and database secret. Its access, limits and retention replace the personal trial requirements for course deployment. See the [deployment runbook](../deployment.md).

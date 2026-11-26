@@ -2,7 +2,7 @@
 
 Team: 67070501063 Theeraphat Jaingam and 67070501058 Chanya Poolketkij. Context: Habit and Activity Tracking for students' study/movement routines. Repository: https://github.com/thrxpt/habitarc.
 
-**Status: review package, awaiting teammate acceptance and reviewed main release.** The PDF is [output/pdf/project-deliverable-1.pdf](../../../output/pdf/project-deliverable-1.pdf). Its actual page map is [page-map.json](page-map.json); the front page contains A–F navigation. Do not submit it as an accepted release while the front cover says PENDING.
+**Status: submission edition for reviewed main release `9be6a80041c732cac97e20b87c83dfe8153f42ce`.** The final file is [output/pdf/project-deliverable-1.pdf](../../../output/pdf/project-deliverable-1.pdf), with actual A–F page navigation in [page-map.json](page-map.json). Parts A–E and selected execution/process evidence are embedded. Known verification gaps, including unrecorded teammate clean setup, are disclosed in Part F; this is not a claim that every Product DoD condition passed.
 
 ## Included content
 
@@ -15,17 +15,13 @@ Team: 67070501063 Theeraphat Jaingam and 67070501058 Chanya Poolketkij. Context:
 | E | docs/sprints/sprint-1/*.md and dod.md | Five feature designs, all 20 AC/STS pairs and checkpoint DoD; later design clarification dates disclosed |
 | F | part-f.md and evidence/ | 92 unit/component/integration tests, 4 Chromium tests, commands/results, screenshots, two test excerpts, real red/green logs/commits, GitHub reviews/board and contributions |
 
-[Part F](part-f.md) is the current execution ledger. Earlier feature documents retain their historical runs; they do not override the current ledger. [submission.json](submission.json) records student IDs and the tested application candidate. [evidence/source-manifest.json](evidence/source-manifest.json) identifies exact tested source/test/migration/config hashes, including the evidence-capture changes to browser tests.
+[Part F](part-f.md) is the current execution ledger. Earlier feature documents retain their historical runs; they do not override the current ledger. [submission.json](submission.json) records student IDs and the tested main release. [evidence/source-manifest.json](evidence/source-manifest.json) identifies exact tested source/test/migration/config hashes, including the evidence-capture changes to browser tests.
 
-## Remaining handoff gates
+## Release and remaining work
 
-Execution order: integrate reviewed PR #31, accept the local release through draft PR #32, then update PR #30 against the latest staging base for Lab 5. Lab 5 is due November 22, 2026; live GCP delivery does not block the November 15 local Deliverable 1 checkpoint. The [teammate acceptance record](acceptance.md) gives the remaining checks and required actual-result fields.
+PR #31 was approved/merged into sprint-1 and PR #32 was approved/merged into main by chanya06. The exact assessed release is recorded in submission.json and freshly re-verified in Part F. PR #30 remains a separate open Lab 5 delivery preparation; its code/test counts are excluded from this submission release. Lab 5 is due November 22, 2026.
 
-1. Teammate reviews this preparation and its F02 cursor correction, then integrates it into `sprint-1` through the PR. Preserve review findings/fixes in the actual history.
-2. Teammate follows clean README setup/migration/private account generation, confirms safe repeated setup and saved retrieval, and records expected/actual outcomes under issue #9. Current tests were executed by an agent and do not replace that acceptance.
-3. Review and merge the staging release into `main`, retain an immutable release reference/tag, run the complete commands on that version, and refresh Part F/board/snapshot/source manifest/metadata/PDF. No accepted main release currently exists in this package. Do not point `acceptedReleaseCommit` at an unreviewed candidate to remove the PENDING label.
-
-The package discloses absent original domain-rule red logs, full accessibility/zoom/performance measurements, and later product work. The retained F02 red/green logs are new genuine executions, not reconstructed earlier evidence. Docker/GCP/backup operational acceptance remains Lab 5/later work; it is not a Deliverable 1 cloud requirement.
+The [teammate acceptance record](acceptance.md) still lacks the independent clean-setup result for AC-F05-1. Issue #9 remains open and In progress for that and its Lab 5 criteria. The report explicitly discloses missing historical domain-rule red logs, unexecuted quality measurements and later product allocation. No agent result is attributed to a student, and no live cloud result is invented.
 
 ## Rebuild the PDF
 

@@ -18,6 +18,7 @@ todos.json
 # dotenv environment variable files
 .env.*
 !.env.example
+gha-creds-*.json
 
 # Playwright artifacts
 /test-results/

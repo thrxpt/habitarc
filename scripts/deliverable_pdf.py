@@ -91,6 +91,7 @@ def normalize(value):
         "\u2192": " -> ", "\u2190": " <- ", "\u2264": "<=",
         "\u2265": ">=", "\u2212": "-", "\u00a0": " ",
         "\u2713": "PASS", "\u2714": "PASS", "\u2717": "FAIL",
+        "\U0001f436": "", "\U0001f525": "",
     }))
     return value
 
@@ -149,7 +150,7 @@ def make_table(rows, widths=None):
 
 
 def markdown(path):
-    tokens = MD.parse(path.read_text())
+    tokens = MD.parse(path.read_text(encoding="utf-8"))
     flow = []
     index = 0
     list_depth = 0
@@ -233,7 +234,7 @@ class Document(BaseDocTemplate):
         canvas.setFont("Body", 7)
         canvas.setFillColor(MUTED)
         canvas.drawString(44, HEIGHT - 23, "HABITARC  /  CPE 334  /  PROJECT DELIVERABLE 1")
-        metadata = json.loads((SOURCE / "submission.json").read_text())
+        metadata = json.loads((SOURCE / "submission.json").read_text(encoding="utf-8"))
         footer = "Review copy - acceptance gates disclosed in Part F"
         if metadata["acceptedReleaseCommit"]:
             footer = "Assessed release - verification and limitations in Part F"
@@ -265,7 +266,7 @@ PARTS = [
 
 
 def story(page_map=None, total_pages=None):
-    metadata = json.loads((SOURCE / "submission.json").read_text())
+    metadata = json.loads((SOURCE / "submission.json").read_text(encoding="utf-8"))
     release = metadata["acceptedReleaseCommit"]
     flow = [Spacer(1, 28), Paragraph("Habitarc", STYLES["H1PDF"]),
             Paragraph("CPE 334 Project Deliverable 1", STYLES["H2PDF"]),
@@ -276,9 +277,9 @@ def story(page_map=None, total_pages=None):
     for text in [
         "Theme/context: Habit and Activity Tracking - students' study and movement routines.",
         f'Repository: {metadata["repository"]}',
-        f'Tested application candidate: {metadata["testedApplicationCommit"]}',
-        f"Submitted release: {release}" if release else "Submitted release: PENDING - no accepted main release/tag is claimed.",
-        "Prepared 15 November 2026, Asia/Bangkok. Local results are agent-executed; student acceptance remains explicit.",
+        f'Tested application commit: {metadata["testedApplicationCommit"]}',
+        f"Submitted main release: {release}" if release else "Submitted release: PENDING - no accepted main release/tag is claimed.",
+        "Prepared 15 November 2026, Asia/Bangkok. Local execution and human review are identified separately in Part F.",
     ]:
         flow.append(Paragraph(html.escape(text), STYLES["BodyTextPDF"]))
     flow.extend([Spacer(1, 10), Paragraph("Contents and assessment navigation", STYLES["H2PDF"])])
@@ -291,7 +292,11 @@ def story(page_map=None, total_pages=None):
         rows.append([f"{part}. {title}", page_range, ids])
     flow.append(make_table(rows, [CONTENT_WIDTH * .42, CONTENT_WIDTH * .1, CONTENT_WIDTH * .48]))
     flow.append(Spacer(1, 12))
-    note = "Docker/GCP completion is a separate Lab 5 obligation."
+    note = (
+        "Submission edition tied to the reviewed main release. Known evidence gaps, including the "
+        "unrecorded teammate clean-setup result, are disclosed in Part F. "
+        "Docker/GCP completion is a separate Lab 5 obligation due November 22."
+    )
     if not release:
         note = (
             "This engineering/evidence review package discloses unresolved submission gates. "
@@ -310,7 +315,7 @@ def story(page_map=None, total_pages=None):
 
 
 def main():
-    manifest = json.loads((SOURCE / "evidence/source-manifest.json").read_text())
+    manifest = json.loads((SOURCE / "evidence/source-manifest.json").read_text(encoding="utf-8"))
     for filename, expected in manifest["sha256"].items():
         actual = hashlib.sha256((ROOT / filename).read_bytes()).hexdigest()
         if actual != expected:

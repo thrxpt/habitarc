@@ -9,6 +9,7 @@ import {
 import { authOptions } from "./auth";
 import type { AuthConfig } from "./auth";
 import type { Database, Transaction } from "./database";
+import { OperatorStageError } from "./operator-error";
 import { user } from "./schema";
 
 const ACCOUNT_PROVISIONING_LOCK = 480_104;
@@ -78,9 +79,23 @@ export const prepareAndProvisionAccounts = async (
     // Local credential-file preparation and account writes share this one lock.
     const accounts = parseAccounts(await prepareInput(transaction));
     const options = authOptions(transaction, config);
+    let loggedError: unknown;
     // This signup-enabled instance is private to operator tooling and is never mounted.
     const provisioner = betterAuth({
       ...options,
+      logger: {
+        disabled: false,
+        level: "error",
+        log: (level, _message, ...args) => {
+          if (level === "error") {
+            for (const arg of args) {
+              if (arg instanceof Error) {
+                loggedError = arg;
+              }
+            }
+          }
+        },
+      },
       emailAndPassword: { ...options.emailAndPassword, disableSignUp: false },
       user: {
         additionalFields: {
@@ -101,8 +116,19 @@ export const prepareAndProvisionAccounts = async (
       if (existing.length) {
         continue;
       }
-      // eslint-disable-next-line no-await-in-loop -- Do not interleave credential transactions.
-      await provisioner.api.signUpEmail({ body: account });
+      loggedError = undefined;
+      try {
+        // eslint-disable-next-line no-await-in-loop -- Do not interleave credential transactions.
+        await provisioner.api.signUpEmail({ body: account });
+      } catch (error) {
+        if (loggedError !== undefined) {
+          throw new OperatorStageError(
+            "Sign-up failed during account provisioning.",
+            { cause: error, underlying: loggedError }
+          );
+        }
+        throw error;
+      }
       created += 1;
     }
     return { created, preserved: accounts.length - created };
