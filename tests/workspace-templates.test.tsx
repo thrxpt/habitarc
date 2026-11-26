@@ -45,6 +45,21 @@ afterEach(() => {
   cleanup();
 });
 
+test("Program Manager sees required and optional Activity Template fields before submitting", () => {
+  render(
+    <AccountScreen
+      identity={manager}
+      templates={[]}
+      onSessionChanged={noSessionChange}
+    />
+  );
+
+  expect(
+    screen.getByText(/Name, Minimum, and Maximum are required/iu)
+  ).toBeVisible();
+  expect(screen.getByText(/Description is optional/iu)).toBeVisible();
+});
+
 test("Program Manager can create a valid Activity Template with labeled keyboard-accessible fields", async () => {
   const onCreateTemplate = vi
     .fn<(draft: ActivityTemplateDraft) => Promise<ActivityTemplate>>()
