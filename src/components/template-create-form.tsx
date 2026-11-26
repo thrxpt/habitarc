@@ -134,7 +134,8 @@ export const TemplateCreateForm = ({
       </h2>
       <p className="text-muted-foreground mb-6 max-w-prose leading-[1.65]">
         Define a shared activity, its Measurement Unit, and valid whole-number
-        entry bounds.
+        entry bounds. Name, Minimum, and Maximum are required. Description is
+        optional.
       </p>
       <form
         noValidate
